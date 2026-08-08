@@ -7,7 +7,7 @@ import { CursesListScreen } from "@/gui/CursesScreen";
 import { GUIScreen } from "@/system/gui/GUIScreen";
 import { BCPMessageContent, BCPNotifyPlayer, SendAction, SendBCPMessage } from "@/utils/Messaging";
 import { jsonClone } from "@/utils/BCUtils";
-import { debug } from "@/system/Console";
+import { debug, err } from "@/system/Console";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Authority from "@/modules/Authority";
 import type Logging from "@/modules/Logging";
@@ -17,6 +17,10 @@ const TICK_MS = 1500;
 const RESTORE_COOLDOWN_MS = 1200;
 /** Minimum time between "reasserted" notifications per slot - restores may repeat, chat spam must not. */
 const NOTIFY_COOLDOWN_MS = 10_000;
+/** Consecutive non-converging restores before a slot's enforcement pauses. */
+const MAX_CONSECUTIVE_RESTORES = 4;
+/** How long a non-converging slot's enforcement stays paused. */
+const SUSPEND_MS = 60_000;
 
 export default class Curses extends ModuleInstance {
 
@@ -26,6 +30,9 @@ export default class Curses extends ModuleInstance {
     private lastAnnounce = 0;
     /** Item restorations collected during the current enforcement tick. */
     private tickRestores: { group: string; itemName: string }[] = [];
+    /** Restores since the slot last checked compliant; guards against fight loops. */
+    private readonly consecutiveRestores = new Map<string, number>();
+    private readonly suspendedUntil = new Map<string, number>();
 
     protected readonly SystemConfig: ModuleConfig = {
         Name: "Curses",
@@ -281,18 +288,26 @@ export default class Curses extends ModuleInstance {
     }
 
     private checkSlot(slot: CurseSlotData): void {
+        const suspended = this.suspendedUntil.get(slot.group) ?? 0;
+        if (Date.now() < suspended) {
+            return;
+        }
+
         const worn = InventoryGet(Player, slot.group);
 
         if (!worn) {
             if (slot.allowEmpty || slot.items.length === 0) {
+                this.consecutiveRestores.delete(slot.group);
                 return;
             }
+            debug(`Curse violation on ${slot.group}: slot empty, expected ${slot.items[0]!.asset}`);
             this.restore(slot, slot.items[0]!, "add");
             return;
         }
 
         const spec = slot.items.find((s) => s.asset === worn.Asset.Name);
         if (!spec) {
+            debug(`Curse violation on ${slot.group}: ${worn.Asset.Name} is not an allowed item`);
             if (slot.items.length === 0) {
                 this.restore(slot, null, "remove");
             } else if (!slot.allowEmpty) {
@@ -303,8 +318,16 @@ export default class Curses extends ModuleInstance {
             return;
         }
         if (spec.strict && !itemMatchesSpec(worn, spec)) {
+            debug(`Curse violation on ${slot.group}: state mismatch`, {
+                worn: { color: worn.Color, difficulty: worn.Difficulty, property: worn.Property, craft: worn.Craft },
+                spec: { color: spec.color, difficulty: spec.difficulty, property: spec.property, craft: spec.craft },
+            });
             this.restore(slot, spec, "update");
+            return;
         }
+
+        // Slot is compliant - the fight (if any) is over
+        this.consecutiveRestores.delete(slot.group);
     }
 
     private restore(slot: CurseSlotData, spec: CurseItemSpec | null, action: "add" | "remove" | "swap" | "update"): void {
@@ -314,6 +337,17 @@ export default class Curses extends ModuleInstance {
             return;
         }
         this.lastRestore.set(slot.group, now);
+
+        const failures = (this.consecutiveRestores.get(slot.group) ?? 0) + 1;
+        this.consecutiveRestores.set(slot.group, failures);
+        if (failures > MAX_CONSECUTIVE_RESTORES) {
+            this.suspendedUntil.set(slot.group, now + SUSPEND_MS);
+            this.consecutiveRestores.delete(slot.group);
+            const groupName = this.curseableGroups().find((g) => g.Name === slot.group)?.Description ?? slot.group;
+            err(`Curse on ${slot.group} is not converging (something keeps rejecting the restore) - pausing enforcement for ${SUSPEND_MS / 1000}s`);
+            BCPNotifyPlayer(`The curse on your ${groupName} could not hold and is resting for a minute.`);
+            return;
+        }
 
         if (spec === null) {
             InventoryRemove(Player, slot.group, true);
@@ -338,6 +372,8 @@ export default class Curses extends ModuleInstance {
             const worn = InventoryGet(Player, slot.group);
             if (worn && worn.Asset.Name === spec.asset) {
                 adoptRestoredState(spec, worn);
+            } else {
+                err(`Curse restore on ${slot.group} did not stick: expected ${spec.asset}, slot now has ${worn?.Asset.Name ?? "nothing"}`);
             }
             if (action === "add" || action === "swap") {
                 this.tickRestores.push({ group: slot.group, itemName: spec.name });
