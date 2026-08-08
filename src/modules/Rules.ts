@@ -6,7 +6,7 @@ import { RuleContext, RuleDefinition, RuleStateData, defaultRuleState } from "@/
 import { RULE_DEFINITIONS } from "@/rules/index";
 import { RulesListScreen } from "@/gui/RulesListScreen";
 import { GUIScreen } from "@/system/gui/GUIScreen";
-import { BCPMessageContent, BCPNotifyPlayer, SendBCPMessage } from "@/utils/Messaging";
+import { BCPMessageContent, BCPNotifyPlayer, SendAction, SendBCPMessage } from "@/utils/Messaging";
 import { debug, warn } from "@/system/Console";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Roles from "@/modules/Roles";
@@ -76,7 +76,8 @@ export default class Rules extends ModuleInstance {
         if (store[id] === undefined) {
             store[id] = defaultRuleState(definition);
         } else {
-            // New settings added by updates get their defaults merged in
+            // New settings/fields added by updates get their defaults merged in
+            store[id].announce ??= true;
             const defaults = defaultRuleState(definition).settings;
             for (const [key, value] of Object.entries(defaults)) {
                 if (!(key in store[id].settings)) {
@@ -113,6 +114,10 @@ export default class Rules extends ModuleInstance {
 
     setRuleLog(id: string, value: boolean): void {
         this.ruleState(id).log = value;
+    }
+
+    setRuleAnnounce(id: string, value: boolean): void {
+        this.ruleState(id).announce = value;
     }
 
     /** Sets a rule's custom setting; the value must match the setting's declared type. */
@@ -203,8 +208,14 @@ export default class Rules extends ModuleInstance {
             setting: <T>(name: string): T => state().settings[name] as T,
             isEnforced: () => state().active && state().enforce,
             isLogged: () => state().active && state().log,
-            trigger: (target?: number | null) => this.reportTrigger(definition.id, "trigger", target ?? null),
-            triggerAttempt: (target?: number | null) => this.reportTrigger(definition.id, "triggerAttempt", target ?? null),
+            trigger: (target?: number | null) => {
+                this.reportTrigger(definition.id, "trigger", target ?? null);
+                this.announceBreach(definition, "trigger");
+            },
+            triggerAttempt: (target?: number | null) => {
+                this.reportTrigger(definition.id, "triggerAttempt", target ?? null);
+                this.announceBreach(definition, "triggerAttempt");
+            },
             notify: (message: string) => BCPNotifyPlayer(message),
             highestRoleOf: (memberNumber: number) => {
                 const roles = this.ModuleManager.getModule<Roles>("roles");
@@ -216,6 +227,20 @@ export default class Rules extends ModuleInstance {
     private reportTrigger(rule: string, type: "trigger" | "triggerAttempt", target: number | null): void {
         debug(`Rule ${type}: ${rule}`, target === null ? "" : `target #${target}`);
         this.Events.emit("ruleTriggered", { rule, type, target });
+    }
+
+    /** Announces a breach to the room as an action message, when the rule wants it. */
+    private announceBreach(definition: RuleDefinition, type: "trigger" | "triggerAttempt"): void {
+        if (!this.ruleState(definition.id).announce || !ServerPlayerIsInChatRoom()) {
+            return;
+        }
+        const template = type === "triggerAttempt"
+            ? definition.announceAttempt
+            : (definition.announceViolation ?? definition.announceAttempt);
+        if (!template) {
+            return;
+        }
+        SendAction(template.replace(/\{Name\}/g, Player.Nickname || Player.Name));
     }
 
     private onRuleCommand(sender: Character, content: BCPMessageContent): void {
@@ -239,17 +264,26 @@ export default class Rules extends ModuleInstance {
         }
 
         let applied = false;
+        let verb = "changed";
         if (action === "setActive" && typeof value === "boolean") {
             this.setRuleActive(rule, value);
+            verb = value ? "activated" : "deactivated";
             applied = true;
         } else if (action === "setEnforce" && typeof value === "boolean") {
             this.setRuleEnforce(rule, value);
+            verb = value ? "started enforcing" : "stopped enforcing";
             applied = true;
         } else if (action === "setLog" && typeof value === "boolean") {
             this.setRuleLog(rule, value);
+            verb = value ? "enabled logging for" : "disabled logging for";
+            applied = true;
+        } else if (action === "setAnnounce" && typeof value === "boolean") {
+            this.setRuleAnnounce(rule, value);
+            verb = value ? "enabled breach announcements for" : "disabled breach announcements for";
             applied = true;
         } else if (action === "setSetting" && typeof name === "string") {
             applied = this.setRuleSetting(rule, name, value);
+            verb = "changed the settings of";
         }
 
         if (!applied) {
@@ -258,9 +292,9 @@ export default class Rules extends ModuleInstance {
         }
 
         const definition = this.registry.get(rule)!;
-        BCPNotifyPlayer(`${sender.Name} (#${senderNumber}) changed your rule "${definition.name}".`);
+        BCPNotifyPlayer(`${sender.Name} (#${senderNumber}) ${verb} your rule "${definition.name}".`);
         this.ModuleManager.getModule<Logging>("logging")
-            ?.log("rule", `${sender.Name} (#${senderNumber}) changed rule "${definition.name}"`);
+            ?.log("rule", `${sender.Name} (#${senderNumber}) ${verb} rule "${definition.name}"`);
         SendBCPMessage({ message: "RuleCommandResult", ok: true, rule }, senderNumber);
         this.ModuleManager.getModule<DataSync>("data-sync")?.categorySync(this, senderNumber);
     }

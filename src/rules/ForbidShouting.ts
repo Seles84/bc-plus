@@ -14,6 +14,8 @@ export const ForbidShouting: RuleDefinition = {
     name: "Forbid shouting",
     description: "All-caps chat messages are lowered to normal speech when enforced.",
     category: "Speech",
+    announceAttempt: "{Name} tried to shout, but a rule quieted them.",
+    announceViolation: "{Name} shouted, which a rule frowns upon.",
     load(ctx) {
         ctx.hook("ServerSend", 5, (args, next) => {
             const [event, data] = args as unknown as [string, { Type?: string; Content?: string }];

@@ -6,6 +6,8 @@ export const ForbidEmotes: RuleDefinition = {
     name: "Forbid emotes",
     description: "The player cannot send emote messages to the room.",
     category: "Speech",
+    announceAttempt: "{Name} tried to emote, which a rule forbids.",
+    announceViolation: "{Name} emoted, which a rule forbids.",
     load(ctx) {
         ctx.hook("ServerSend", 5, (args, next) => {
             const [event, data] = args as unknown as [string, { Type?: string }];

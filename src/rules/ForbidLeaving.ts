@@ -7,6 +7,8 @@ export const ForbidLeaving: RuleDefinition = {
     description: "The player cannot leave the chat room they are in. "
         + "Disconnects and relogs are not prevented.",
     category: "Other",
+    announceAttempt: "{Name} tried to leave the room, which a rule forbids.",
+    announceViolation: "{Name} left despite a rule forbidding it.",
     load(ctx) {
         ctx.hook("ChatRoomAttemptLeave", 5, (args, next) => {
             if (ctx.isEnforced()) {
