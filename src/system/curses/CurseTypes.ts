@@ -1,3 +1,5 @@
+import { jsonClone } from "@/utils/BCUtils";
+
 /** One item permitted in a cursed slot, with its own enforcement rules. */
 export interface CurseItemSpec {
     /** Asset name within the group */
@@ -52,10 +54,10 @@ export function captureItemSpec(item: Item, strict: boolean): CurseItemSpec {
         asset: item.Asset.Name,
         name: item.Craft?.Name || item.Asset.Description,
         strict,
-        color: structuredClone(item.Color) ?? undefined,
+        color: jsonClone(item.Color) ?? undefined,
         difficulty: item.Difficulty,
-        property: structuredClone(item.Property) ?? undefined,
-        craft: structuredClone(item.Craft) ?? undefined,
+        property: jsonClone(item.Property) ?? undefined,
+        craft: jsonClone(item.Craft) ?? undefined,
     };
 }
 
