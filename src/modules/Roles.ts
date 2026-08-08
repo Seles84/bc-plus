@@ -6,10 +6,9 @@ import { GUIScreen } from "@/system/gui/GUIScreen";
 import { RolesScreen } from "@/gui/RolesScreen";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 
-/** Storage keys for the manually assigned role lists. BC Owner is never manual. */
+/** Storage keys for the manually assigned role lists. BC Owner and Lover are never manual. */
 export const MANUAL_ROLE_KEYS = {
     [Role.Owner]: "owners",
-    [Role.Lover]: "lovers",
     [Role.Mistress]: "mistresses",
 } as const;
 
@@ -28,9 +27,9 @@ export default class Roles extends ModuleInstance {
         Description: "Assign BC+ roles to other players",
         Active: true,
         Icon: "Icons/Security.png",
-        HoverText: "Manage who holds BC+ roles: BC Owner is always your actual in-game owner and "
-            + "cannot be assigned. Owner, Lover and Mistress combine your BC relationships with the "
-            + "lists on this screen. Whitelist and Friend follow your BC lists directly.",
+        HoverText: "Manage who holds BC+ roles: BC Owner and Lover always follow your actual in-game "
+            + "relationships and cannot be assigned. Owner and Mistress are assigned on this screen. "
+            + "Whitelist and Friend follow your BC lists directly.",
         PublicData: true,
         Reference: "roles",
         MenuString: "Roles",
@@ -48,7 +47,6 @@ export default class Roles extends ModuleInstance {
     override get Defaults(): Record<string, unknown> {
         return {
             owners: [],
-            lovers: [],
             mistresses: [],
         };
     }
@@ -86,8 +84,11 @@ export default class Roles extends ModuleInstance {
         if (this.derivedList(Role.BCOwner).includes(memberNumber)) {
             roles.push(Role.BCOwner);
         }
-        for (const role of [Role.Owner, Role.Lover, Role.Mistress] as ManualRole[]) {
-            if (this.manualList(role).includes(memberNumber) || this.derivedList(role).includes(memberNumber)) {
+        if (this.derivedList(Role.Lover).includes(memberNumber)) {
+            roles.push(Role.Lover);
+        }
+        for (const role of [Role.Owner, Role.Mistress] as ManualRole[]) {
+            if (this.manualList(role).includes(memberNumber)) {
                 roles.push(role);
             }
         }

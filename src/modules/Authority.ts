@@ -134,7 +134,7 @@ export default class Authority extends ModuleInstance {
         if (inList("owners")) {
             return Role.Owner;
         }
-        if ((character.Character.Lovership ?? []).some((l) => l.MemberNumber === me) || inList("lovers")) {
+        if ((character.Character.Lovership ?? []).some((l) => l.MemberNumber === me)) {
             return Role.Lover;
         }
         if (inList("mistresses")) {
