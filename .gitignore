@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Environment
+.env
+.env.*
+
+# Local tooling (not part of the repo)
+CLAUDE.md
+.claude/
+.idea/
+.vscode/
+
+# Logs
+*.log
