@@ -7,6 +7,8 @@ import { RULE_DEFINITIONS } from "@/rules/index";
 import { RulesListScreen } from "@/gui/RulesListScreen";
 import { GUIScreen } from "@/system/gui/GUIScreen";
 import { BCPMessageContent, BCPNotifyPlayer, SendAction, SendBCPMessage } from "@/utils/Messaging";
+import { decodeExport, encodeExport } from "@/utils/ExportImport";
+import { jsonClone } from "@/utils/BCUtils";
 import { debug, warn } from "@/system/Console";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Roles from "@/modules/Roles";
@@ -94,7 +96,48 @@ export default class Rules extends ModuleInstance {
         return authority?.hasPermission(Player.MemberNumber ?? -1, "rules.edit") ?? false;
     }
 
+    /** Shareable code containing every rule's state and settings. */
+    exportCode(): string {
+        return encodeExport("rules", jsonClone(this.Data.rules));
+    }
+
+    /** Applies a rules code; returns how many rules were imported. */
+    importCode(code: string): number {
+        const payload = decodeExport(code, "rules");
+        if (typeof payload !== "object" || payload === null) {
+            return 0;
+        }
+        let applied = 0;
+        for (const [id, raw] of Object.entries(payload as Record<string, unknown>)) {
+            if (!this.registry.has(id) || typeof raw !== "object" || raw === null) {
+                continue;
+            }
+            const state = raw as Partial<RuleStateData>;
+            if (typeof state.enforce === "boolean") {
+                this.setRuleEnforce(id, state.enforce);
+            }
+            if (typeof state.log === "boolean") {
+                this.setRuleLog(id, state.log);
+            }
+            if (typeof state.announce === "boolean") {
+                this.setRuleAnnounce(id, state.announce);
+            }
+            if (typeof state.settings === "object" && state.settings !== null) {
+                for (const [name, value] of Object.entries(state.settings)) {
+                    this.setRuleSetting(id, name, value);
+                }
+            }
+            this.setRuleActive(id, state.active === true);
+            applied++;
+        }
+        return applied;
+    }
+
     setRuleActive(id: string, active: boolean): void {
+        if (active && this.Preset === "Dominant") {
+            BCPNotifyPlayer("Your Dominant preset does not accept rules.");
+            return;
+        }
         const state = this.ruleState(id);
         if (state.active === active) {
             return;
@@ -106,6 +149,21 @@ export default class Rules extends ModuleInstance {
             this.uninstallRule(id);
         }
         this.Events.emit("ruleChanged", { rule: id, active });
+    }
+
+    /** Re-applies the preset: Dominant uninstalls everything, others restore active rules. */
+    applyPreset(): void {
+        if (this.Preset === "Dominant") {
+            for (const id of [...this.installed]) {
+                this.uninstallRule(id);
+            }
+        } else {
+            for (const id of this.registry.keys()) {
+                if (this.ruleState(id).active) {
+                    this.installRule(id);
+                }
+            }
+        }
     }
 
     setRuleEnforce(id: string, value: boolean): void {
@@ -149,9 +207,11 @@ export default class Rules extends ModuleInstance {
     }
 
     override Load(): void {
-        for (const id of this.registry.keys()) {
-            if (this.ruleState(id).active) {
-                this.installRule(id);
+        if (this.Preset !== "Dominant") {
+            for (const id of this.registry.keys()) {
+                if (this.ruleState(id).active) {
+                    this.installRule(id);
+                }
             }
         }
 
@@ -260,6 +320,10 @@ export default class Rules extends ModuleInstance {
         const authority = this.ModuleManager.getModule<Authority>("authority");
         if (!authority?.hasPermission(senderNumber, "rules.edit")) {
             reject("no permission");
+            return;
+        }
+        if (this.Preset === "Dominant") {
+            reject("their Dominant preset does not accept rules");
             return;
         }
 

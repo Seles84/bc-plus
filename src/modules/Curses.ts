@@ -6,6 +6,7 @@ import { CurseItemSpec, CurseSlotData, adoptRestoredState, captureItemSpec, item
 import { CursesListScreen } from "@/gui/CursesScreen";
 import { GUIScreen } from "@/system/gui/GUIScreen";
 import { BCPMessageContent, BCPNotifyPlayer, SendAction, SendBCPMessage } from "@/utils/Messaging";
+import { decodeExport, encodeExport } from "@/utils/ExportImport";
 import { jsonClone } from "@/utils/BCUtils";
 import { debug, err } from "@/system/Console";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
@@ -87,6 +88,64 @@ export default class Curses extends ModuleInstance {
     canEdit(): boolean {
         const authority = this.ModuleManager.getModule<Authority>("authority");
         return authority?.hasPermission(Player.MemberNumber ?? -1, "curses.edit") ?? false;
+    }
+
+    /** Shareable code containing the full curse loadout. */
+    exportCode(): string {
+        return encodeExport("curses", jsonClone(this.Data.slots));
+    }
+
+    /** Applies a curses code (merging by slot); returns how many slots were imported. */
+    importCode(code: string): number {
+        const payload = decodeExport(code, "curses");
+        if (typeof payload !== "object" || payload === null) {
+            return 0;
+        }
+        const validGroups = new Set(this.curseableGroups().map((g) => g.Name as string));
+        let applied = 0;
+        for (const [group, raw] of Object.entries(payload as Record<string, unknown>)) {
+            const slot = this.sanitizeSlot(group, raw, validGroups);
+            if (slot) {
+                this.Slots[group] = slot;
+                applied++;
+            }
+        }
+        if (applied > 0) {
+            this.Events.emit("curseChanged", { group: "*", active: true });
+        }
+        return applied;
+    }
+
+    private sanitizeSlot(group: string, raw: unknown, validGroups: Set<string>): CurseSlotData | null {
+        if (!validGroups.has(group) || typeof raw !== "object" || raw === null) {
+            return null;
+        }
+        const candidate = raw as Partial<CurseSlotData>;
+        const items: CurseItemSpec[] = [];
+        for (const item of Array.isArray(candidate.items) ? candidate.items.slice(0, 12) : []) {
+            if (typeof item !== "object" || item === null) {
+                continue;
+            }
+            const spec = item as Partial<CurseItemSpec>;
+            if (typeof spec.asset !== "string" || spec.asset.length > 64 || JSON.stringify(item).length > 10_000) {
+                continue;
+            }
+            items.push({
+                asset: spec.asset,
+                name: typeof spec.name === "string" ? spec.name.slice(0, 128) : spec.asset,
+                strict: spec.strict === true,
+                color: spec.color,
+                difficulty: typeof spec.difficulty === "number" ? spec.difficulty : undefined,
+                property: spec.property,
+                craft: spec.craft,
+            });
+        }
+        return {
+            group: group as AssetGroupName,
+            active: candidate.active === true,
+            allowEmpty: candidate.allowEmpty === true,
+            items,
+        };
     }
 
     /** Groups that can be cursed: items and clothing of the player's asset family. */
@@ -188,6 +247,10 @@ export default class Curses extends ModuleInstance {
             reject("no permission");
             return;
         }
+        if (this.Preset === "Dominant") {
+            reject("their Dominant preset does not accept curses");
+            return;
+        }
         const { action, group, index, value } = content;
         if (typeof group !== "string") {
             reject("invalid command");
@@ -244,8 +307,10 @@ export default class Curses extends ModuleInstance {
 
     /** Enforcement pass: restore any cursed slot whose contents violate its specs. */
     private check(): void {
-        // Pause enforcement entirely while disconnected/relogging
-        if (typeof Player === "undefined" || !Player.MemberNumber || !Array.isArray(Player.Appearance) || !ServerIsConnected) {
+        // Pause enforcement entirely while disconnected/relogging, and never
+        // enforce on a Dominant preset
+        if (typeof Player === "undefined" || !Player.MemberNumber || !Array.isArray(Player.Appearance) || !ServerIsConnected
+            || this.Preset === "Dominant") {
             return;
         }
         this.tickRestores = [];
