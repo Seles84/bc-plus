@@ -2,7 +2,7 @@ import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { ModuleConfig, PermissionDefinition } from "@/system/module/ModuleTypes";
 import { BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
 import { Role } from "@/system/Roles";
-import { CurseItemSpec, CurseSlotData, captureItemSpec, itemMatchesSpec } from "@/system/curses/CurseTypes";
+import { CurseItemSpec, CurseSlotData, adoptRestoredState, captureItemSpec, itemMatchesSpec } from "@/system/curses/CurseTypes";
 import { CursesListScreen } from "@/gui/CursesScreen";
 import { GUIScreen } from "@/system/gui/GUIScreen";
 import { BCPMessageContent, BCPNotifyPlayer, SendBCPMessage } from "@/utils/Messaging";
@@ -15,11 +15,14 @@ import type Logging from "@/modules/Logging";
 const TICK_MS = 1500;
 /** Minimum time between restorations of the same slot, to avoid fighting loops. */
 const RESTORE_COOLDOWN_MS = 1200;
+/** Minimum time between "reasserted" notifications per slot - restores may repeat, chat spam must not. */
+const NOTIFY_COOLDOWN_MS = 10_000;
 
 export default class Curses extends ModuleInstance {
 
     private tickTimer: ReturnType<typeof setInterval> | null = null;
     private readonly lastRestore = new Map<string, number>();
+    private readonly lastNotify = new Map<string, number>();
 
     protected readonly SystemConfig: ModuleConfig = {
         Name: "Curses",
@@ -296,13 +299,24 @@ export default class Curses extends ModuleInstance {
                 item.Property = jsonClone(spec.property);
                 CharacterRefresh(Player, false);
             }
+            // Adopt the as-restored state so the next tick compares equal -
+            // default colors/asset properties can differ from the capture and
+            // would otherwise re-trigger forever (fight loop)
+            const worn = InventoryGet(Player, slot.group);
+            if (worn && worn.Asset.Name === spec.asset) {
+                adoptRestoredState(spec, worn);
+            }
         }
         if (ServerPlayerIsInChatRoom()) {
             ChatRoomCharacterUpdate(Player);
         }
-        const groupName = this.curseableGroups().find((g) => g.Name === slot.group)?.Description ?? slot.group;
-        BCPNotifyPlayer(`The curse on your ${groupName} reasserted itself.`);
         debug(`Curse restored ${slot.group} (${action})`);
-        this.Events.emit("curseTriggered", { group: slot.group, action });
+        const lastNotified = this.lastNotify.get(slot.group) ?? 0;
+        if (now - lastNotified >= NOTIFY_COOLDOWN_MS) {
+            this.lastNotify.set(slot.group, now);
+            const groupName = this.curseableGroups().find((g) => g.Name === slot.group)?.Description ?? slot.group;
+            BCPNotifyPlayer(`The curse on your ${groupName} reasserted itself.`);
+            this.Events.emit("curseTriggered", { group: slot.group, action });
+        }
     }
 }
