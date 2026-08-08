@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Stage 6b rules: Forbidden words (configurable comma-separated list), Forbid shouting (all-caps messages are quieted to lowercase when enforced), Forbid emotes, and Forbid leaving the room.
+- Text settings: rules and modules can declare free-text settings, rendered as input fields with remote-edit support (committed on blur/close).
 - Stage 7 remote settings: the BC+ button on other BC+ users' sheets now opens their menu when their settings grant you viewing permission.
 - Remote rule management: view another player's rules from their synced data and change them (activate/enforce/log/settings) when permitted — every change is validated and applied by *their* client, which notifies them who changed what and confirms or rejects the request.
 - Permission previews: your standing toward another player is estimated from their synced role assignments plus visible BC relationships, so the UI greys out what you can't do; the target remains the final authority.

@@ -122,7 +122,8 @@ export default class Rules extends ModuleInstance {
             return false;
         }
         const valid = (setting.type === "checkbox" && typeof value === "boolean")
-            || (setting.type === "option" && typeof value === "string" && setting.options.includes(value));
+            || (setting.type === "option" && typeof value === "string" && setting.options.includes(value))
+            || (setting.type === "text" && typeof value === "string" && value.length <= (setting.maxChars ?? 256));
         if (!valid) {
             return false;
         }
