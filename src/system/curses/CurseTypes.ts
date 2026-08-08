@@ -44,8 +44,18 @@ function comparableProperty(property: ItemProperties | undefined): Record<string
     return copy;
 }
 
+/** Serializes with sorted object keys, so key order can never cause a false mismatch. */
+function canonicalJSON(value: unknown): string {
+    return JSON.stringify(value ?? null, (_key, v: unknown) => {
+        if (v && typeof v === "object" && !Array.isArray(v)) {
+            return Object.fromEntries(Object.entries(v as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)));
+        }
+        return v;
+    });
+}
+
 function sameJSON(a: unknown, b: unknown): boolean {
-    return JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+    return canonicalJSON(a) === canonicalJSON(b);
 }
 
 /** Captures the currently worn item as an allowed spec. */
@@ -59,6 +69,18 @@ export function captureItemSpec(item: Item, strict: boolean): CurseItemSpec {
         property: jsonClone(item.Property) ?? undefined,
         craft: jsonClone(item.Craft) ?? undefined,
     };
+}
+
+/**
+ * Re-captures a spec's snapshot from the item as actually worn. Called after a
+ * restore so enforcement converges: capture/restore asymmetries (default colors,
+ * asset-added properties) would otherwise mismatch forever and cause fight loops.
+ */
+export function adoptRestoredState(spec: CurseItemSpec, item: Item): void {
+    spec.color = jsonClone(item.Color) ?? undefined;
+    spec.difficulty = item.Difficulty;
+    spec.property = jsonClone(item.Property) ?? undefined;
+    spec.craft = jsonClone(item.Craft) ?? undefined;
 }
 
 /** Whether a worn item satisfies a spec (asset match, plus exact state when strict). */
