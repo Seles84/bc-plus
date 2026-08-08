@@ -43,6 +43,13 @@ export interface RuleDefinition {
     category: RuleCategory;
     /** Custom configuration rendered on the rule's config page */
     settings?: AnySetting[];
+    /**
+     * Room announcement when a breach attempt is blocked; `{Name}` is replaced
+     * with the player's name. Omit for rules that should never announce.
+     */
+    announceAttempt?: string;
+    /** Room announcement when a violation happens (rule not enforced); falls back to announceAttempt. */
+    announceViolation?: string;
     /** Called when the rule becomes active - install hooks via the context */
     load(ctx: RuleContext): void;
 }
@@ -52,6 +59,8 @@ export interface RuleStateData {
     active: boolean;
     enforce: boolean;
     log: boolean;
+    /** Whether breaches are announced to the room as an action message */
+    announce: boolean;
     settings: Record<string, unknown>;
 }
 
@@ -60,6 +69,7 @@ export function defaultRuleState(definition: RuleDefinition): RuleStateData {
         active: false,
         enforce: true,
         log: true,
+        announce: true,
         settings: Object.fromEntries((definition.settings ?? []).map((s) => [s.name, s.default])),
     };
 }

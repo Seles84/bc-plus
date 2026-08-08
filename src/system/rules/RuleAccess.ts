@@ -15,6 +15,7 @@ export interface RuleAccess {
     setActive(id: string, value: boolean): void;
     setEnforce(id: string, value: boolean): void;
     setLog(id: string, value: boolean): void;
+    setAnnounce(id: string, value: boolean): void;
     setSetting(id: string, name: string, value: unknown): void;
 }
 
@@ -47,6 +48,10 @@ export class LocalRuleAccess implements RuleAccess {
         this.rules.setRuleLog(id, value);
     }
 
+    setAnnounce(id: string, value: boolean): void {
+        this.rules.setRuleAnnounce(id, value);
+    }
+
     setSetting(id: string, name: string, value: unknown): void {
         this.rules.setRuleSetting(id, name, value);
     }
@@ -76,7 +81,7 @@ export class RemoteRuleAccess implements RuleAccess {
             return stored;
         }
         const definition = this.rules.getDefinition(id);
-        return definition ? defaultRuleState(definition) : { active: false, enforce: false, log: false, settings: {} };
+        return definition ? defaultRuleState(definition) : { active: false, enforce: false, log: false, announce: false, settings: {} };
     }
 
     /** Best-effort preview using the target's synced authority/roles data; the target enforces for real. */
@@ -97,6 +102,11 @@ export class RemoteRuleAccess implements RuleAccess {
     setLog(id: string, value: boolean): void {
         this.send("setLog", id, undefined, value);
         this.ensureMirror(id).log = value;
+    }
+
+    setAnnounce(id: string, value: boolean): void {
+        this.send("setAnnounce", id, undefined, value);
+        this.ensureMirror(id).announce = value;
     }
 
     setSetting(id: string, name: string, value: unknown): void {

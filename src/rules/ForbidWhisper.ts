@@ -10,6 +10,8 @@ export const ForbidWhisper: RuleDefinition = {
     name: "Forbid whispering",
     description: "The player cannot send whispers to other people in the room.",
     category: "Speech",
+    announceAttempt: "{Name} tried to whisper, which a rule forbids.",
+    announceViolation: "{Name} whispered, which a rule forbids.",
     settings: [{
         type: "checkbox",
         name: "allowLover",

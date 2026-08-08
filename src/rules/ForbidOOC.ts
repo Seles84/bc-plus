@@ -7,6 +7,8 @@ export const ForbidOOC: RuleDefinition = {
     description: "The player cannot send messages containing out-of-character (parenthesized) text. "
         + "Whispers are not affected.",
     category: "Speech",
+    announceAttempt: "{Name} tried to use OOC in a message, which a rule forbids.",
+    announceViolation: "{Name} used OOC in a message, which a rule forbids.",
     load(ctx) {
         ctx.hook("ServerSend", 5, (args, next) => {
             const [event, data] = args as unknown as [string, { Type?: string; Content?: string }];

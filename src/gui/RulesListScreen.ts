@@ -189,6 +189,11 @@ class RuleConfigPage extends GUIPage {
                 value: state.log,
                 set: (v) => access.setLog(definition.id, v),
             },
+            {
+                label: "Announce breaches in chat",
+                value: state.announce,
+                set: (v) => access.setAnnounce(definition.id, v),
+            },
         ];
 
         toggles.forEach((toggle, i) => {
@@ -203,7 +208,7 @@ class RuleConfigPage extends GUIPage {
 
         const settings = definition.settings ?? [];
         settings.forEach((setting, i) => {
-            const y = 580 + i * 80;
+            const y = 660 + i * 80;
             const active = canEdit && (setting.active?.() ?? true);
             switch (setting.type) {
                 case "checkbox": {

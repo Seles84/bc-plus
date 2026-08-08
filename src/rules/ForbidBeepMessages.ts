@@ -9,6 +9,8 @@ export const ForbidBeepMessages: RuleDefinition = {
     name: "Forbid beep messages",
     description: "The player cannot send beeps with message content to friends.",
     category: "Social",
+    announceAttempt: "{Name} tried to send a beep message, which a rule forbids.",
+    announceViolation: "{Name} sent a beep message, which a rule forbids.",
     settings: [{
         type: "checkbox",
         name: "allowPlainBeeps",

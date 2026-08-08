@@ -14,6 +14,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Changes to public data (role assignments, rule states, curses) are now broadcast to the room as they happen, so others' permission previews update immediately — previously granting someone access only took effect for them after a rejoin or manual sync.
 
 ### Added
+- Rule breach announcements: violations and blocked attempts are announced to the room as an action message (e.g. "Seles tried to use OOC in a message, which a rule forbids."), with per-rule wording and a per-rule "Announce breaches in chat" toggle (on by default).
+- Specific rule-change notifications: when someone changes your rules you now see exactly what happened ("activated", "stopped enforcing", "changed the settings of", ...), mirrored in the behavior log.
 - Member picker: role assignment now has a "Browse..." option listing people from your BC relationships, the current room (respecting blindness settings), and your friend list — no more typing member numbers. The picker is reusable for future member-selection needs.
 - Stage 10 text commands: `/bcp` in chat — `help`, `version`, `who` (BC+ users in the room), `rules`, `curses`, `log [count]` (respects the log-view permission), and `sync`. All output is shown only to you.
 - Stage 9 behavior log: rule violations and blocked attempts, curse triggers, and remote rule changes are recorded (capped at 200 entries). In tandem mode, BCX rule triggers are logged too.
