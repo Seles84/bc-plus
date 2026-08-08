@@ -5,6 +5,8 @@ declare global {
     const BCP_VERSION: string;
     const BCP_DEV_ENV: boolean;
     const BCP_STABLE: boolean;
+    /** HMAC key marking saves as written by an official build; empty in unofficial/dev builds */
+    const BCP_SAVE_KEY: string;
 
     interface BCPVersion {
         major: number;
