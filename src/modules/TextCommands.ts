@@ -2,7 +2,7 @@ import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { ModuleConfig } from "@/system/module/ModuleTypes";
 import { BCPLUS_APP_NAME, BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
 import { LOG_MAX_ENTRIES, formatLogTime } from "@/system/logging/LogTypes";
-import { NotifyPlayer } from "@/utils/Messaging";
+import { ListSyncListeners, NotifyPlayer } from "@/utils/Messaging";
 import { getAllCharactersInRoom } from "@/utils/BCPlusCharacter";
 import type Rules from "@/modules/Rules";
 import type Curses from "@/modules/Curses";
@@ -138,6 +138,29 @@ export default class TextCommands extends ModuleInstance {
             handler: () => {
                 this.ModuleManager.getModule<DataSync>("data-sync")?.settingSync(true);
                 this.reply("Sync sent to the room.");
+            },
+        },
+        {
+            name: "debug",
+            description: "Show BC+ diagnostic state",
+            handler: () => {
+                const modules = this.ModuleManager.Modules
+                    .map((m) => `${m.Slug}${m.Config.Active ? "" : " (inactive)"}`)
+                    .join(", ");
+                const listeners = ListSyncListeners().join(" | ");
+                const room = getAllCharactersInRoom()
+                    .filter((c) => !c.isPlayer())
+                    .map((c) => {
+                        const data = c.BCPData ? Object.keys(c.BCPData).join("/") : "none";
+                        return `- ${escapeHtml(c.toNicknamedString())}: ${c.BCPVersion ? `v${escapeHtml(c.BCPVersion)}` : "no BC+"}, mirror: ${escapeHtml(data)}`;
+                    });
+                this.reply([
+                    `BC+ v${BCPLUS_VERSION} (${this.Core.Mode} mode)`,
+                    `Modules: ${escapeHtml(modules)}`,
+                    `Listeners: ${escapeHtml(listeners)}`,
+                    "Room:",
+                    ...(room.length > 0 ? room : ["- nobody else here"]),
+                ].join("<br>"));
             },
         },
     ];
