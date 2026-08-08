@@ -1,6 +1,8 @@
 import { GUIPage, GUIScreen, PageOptions } from "@/system/gui/GUIScreen";
 import { Role, roleName } from "@/system/Roles";
 import { MemberNumberToName } from "@/utils/Messaging";
+import { UserSelectScreen } from "@/gui/UserSelectScreen";
+import type { GUI } from "@/modules/GUI";
 import { MANUAL_ROLE_KEYS } from "@/modules/Roles";
 import type Roles from "@/modules/Roles";
 import type { ManualRole } from "@/modules/Roles";
@@ -103,17 +105,32 @@ class RolePage extends GUIPage {
         ElementPosition(INPUT_ID, 560, 875, 250, 60);
         MainCanvas.textAlign = "center";
         DrawButton(720, 845, 160, 60, "Add", "White", "", `Assign as ${roleName(this.role)}`);
+        DrawButton(920, 845, 240, 60, "Browse...", "White", "", "Pick from room, friends and relationships");
         MainCanvas.textAlign = "left";
         this.addClickHandler(() => {
             if (MouseIn(720, 845, 160, 60)) {
                 this.addFromInput();
             }
+            if (MouseIn(920, 845, 240, 60)) {
+                this.openBrowser();
+            }
         });
     }
 
-    private addFromInput(): void {
-        const input = document.getElementById(INPUT_ID) as HTMLInputElement | null;
-        const value = Number.parseInt(input?.value ?? "", 10);
+    private openBrowser(): void {
+        const excluded = [
+            ...this.roles.manualList(this.role as ManualRole),
+            ...this.roles.derivedList(this.role),
+        ];
+        this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(new UserSelectScreen(
+            this.roles,
+            this.Character,
+            (memberNumber) => this.addMember(memberNumber),
+            excluded,
+        ));
+    }
+
+    private addMember(value: number): void {
         if (!Number.isInteger(value) || value < 0 || value === Player.MemberNumber) {
             return;
         }
@@ -121,6 +138,11 @@ class RolePage extends GUIPage {
         if (!manual.includes(value) && !this.roles.derivedList(this.role).includes(value)) {
             manual.push(value);
         }
+    }
+
+    private addFromInput(): void {
+        const input = document.getElementById(INPUT_ID) as HTMLInputElement | null;
+        this.addMember(Number.parseInt(input?.value ?? "", 10));
         if (input) {
             input.value = "";
         }
