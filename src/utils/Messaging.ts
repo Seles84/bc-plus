@@ -5,19 +5,26 @@ export interface BCPMessageContent {
     [key: string]: unknown;
 }
 
+/**
+ * BC+ payloads ride in `Dictionary` as a plain OBJECT, not an array.
+ * The BC server validates array dictionary entries against its known
+ * schemas and strips custom ones, but passes object dictionaries through
+ * untouched on Hidden messages (the same mechanism BCX uses).
+ */
 export function ContentIsBCPMessage(content: ServerChatRoomMessage): boolean {
+    const dictionary = content.Dictionary as unknown;
     return content.Type === "Hidden"
         && content.Content === "BCP"
-        && Array.isArray(content.Dictionary)
-        && content.Dictionary.length === 1;
+        && typeof dictionary === "object"
+        && dictionary !== null
+        && !Array.isArray(dictionary)
+        && typeof (dictionary as BCPMessageContent).message === "string";
 }
 
 export function GetBCPMessageFromChat(message: ServerChatRoomMessage): BCPMessageContent | null {
-    if (!ContentIsBCPMessage(message)) {
-        return null;
-    }
-    const payload = message.Dictionary![0] as unknown as BCPMessageContent;
-    return typeof payload.message === "string" ? payload : null;
+    return ContentIsBCPMessage(message)
+        ? message.Dictionary as unknown as BCPMessageContent
+        : null;
 }
 
 /** Sends a hidden BC+ message to the room, or to a single member when `target` is set. */
@@ -28,7 +35,7 @@ export function SendBCPMessage(message: BCPMessageContent, target?: number): voi
     ServerSend("ChatRoomChat", {
         Type: "Hidden",
         Content: "BCP",
-        Dictionary: [message],
+        Dictionary: message,
         Target: target,
     } as unknown as ServerChatRoomMessage);
 }
