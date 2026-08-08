@@ -115,8 +115,13 @@ export abstract class GUIScreen {
         void this.setPage(0);
     }
 
-    /** @internal Called by the GUI module when navigating back to this screen. */
+    /**
+     * @internal Called by the GUI module when navigating back to this screen.
+     * Pages are rebuilt so lists reflect changes made on deeper screens
+     * (e.g. a curse added or removed); the page position is kept when possible.
+     */
     reopen(): void {
+        this.pages = null;
         void this.setPage(this.pageIndex);
     }
 
@@ -198,7 +203,7 @@ export abstract class GUIScreen {
             this.pageReady = false;
             await this.ActivePage?.destroy();
         }
-        this.pageIndex = index;
+        this.pageIndex = Math.max(0, Math.min(index, this.Pages.length - 1));
         try {
             await this.ActivePage?.create();
         } catch (e) {
