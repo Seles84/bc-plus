@@ -6,6 +6,7 @@ import { CurseItemSpec, CurseSlotData, captureItemSpec, itemMatchesSpec } from "
 import { CursesListScreen } from "@/gui/CursesScreen";
 import { GUIScreen } from "@/system/gui/GUIScreen";
 import { BCPNotifyPlayer } from "@/utils/Messaging";
+import { jsonClone } from "@/utils/BCUtils";
 import { debug } from "@/system/Console";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Authority from "@/modules/Authority";
@@ -205,7 +206,7 @@ export default class Curses extends ModuleInstance {
                 true,
             );
             if (item && spec.property !== undefined) {
-                item.Property = structuredClone(spec.property);
+                item.Property = jsonClone(spec.property);
                 CharacterRefresh(Player, false);
             }
         }

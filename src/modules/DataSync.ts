@@ -10,6 +10,7 @@ import {
     SendBCPMessage,
 } from "@/utils/Messaging";
 import { getChatroomCharacter } from "@/utils/BCPlusCharacter";
+import { jsonClone } from "@/utils/BCUtils";
 
 /**
  * Handles BC+-to-BC+ communication: presence/version handshake when
@@ -48,7 +49,7 @@ export default class DataSync extends ModuleInstance {
             message: "CategorySync",
             version: BCPLUS_VERSION,
             category: module.Slug,
-            value: structuredClone(module.Data),
+            value: jsonClone(module.Data),
         }, target);
     }
 
@@ -121,7 +122,7 @@ export default class DataSync extends ModuleInstance {
         const result: Record<string, Record<string, unknown>> = {};
         for (const module of this.ModuleManager.Modules) {
             if (module.Config.PublicData && module.Config.Active) {
-                result[module.Slug] = structuredClone(module.Data);
+                result[module.Slug] = jsonClone(module.Data);
             }
         }
         return result;
