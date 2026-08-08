@@ -6,9 +6,8 @@ import { GUIScreen } from "@/system/gui/GUIScreen";
 import { RolesScreen } from "@/gui/RolesScreen";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 
-/** Storage keys for the manually assigned role lists. */
+/** Storage keys for the manually assigned role lists. BC Owner is never manual. */
 export const MANUAL_ROLE_KEYS = {
-    [Role.ClubOwner]: "clubOwners",
     [Role.Owner]: "owners",
     [Role.Lover]: "lovers",
     [Role.Mistress]: "mistresses",
@@ -29,9 +28,9 @@ export default class Roles extends ModuleInstance {
         Description: "Assign BC+ roles to other players",
         Active: true,
         Icon: "Icons/Security.png",
-        HoverText: "Manage who holds BC+ roles: Club Owner, Owner, Lover and Mistress are combined "
-            + "from your BC relationships and the lists on this screen. Whitelist and Friend follow "
-            + "your BC lists directly.",
+        HoverText: "Manage who holds BC+ roles: BC Owner is always your actual in-game owner and "
+            + "cannot be assigned. Owner, Lover and Mistress combine your BC relationships with the "
+            + "lists on this screen. Whitelist and Friend follow your BC lists directly.",
         PublicData: true,
         Reference: "roles",
         MenuString: "Roles",
@@ -48,7 +47,6 @@ export default class Roles extends ModuleInstance {
 
     override get Defaults(): Record<string, unknown> {
         return {
-            clubOwners: [],
             owners: [],
             lovers: [],
             mistresses: [],
@@ -69,9 +67,9 @@ export default class Roles extends ModuleInstance {
     }
 
     /** Members holding the role through BC itself (read-only). */
-    derivedList(role: ManualRole): number[] {
+    derivedList(role: Role): number[] {
         switch (role) {
-            case Role.Owner:
+            case Role.BCOwner:
                 return Player.Ownership ? [Player.Ownership.MemberNumber] : [];
             case Role.Lover:
                 return Player.Lovership
@@ -85,7 +83,10 @@ export default class Roles extends ModuleInstance {
     /** Every role the member holds. Always includes Public. */
     rolesOf(memberNumber: number): Role[] {
         const roles: Role[] = [Role.Public];
-        for (const role of [Role.ClubOwner, Role.Owner, Role.Lover, Role.Mistress] as ManualRole[]) {
+        if (this.derivedList(Role.BCOwner).includes(memberNumber)) {
+            roles.push(Role.BCOwner);
+        }
+        for (const role of [Role.Owner, Role.Lover, Role.Mistress] as ManualRole[]) {
             if (this.manualList(role).includes(memberNumber) || this.derivedList(role).includes(memberNumber)) {
                 roles.push(role);
             }

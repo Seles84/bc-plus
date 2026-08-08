@@ -24,7 +24,7 @@ export default class Authority extends ModuleInstance {
         Active: true,
         Icon: "Icons/Preference.png",
         HoverText: "Each entry controls one BC+ permission: the lowest role allowed to use it on you, "
-            + "and whether you may use it on yourself. Roles are ordered Club Owner > Owner > Lover > "
+            + "and whether you may use it on yourself. Roles are ordered BC Owner > Owner > Lover > "
             + "Mistress > Whitelist > Friend > Public.",
         PublicData: true,
         Reference: "authority",
@@ -128,10 +128,10 @@ export default class Authority extends ModuleInstance {
             const list = rolesData?.[key];
             return Array.isArray(list) && list.includes(me);
         };
-        if (inList("clubOwners")) {
-            return Role.ClubOwner;
+        if (character.Character.Ownership?.MemberNumber === me) {
+            return Role.BCOwner;
         }
-        if (character.Character.Ownership?.MemberNumber === me || inList("owners")) {
+        if (inList("owners")) {
             return Role.Owner;
         }
         if ((character.Character.Lovership ?? []).some((l) => l.MemberNumber === me) || inList("lovers")) {

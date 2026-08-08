@@ -17,15 +17,19 @@ export class RolesScreen extends GUIScreen {
     }
 
     protected buildPages(): GUIPage[] {
-        return ([Role.ClubOwner, Role.Owner, Role.Lover, Role.Mistress] as ManualRole[])
+        return [Role.BCOwner, Role.Owner, Role.Lover, Role.Mistress]
             .map((role) => new RolePage(this, role));
     }
 }
 
 class RolePage extends GUIPage {
 
-    constructor(screen: RolesScreen, private readonly role: ManualRole) {
+    /** BC Owner is derived from the game and has no manual management. */
+    private readonly manual: boolean;
+
+    constructor(screen: RolesScreen, private readonly role: Role) {
         super(screen);
+        this.manual = role !== Role.BCOwner;
     }
 
     private get roles(): Roles {
@@ -43,16 +47,19 @@ class RolePage extends GUIPage {
     }
 
     override async create(): Promise<void> {
-        ElementCreateInput(INPUT_ID, "number", "", "9");
+        if (this.manual) {
+            ElementCreateInput(INPUT_ID, "number", "", "9");
+        }
     }
 
     override async destroy(): Promise<void> {
-        ElementRemove(INPUT_ID);
+        if (this.manual) {
+            ElementRemove(INPUT_ID);
+        }
     }
 
     render(): void {
         const derived = this.roles.derivedList(this.role);
-        const manual = this.roles.manualList(this.role);
         let row = 0;
 
         for (const member of derived.slice(0, MAX_ROWS)) {
@@ -60,6 +67,16 @@ class RolePage extends GUIPage {
             DrawText(`${MemberNumberToName(member)} (#${member}) - from your BC relationship`, LEFT, y + 30, "Gray");
         }
 
+        if (!this.manual) {
+            if (derived.length === 0) {
+                DrawText("You have no BC Owner. This role follows your in-game ownership automatically.", LEFT, ROW_TOP + 30, "Gray");
+            } else {
+                DrawText("This role follows your in-game ownership and cannot be assigned.", LEFT, ROW_TOP + (row + 1) * ROW_HEIGHT, "Gray");
+            }
+            return;
+        }
+
+        const manual = this.roles.manualList(this.role as ManualRole);
         for (const member of manual.slice(0, MAX_ROWS - derived.length)) {
             const y = ROW_TOP + row++ * ROW_HEIGHT;
             DrawText(`${MemberNumberToName(member)} (#${member})`, LEFT, y + 30, "Black");
@@ -98,7 +115,7 @@ class RolePage extends GUIPage {
         if (!Number.isInteger(value) || value < 0 || value === Player.MemberNumber) {
             return;
         }
-        const manual = this.roles.manualList(this.role);
+        const manual = this.roles.manualList(this.role as ManualRole);
         if (!manual.includes(value) && !this.roles.derivedList(this.role).includes(value)) {
             manual.push(value);
         }
