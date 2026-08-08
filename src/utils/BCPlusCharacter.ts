@@ -4,8 +4,11 @@ import { debug } from "@/system/Console";
 /** Wraps a BC Character with BC+-specific state and helpers. */
 export class BCPlusCharacter {
 
-    /** BC+ version this character runs, or null if none detected (Stage 4 fills this for others). */
+    /** BC+ version this character runs, or null if none detected. */
     BCPVersion: string | null = null;
+
+    /** Public module data received from this character via DataSync, keyed by module slug. */
+    BCPData: Record<string, Record<string, unknown>> | null = null;
 
     constructor(public readonly Character: Character) {
         if (Character.ID === 0) {

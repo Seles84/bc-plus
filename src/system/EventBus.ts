@@ -7,6 +7,8 @@ export interface BCPlusEvents {
     /** Fired when a single module finishes loading or unloading. */
     moduleLoaded: { slug: string };
     moduleUnloaded: { slug: string };
+    /** Fired when BC+ presence/data arrives from another character in the room. */
+    characterSyncReceived: { memberNumber: number };
 }
 
 type Listener<T> = (data: T) => void;

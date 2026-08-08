@@ -81,7 +81,9 @@ export class GUI extends ModuleInstance {
                 return;
             }
             const character = this.getInformationSheetCharacter();
-            if (character && this.showButtonFor(character) && MouseIn(...this.bcPlusButton)) {
+            // Only the player's own menu can be opened for now; remote
+            // configuration needs the Authority module (Stage 5).
+            if (character?.isPlayer() && MouseIn(...this.bcPlusButton)) {
                 debug(`Opening BC+ main menu for ${character.toString()}`);
                 this.setSubscreen(new MainMenu(this, character));
                 return;
@@ -112,18 +114,20 @@ export class GUI extends ModuleInstance {
         if (!character || !this.showButtonFor(character)) {
             return;
         }
-        const enabled = character.isPlayer() || character.playerHasAccessToCharacter();
+        const isPlayer = character.isPlayer();
         DrawButton(
             ...this.bcPlusButton,
             "",
             "White",
             appLogo,
-            `${BCPLUS_SHORT_NAME} Settings`,
-            !enabled,
+            isPlayer
+                ? `${BCPLUS_SHORT_NAME} Settings`
+                : `${character.Nickname} runs ${BCPLUS_SHORT_NAME} v${character.BCPVersion}`,
+            !isPlayer,
         );
     }
 
-    /** The BC+ button shows on your own sheet, and on others' once they are known to run BC+ (Stage 4). */
+    /** The BC+ button shows on your own sheet, and on others' once DataSync detects BC+ on them. */
     private showButtonFor(character: BCPlusCharacter): boolean {
         return character.BCPVersion !== null;
     }

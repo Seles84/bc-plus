@@ -7,6 +7,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Stage 4 messaging & sync: hidden-message protocol (`Type: Hidden`, `Content: BCP`) for BC+-to-BC+ communication with a per-module listener registry.
+- Presence handshake: BC+ announces itself (version + public module data) when joining a room or loading in one; other BC+ users reply directly.
+- Other characters' BC+ version and public data are tracked; their information sheet now shows a BC+ badge with their version.
+- Messaging utilities: send actions/emotes to the room or one character, local-only chat notifications, character lookup by number/name/nickname.
 - Stage 3 GUI framework: BC+ button on the information sheet (repositioned in tandem mode to avoid BCX's button) opening a canvas-rendered main menu.
 - Screen/page system with standard chrome (title, back button, help overlay, multi-page navigation) and immediate-mode click regions.
 - Auto-generated per-module settings screens driven by each module's `Settings` declaration (checkbox and option widgets), persisted via module data.
