@@ -1,5 +1,6 @@
 import { ModuleInstance } from "@/system/module/ModuleInstance";
-import { ModuleConfig } from "@/system/module/ModuleTypes";
+import { ModuleConfig, PermissionDefinition } from "@/system/module/ModuleTypes";
+import { Role } from "@/system/Roles";
 import { BCPLUS_AUTHOR, BCPLUS_SHORT_NAME, BCPLUS_VERSION } from "@/system/Constants";
 import { GUIScreen } from "@/system/gui/GUIScreen";
 import { MainMenu } from "@/gui/MainMenu";
@@ -35,6 +36,15 @@ export class GUI extends ModuleInstance {
         PublicData: false,
         Reference: "gui",
     };
+
+    override get Permissions(): PermissionDefinition[] {
+        return [{
+            id: "gui.view",
+            label: "View my BC+ settings",
+            defaultRole: Role.Friend,
+            defaultSelf: true,
+        }];
+    }
 
     get CurrentSubscreen(): GUIScreen | null {
         return this.currentSubscreen;
