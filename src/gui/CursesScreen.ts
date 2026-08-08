@@ -140,6 +140,16 @@ class CursesListPage extends GUIPage {
     }
 }
 
+const GRID_COLS = 4;
+const GRID_CELL_W = 410;
+const GRID_CELL_H = 85;
+const GRID_BUTTON_W = 390;
+const GRID_BUTTON_H = 70;
+const GRID_LEFT = 150;
+const GRID_TOP = 220;
+const GRID_ROWS = 8;
+const PER_GRID_PAGE = GRID_COLS * GRID_ROWS;
+
 export class AddCurseScreen extends GUIScreen {
 
     readonly access: CurseAccess;
@@ -154,15 +164,28 @@ export class AddCurseScreen extends GUIScreen {
     }
 
     protected buildPages(): GUIPage[] {
-        return [new AddCursePage(this)];
+        const curses = this.Module as Curses;
+        const categories: { label: string; groups: AssetGroup[] }[] = [
+            { label: "Items", groups: curses.curseableGroups().filter((g) => g.Category === "Item") },
+            { label: "Clothing", groups: curses.curseableGroups().filter((g) => g.Category === "Appearance") },
+        ];
+        const pages: GUIPage[] = [];
+        for (const category of categories) {
+            for (let i = 0; i < Math.max(1, Math.ceil(category.groups.length / PER_GRID_PAGE)); i++) {
+                pages.push(new SlotGridPage(this, category.label, category.groups.slice(i * PER_GRID_PAGE, (i + 1) * PER_GRID_PAGE)));
+            }
+        }
+        return pages;
     }
 }
 
-class AddCursePage extends GUIPage {
+class SlotGridPage extends GUIPage {
 
-    private index = 0;
-
-    constructor(protected override readonly screen: AddCurseScreen) {
+    constructor(
+        protected override readonly screen: AddCurseScreen,
+        private readonly category: string,
+        private readonly groups: AssetGroup[],
+    ) {
         super(screen);
     }
 
@@ -172,58 +195,43 @@ class AddCursePage extends GUIPage {
 
     get Config(): PageOptions {
         return {
-            title: "Curse a slot",
+            title: `Curse a slot - ${this.category}`,
             showTitle: true,
             showBack: true,
             showHelp: true,
-            helpText: "Browse to a slot and curse it. The slot's current state is captured: the worn "
-                + "item becomes the first allowed item (in strict mode), an empty slot becomes cursed empty.",
+            helpText: "Click a slot to curse it. The slot's current state is captured: the worn item "
+                + "becomes the first allowed item (in strict mode), an empty slot becomes cursed empty. "
+                + "Slots that are already cursed are greyed out. Use the page arrows to switch between "
+                + "item and clothing slots.",
         };
-    }
-
-    private candidates(): AssetGroup[] {
-        return this.curses.curseableGroups().filter((g) => !this.screen.access.slot(g.Name));
     }
 
     render(): void {
         const access = this.screen.access;
-        const groups = this.candidates();
-        if (groups.length === 0) {
-            DrawText("Every slot is already cursed.", 150, 250, "Gray");
-            return;
-        }
-        this.index = Math.min(this.index, groups.length - 1);
-        const group = groups[this.index]!;
-        const worn = InventoryGet(access.subject(), group.Name);
-
-        DrawText("Slot:", 150, 332, "Black");
         MainCanvas.textAlign = "center";
-        DrawBackNextButton(400, 300, 500, 64, group.Description, "White", "", () => "", () => "");
-        MainCanvas.textAlign = "left";
-        this.addClickHandler(() => {
-            if (MouseIn(400, 300, 500, 64)) {
-                const direction = MouseX < 650 ? -1 : 1;
-                this.index = (this.index + direction + groups.length) % groups.length;
-            }
+        this.groups.forEach((group, i) => {
+            const x = GRID_LEFT + (i % GRID_COLS) * GRID_CELL_W;
+            const y = GRID_TOP + Math.floor(i / GRID_COLS) * GRID_CELL_H;
+            const cursed = access.slot(group.Name) !== undefined;
+            const worn = InventoryGet(access.subject(), group.Name);
+            const wornLabel = worn ? (worn.Craft?.Name || worn.Asset.Description) : "empty";
+            DrawButton(
+                x, y, GRID_BUTTON_W, GRID_BUTTON_H,
+                group.Description,
+                cursed ? "#ddd" : "White",
+                "",
+                cursed ? "Already cursed" : `Currently: ${wornLabel} - click to curse`,
+                cursed,
+            );
+            this.addClickHandler(() => {
+                if (!cursed && MouseIn(x, y, GRID_BUTTON_W, GRID_BUTTON_H)) {
+                    access.addCurse(group.Name);
+                    this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(
+                        new CurseSlotScreen(this.curses, this.Character, group.Name),
+                    );
+                }
+            });
         });
-
-        DrawText(
-            worn ? `Currently worn: ${worn.Craft?.Name || worn.Asset.Description}` : "Currently: empty",
-            150, 450, "Gray",
-        );
-
-        MainCanvas.textAlign = "center";
-        this.addClickHandler(ButtonActionWidget(
-            { Left: 150, Top: 520, Width: 500, Height: 80 },
-            {
-                Name: worn ? "Curse with this item" : "Curse as empty",
-                HoverText: worn ? "Only this exact item will be allowed" : "Nothing may be worn in this slot",
-            },
-            () => {
-                access.addCurse(group.Name);
-                this.Screen.exit();
-            },
-        ));
         MainCanvas.textAlign = "left";
     }
 }
@@ -274,7 +282,9 @@ class CurseSlotPage extends GUIPage {
         const access = this.screen.access;
         const slot = access.slot(this.screen.Group);
         if (!slot) {
-            this.Screen.exit();
+            // Remote curses appear in the mirror only after the target's
+            // change-broadcast arrives; also covers a curse removed elsewhere
+            DrawText("Waiting for curse data...", 150, 250, "Gray");
             return;
         }
         const canEdit = access.canEdit();
