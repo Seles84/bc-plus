@@ -8,6 +8,7 @@ import DataSync from "@/modules/DataSync";
 import Logging from "@/modules/Logging";
 import Roles from "@/modules/Roles";
 import Rules from "@/modules/Rules";
+import TextCommands from "@/modules/TextCommands";
 import { GUI } from "@/modules/GUI";
 
 export default class ModuleManager {
@@ -23,6 +24,7 @@ export default class ModuleManager {
             new Rules(parent),
             new Curses(parent),
             new Logging(parent),
+            new TextCommands(parent),
             new GUI(parent),
             new Core(parent),
         ];
