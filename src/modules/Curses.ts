@@ -5,11 +5,12 @@ import { Role } from "@/system/Roles";
 import { CurseItemSpec, CurseSlotData, captureItemSpec, itemMatchesSpec } from "@/system/curses/CurseTypes";
 import { CursesListScreen } from "@/gui/CursesScreen";
 import { GUIScreen } from "@/system/gui/GUIScreen";
-import { BCPNotifyPlayer } from "@/utils/Messaging";
+import { BCPMessageContent, BCPNotifyPlayer, SendBCPMessage } from "@/utils/Messaging";
 import { jsonClone } from "@/utils/BCUtils";
 import { debug } from "@/system/Console";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Authority from "@/modules/Authority";
+import type Logging from "@/modules/Logging";
 
 const TICK_MS = 1500;
 /** Minimum time between restorations of the same slot, to avoid fighting loops. */
@@ -49,6 +50,10 @@ export default class Curses extends ModuleInstance {
     }
 
     override get HasGUI(): boolean {
+        return true;
+    }
+
+    override get SupportsRemote(): boolean {
         return true;
     }
 
@@ -110,6 +115,20 @@ export default class Curses extends ModuleInstance {
         }
     }
 
+    setAllowEmpty(group: string, value: boolean): void {
+        const slot = this.Slots[group];
+        if (slot) {
+            slot.allowEmpty = value;
+        }
+    }
+
+    setStrict(group: string, index: number, value: boolean): void {
+        const spec = this.Slots[group]?.items[index];
+        if (spec) {
+            spec.strict = value;
+        }
+    }
+
     /** Adds the currently worn item in the slot to its allowed list. */
     addCurrentItem(group: string): boolean {
         const slot = this.Slots[group];
@@ -130,6 +149,74 @@ export default class Curses extends ModuleInstance {
 
     override Load(): void {
         this.tickTimer = setInterval(() => this.check(), TICK_MS);
+
+        // Remote curse management - validated here, never trusting the requester
+        this.addSyncListener("CurseCommand", (sender, content) => this.onCurseCommand(sender, content));
+        this.addSyncListener("CurseCommandResult", (sender, content) => {
+            if (content.ok === false) {
+                BCPNotifyPlayer(`${sender.Name} rejected the curse change${typeof content.reason === "string" ? `: ${content.reason}` : "."}`);
+            }
+        });
+    }
+
+    private onCurseCommand(sender: Character, content: BCPMessageContent): void {
+        const senderNumber = sender.MemberNumber;
+        if (typeof senderNumber !== "number") {
+            return;
+        }
+        const reject = (reason: string): void => {
+            SendBCPMessage({ message: "CurseCommandResult", ok: false, group: content.group, reason }, senderNumber);
+        };
+
+        const authority = this.ModuleManager.getModule<Authority>("authority");
+        if (!authority?.hasPermission(senderNumber, "curses.edit")) {
+            reject("no permission");
+            return;
+        }
+        const { action, group, index, value } = content;
+        if (typeof group !== "string") {
+            reject("invalid command");
+            return;
+        }
+
+        let applied = false;
+        let verb = "changed the curse on";
+        if (action === "addCurse" && this.curseableGroups().some((g) => g.Name === group)) {
+            this.addCurse(group as AssetGroupName);
+            verb = "cursed";
+            applied = true;
+        } else if (action === "removeCurse" && this.Slots[group]) {
+            this.removeCurse(group);
+            verb = "lifted the curse on";
+            applied = true;
+        } else if (action === "setActive" && typeof value === "boolean" && this.Slots[group]) {
+            this.setActive(group, value);
+            verb = value ? "reactivated the curse on" : "suspended the curse on";
+            applied = true;
+        } else if (action === "setAllowEmpty" && typeof value === "boolean" && this.Slots[group]) {
+            this.setAllowEmpty(group, value);
+            applied = true;
+        } else if (action === "setStrict" && typeof value === "boolean" && Number.isInteger(index) && this.Slots[group]?.items[index as number]) {
+            this.setStrict(group, index as number, value);
+            applied = true;
+        } else if (action === "removeItem" && Number.isInteger(index) && this.Slots[group]?.items[index as number]) {
+            this.removeItem(group, index as number);
+            applied = true;
+        } else if (action === "addCurrentItem" && this.Slots[group]) {
+            applied = this.addCurrentItem(group);
+            verb = "allowed your current item under the curse on";
+        }
+
+        if (!applied) {
+            reject("invalid command");
+            return;
+        }
+
+        const label = this.curseableGroups().find((g) => g.Name === group)?.Description ?? group;
+        BCPNotifyPlayer(`${sender.Name} (#${senderNumber}) ${verb} your ${label}.`);
+        this.ModuleManager.getModule<Logging>("logging")
+            ?.log("curse", `${sender.Name} (#${senderNumber}) ${verb} ${label}`);
+        SendBCPMessage({ message: "CurseCommandResult", ok: true, group }, senderNumber);
     }
 
     override Unload(): void {

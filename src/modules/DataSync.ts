@@ -4,11 +4,14 @@ import { BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
 import { debug } from "@/system/Console";
 import {
     BCPMessageContent,
+    BCPNotifyPlayer,
     DispatchBCPMessage,
     FindCharacterInRoom,
     GetBCPMessageFromChat,
     SendBCPMessage,
 } from "@/utils/Messaging";
+import type Authority from "@/modules/Authority";
+import type Logging from "@/modules/Logging";
 import { getChatroomCharacter } from "@/utils/BCPlusCharacter";
 import { jsonClone } from "@/utils/BCUtils";
 
@@ -83,6 +86,12 @@ export default class DataSync extends ModuleInstance {
     override Load(): void {
         this.addSyncListener("SettingSync", (sender, content) => this.onSettingSync(sender, content));
         this.addSyncListener("CategorySync", (sender, content) => this.onCategorySync(sender, content));
+        this.addSyncListener("SettingCommand", (sender, content) => this.onSettingCommand(sender, content));
+        this.addSyncListener("SettingCommandResult", (sender, content) => {
+            if (content.ok === false) {
+                BCPNotifyPlayer(`${sender.Name} rejected the settings change${typeof content.reason === "string" ? `: ${content.reason}` : "."}`);
+            }
+        });
 
         // Receive hidden BC+ messages and dispatch them to listeners
         this.addHook("ChatRoomMessage", 0, (args, next) => {
@@ -148,6 +157,46 @@ export default class DataSync extends ModuleInstance {
         }
         character.BCPData[content.category] = (content.value ?? {}) as Record<string, unknown>;
         this.Events.emit("characterSyncReceived", { memberNumber: character.MemberNumber });
+    }
+
+    /** Remote edit of a module's plain settings - validated here, target-authoritative. */
+    private onSettingCommand(sender: Character, content: BCPMessageContent): void {
+        const senderNumber = sender.MemberNumber;
+        if (typeof senderNumber !== "number") {
+            return;
+        }
+        const reject = (reason: string): void => {
+            SendBCPMessage({ message: "SettingCommandResult", ok: false, reason }, senderNumber);
+        };
+
+        const { module: slug, name, value } = content;
+        const module = typeof slug === "string" ? this.ModuleManager.getModule(slug) : undefined;
+        const permission = module?.EditPermission;
+        if (!module || !permission || !module.SupportsRemote) {
+            reject("not editable");
+            return;
+        }
+        const authority = this.ModuleManager.getModule<Authority>("authority");
+        if (!authority?.hasPermission(senderNumber, permission)) {
+            reject("no permission");
+            return;
+        }
+        const setting = module.Settings.find((s) => s.name === name);
+        const valid = setting !== undefined && (
+            (setting.type === "checkbox" && typeof value === "boolean")
+            || (setting.type === "option" && typeof value === "string" && setting.options.includes(value))
+            || (setting.type === "text" && typeof value === "string" && value.length <= (setting.maxChars ?? 256))
+        );
+        if (!valid) {
+            reject("invalid setting");
+            return;
+        }
+
+        module.setSetting(setting.name, value);
+        BCPNotifyPlayer(`${sender.Name} (#${senderNumber}) changed your ${module.Config.MenuString || module.Config.Name} setting "${setting.label}".`);
+        this.ModuleManager.getModule<Logging>("logging")
+            ?.log("authority", `${sender.Name} (#${senderNumber}) changed ${module.Config.Name} setting "${setting.label}"`);
+        SendBCPMessage({ message: "SettingCommandResult", ok: true }, senderNumber);
     }
 
     private collectPublicData(): Record<string, Record<string, unknown>> {

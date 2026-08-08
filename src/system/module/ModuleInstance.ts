@@ -64,6 +64,14 @@ export abstract class ModuleInstance {
         return false;
     }
 
+    /**
+     * Permission gating remote edits of this module's plain settings via
+     * SettingCommand; null means the settings are never editable remotely.
+     */
+    get EditPermission(): string | null {
+        return null;
+    }
+
     /** Default data/settings for this module; saved values win over these. */
     get Defaults(): Record<string, unknown> {
         return settingDefaults(this.Settings);
