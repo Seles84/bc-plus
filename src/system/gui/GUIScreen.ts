@@ -2,7 +2,7 @@ import { err } from "@/system/Console";
 import type { ModuleInstance } from "@/system/module/ModuleInstance";
 import type { BCPlus } from "@/index";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
-import { GUI } from "@/modules/GUI";
+import type { GUI } from "@/modules/GUI";
 
 export const EXIT_BUTTON = [1815, 75, 90, 90] as const;
 export const HELP_BUTTON = [1815, 190, 90, 90] as const;
@@ -170,7 +170,7 @@ export abstract class GUIScreen {
 
     exit(): void {
         void this.ActivePage?.destroy();
-        GUI.instance?.closeSubscreen();
+        this.module.ModuleManager.getModule<GUI>("gui")?.closeSubscreen();
     }
 
     nextPage(): void {
