@@ -1,0 +1,81 @@
+import { GetDotedPathType, PatchHook } from "bondage-club-mod-sdk";
+import { ModuleConfig } from "@/system/module/ModuleTypes";
+import type { BCPlus } from "@/index";
+import type SDK from "@/system/SDK";
+import type ModuleManager from "@/system/ModuleManager";
+import type { EventBus } from "@/system/EventBus";
+
+export abstract class ModuleInstance {
+
+    protected abstract readonly SystemConfig: ModuleConfig;
+
+    constructor(private readonly core: BCPlus) {}
+
+    /**
+     * Called once by the ModuleManager after login, before any module is loaded.
+     * Override for async setup that must complete before Load (e.g. reading storage).
+     */
+    async Init(): Promise<void> {}
+
+    /** Called by the ModuleManager once every module has been initialized. */
+    Load(): void {}
+
+    /** Removes everything this module changed in the game. */
+    Unload(): void {
+        this.removeHooks();
+    }
+
+    Reload(): void {
+        this.Unload();
+        this.Load();
+    }
+
+    get Config(): ModuleConfig {
+        return this.SystemConfig;
+    }
+
+    get Slug(): string {
+        return this.SystemConfig.Reference;
+    }
+
+    get Core(): BCPlus {
+        return this.core;
+    }
+
+    get SDK(): SDK {
+        return this.core.SDK;
+    }
+
+    get ModuleManager(): ModuleManager {
+        return this.core.ModuleManager;
+    }
+
+    get Events(): EventBus {
+        return this.core.Events;
+    }
+
+    get BCMode(): BCMode {
+        return this.core.Mode;
+    }
+
+    /** Hook a BC function; the hook is owned by this module and removed on Unload. */
+    protected addHook<TFunctionName extends string>(
+        functionName: TFunctionName,
+        priority: number,
+        hook: PatchHook<GetDotedPathType<typeof globalThis, TFunctionName>>,
+    ): () => void {
+        return this.SDK.addHook(this.Slug, functionName, priority, hook);
+    }
+
+    protected patchFunction(target: string, patches: Record<string, string>): void {
+        this.SDK.patchFunction(target, patches);
+    }
+
+    protected removeHooks(): void {
+        this.SDK.removeHooks(this.Slug);
+    }
+
+    bcxInstalled(): boolean {
+        return this.SDK.bcxInstalled();
+    }
+}

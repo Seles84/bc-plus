@@ -14,6 +14,13 @@ declare global {
         dev?: boolean;
     }
 
+    /**
+     * How BC+ is running:
+     * - `control` - standalone, BCX not present
+     * - `tandem` - alongside BCX, deferring overlapping features to it
+     */
+    type BCMode = "control" | "tandem";
+
     interface BCPlusGlobal {
         version: BCPVersion;
         loaded: boolean;
