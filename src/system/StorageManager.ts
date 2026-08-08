@@ -26,6 +26,9 @@ export default class StorageManager {
     private isApplying = false;
     private syncTimer: ReturnType<typeof setTimeout> | null = null;
 
+    /** Invoked after every successful persist (used to broadcast public data changes). */
+    onAfterSync: (() => void) | null = null;
+
     /** The live save file. All mutations are persisted automatically. */
     get Data(): SaveFile {
         if (!this.proxiedSaveFile) {
@@ -164,6 +167,7 @@ export default class StorageManager {
             debug("Saved to extension settings");
         }
         localStorage.setItem(this.getLocalStorageName(true), finalSave);
+        this.onAfterSync?.();
     }
 
     switchStorage(storage: StorageType): void {

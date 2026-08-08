@@ -42,6 +42,7 @@ export class BCPlus {
 
     async start(): Promise<void> {
         log(`${BCPLUS_APP_NAME} v${BCPLUS_VERSION} by ${BCPLUS_AUTHOR}`);
+        this.storage.onAfterSync = () => this.events.emit("saveSynced", undefined);
         await this.sdk.awaitLogin();
         this.detectBCX();
         if (!await this.storage.init()) {
