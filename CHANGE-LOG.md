@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Stage 10 text commands: `/bcp` in chat — `help`, `version`, `who` (BC+ users in the room), `rules`, `curses`, `log [count]` (respects the log-view permission), and `sync`. All output is shown only to you.
 - Stage 9 behavior log: rule violations and blocked attempts, curse triggers, and remote rule changes are recorded (capped at 200 entries). In tandem mode, BCX rule triggers are logged too.
 - Log screen: newest-first paged view with timestamps and categories; clearing requires the `log.delete` permission (Owner default), and viewing — including your own log — requires `log.view` (Mistress default, self allowed).
 - Remote log viewing: the log is never broadcast; other BC+ users request it and your client only replies if they hold `log.view`.
