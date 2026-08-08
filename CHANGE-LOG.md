@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - The **Lover** role likewise follows your in-game loverships only and can no longer be assigned manually. Owner and Mistress remain the assignable roles.
 
 ### Added
+- Member picker: role assignment now has a "Browse..." option listing people from your BC relationships, the current room (respecting blindness settings), and your friend list — no more typing member numbers. The picker is reusable for future member-selection needs.
 - Stage 10 text commands: `/bcp` in chat — `help`, `version`, `who` (BC+ users in the room), `rules`, `curses`, `log [count]` (respects the log-view permission), and `sync`. All output is shown only to you.
 - Stage 9 behavior log: rule violations and blocked attempts, curse triggers, and remote rule changes are recorded (capped at 200 entries). In tandem mode, BCX rule triggers are logged too.
 - Log screen: newest-first paged view with timestamps and categories; clearing requires the `log.delete` permission (Owner default), and viewing — including your own log — requires `log.view` (Mistress default, self allowed).
