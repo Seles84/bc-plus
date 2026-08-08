@@ -1,6 +1,7 @@
 import { GUIPage, GUIScreen, PageOptions } from "@/system/gui/GUIScreen";
 import { Role, roleName } from "@/system/Roles";
 import { MemberNumberToName } from "@/utils/Messaging";
+import { MANUAL_ROLE_KEYS } from "@/modules/Roles";
 import type Roles from "@/modules/Roles";
 import type { ManualRole } from "@/modules/Roles";
 
@@ -24,12 +25,12 @@ export class RolesScreen extends GUIScreen {
 
 class RolePage extends GUIPage {
 
-    /** BC Owner is derived from the game and has no manual management. */
+    /** BC Owner and Lover are derived from the game and have no manual management. */
     private readonly manual: boolean;
 
     constructor(screen: RolesScreen, private readonly role: Role) {
         super(screen);
-        this.manual = role !== Role.BCOwner;
+        this.manual = role in MANUAL_ROLE_KEYS;
     }
 
     private get roles(): Roles {
@@ -68,10 +69,11 @@ class RolePage extends GUIPage {
         }
 
         if (!this.manual) {
+            const relationship = this.role === Role.BCOwner ? "ownership" : "loverships";
             if (derived.length === 0) {
-                DrawText("You have no BC Owner. This role follows your in-game ownership automatically.", LEFT, ROW_TOP + 30, "Gray");
+                DrawText(`You have no ${roleName(this.role)}. This role follows your in-game ${relationship} automatically.`, LEFT, ROW_TOP + 30, "Gray");
             } else {
-                DrawText("This role follows your in-game ownership and cannot be assigned.", LEFT, ROW_TOP + (row + 1) * ROW_HEIGHT, "Gray");
+                DrawText(`This role follows your in-game ${relationship} and cannot be assigned.`, LEFT, ROW_TOP + (row + 1) * ROW_HEIGHT, "Gray");
             }
             return;
         }

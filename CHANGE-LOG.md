@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 - The top role is now **BC Owner**: it always reflects your actual in-game owner and can no longer be assigned manually. The Owner role below it remains the manual list for additional owners.
+- The **Lover** role likewise follows your in-game loverships only and can no longer be assigned manually. Owner and Mistress remain the assignable roles.
 
 ### Added
 - Stage 10 text commands: `/bcp` in chat — `help`, `version`, `who` (BC+ users in the room), `rules`, `curses`, `log [count]` (respects the log-view permission), and `sync`. All output is shown only to you.
