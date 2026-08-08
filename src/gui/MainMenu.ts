@@ -31,7 +31,10 @@ class MainMenuPage extends GUIPage {
     }
 
     override async create(): Promise<void> {
-        this.menuModules = this.Core.ModuleManager.Modules.filter((m) => m.HasGUI);
+        const remote = this.Character !== null && !this.Character.isPlayer();
+        this.menuModules = this.Core.ModuleManager.Modules.filter(
+            (m) => (remote ? m.SupportsRemote : m.HasGUI),
+        );
     }
 
     render(): void {
