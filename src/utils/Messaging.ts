@@ -1,4 +1,4 @@
-import { err } from "@/system/Console";
+import { debug, err } from "@/system/Console";
 
 export interface BCPMessageContent {
     message: string;
@@ -29,9 +29,13 @@ export function GetBCPMessageFromChat(message: ServerChatRoomMessage): BCPMessag
 
 /** Sends a hidden BC+ message to the room, or to a single member when `target` is set. */
 export function SendBCPMessage(message: BCPMessageContent, target?: number): void {
-    if (!ServerPlayerIsInChatRoom()) {
+    // ChatRoomData is set before the screen switch finishes during an async
+    // room join - accept either signal so announcements are not dropped.
+    if (!ServerPlayerIsInChatRoom() && ChatRoomData == null) {
+        err(`Dropped BCP message "${message.message}" - not in a chat room`);
         return;
     }
+    debug(`Sending BCP "${message.message}"${target === undefined ? " to room" : ` to #${target}`}`);
     ServerSend("ChatRoomChat", {
         Type: "Hidden",
         Content: "BCP",

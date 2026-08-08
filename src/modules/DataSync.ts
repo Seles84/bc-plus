@@ -65,15 +65,20 @@ export default class DataSync extends ModuleInstance {
             }
             const sender = FindCharacterInRoom(data.Sender ?? "", { MemberNumber: true, Name: false, Nickname: false });
             if (sender && sender.MemberNumber !== Player.MemberNumber) {
+                debug(`Received BCP "${content.message}" from #${sender.MemberNumber}`);
                 DispatchBCPMessage(sender, content);
             }
             // BC+ messages are consumed, not passed further down the chain
         });
 
-        // Announce ourselves when joining a room
+        // Announce ourselves when joining a room. ChatRoomSync is async and
+        // the client only counts as "in a room" partway through it - announce
+        // after it completes (plus a grace delay), or the send is dropped.
         this.addHook("ChatRoomSync", 0, (args, next) => {
             const result = next(args);
-            this.settingSync(true);
+            void Promise.resolve(result).then(() => {
+                setTimeout(() => this.settingSync(true), 500);
+            });
             return result;
         });
 
