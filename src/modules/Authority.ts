@@ -5,6 +5,7 @@ import { Role, RoleNames } from "@/system/Roles";
 import { AnySetting } from "@/system/gui/Settings";
 import { warn } from "@/system/Console";
 import type Roles from "@/modules/Roles";
+import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 
 /**
  * Central permission checks. Modules register PermissionDefinitions
@@ -95,5 +96,50 @@ export default class Authority extends ModuleInstance {
         const storedRole = RoleNames.indexOf(this.getSetting<string>(`${permissionId}.role`));
         const minRole = storedRole === -1 ? def.defaultRole : (storedRole as Role);
         return roles.highestRole(memberNumber) <= minRole;
+    }
+
+    /**
+     * Best-effort preview of whether the PLAYER holds a permission on another
+     * character, evaluated from that character's synced public data. The
+     * target's own client remains the real authority - this only decides what
+     * UI to offer. Whitelist/Friend standing is not visible remotely, so the
+     * preview can under-estimate (never over-estimates roles it can see).
+     */
+    remoteHasPermission(character: BCPlusCharacter, permissionId: string): boolean {
+        if (character.isPlayer()) {
+            return this.hasPermission(Player.MemberNumber ?? -1, permissionId);
+        }
+        const def = this.registry.get(permissionId);
+        if (!def) {
+            return false;
+        }
+        const authorityData = character.BCPData?.["authority"];
+        const storedName = authorityData?.[`${permissionId}.role`];
+        const stored = typeof storedName === "string" ? RoleNames.indexOf(storedName) : -1;
+        const minRole = stored === -1 ? def.defaultRole : (stored as Role);
+        return this.viewerRoleToward(character) <= minRole;
+    }
+
+    /** The player's highest role toward another character, from their synced data and visible BC relationships. */
+    private viewerRoleToward(character: BCPlusCharacter): Role {
+        const me = Player.MemberNumber ?? -1;
+        const rolesData = character.BCPData?.["roles"];
+        const inList = (key: string): boolean => {
+            const list = rolesData?.[key];
+            return Array.isArray(list) && list.includes(me);
+        };
+        if (inList("clubOwners")) {
+            return Role.ClubOwner;
+        }
+        if (character.Character.Ownership?.MemberNumber === me || inList("owners")) {
+            return Role.Owner;
+        }
+        if ((character.Character.Lovership ?? []).some((l) => l.MemberNumber === me) || inList("lovers")) {
+            return Role.Lover;
+        }
+        if (inList("mistresses")) {
+            return Role.Mistress;
+        }
+        return Role.Public;
     }
 }

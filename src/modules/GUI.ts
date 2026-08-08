@@ -6,6 +6,7 @@ import { GUIScreen } from "@/system/gui/GUIScreen";
 import { MainMenu } from "@/gui/MainMenu";
 import { BCPlusCharacter, getChatroomCharacter } from "@/utils/BCPlusCharacter";
 import { debug } from "@/system/Console";
+import type Authority from "@/modules/Authority";
 import appLogo from "@/images/icon90.png";
 
 /**
@@ -138,9 +139,7 @@ export class GUI extends ModuleInstance {
                 return;
             }
             const character = this.getInformationSheetCharacter();
-            // Only the player's own menu can be opened for now; remote
-            // configuration needs the Authority module (Stage 5).
-            if (character?.isPlayer() && MouseIn(...this.bcPlusButton)) {
+            if (character && this.canOpenMenuFor(character) && MouseIn(...this.bcPlusButton)) {
                 debug(`Opening BC+ main menu for ${character.toString()}`);
                 this.setSubscreen(new MainMenu(this, character));
                 return;
@@ -171,17 +170,30 @@ export class GUI extends ModuleInstance {
         if (!character || !this.showButtonFor(character)) {
             return;
         }
-        const isPlayer = character.isPlayer();
+        const canOpen = this.canOpenMenuFor(character);
         DrawButton(
             ...this.bcPlusButton,
             "",
             "White",
             appLogo,
-            isPlayer
+            character.isPlayer()
                 ? `${BCPLUS_SHORT_NAME} Settings`
-                : `${character.Nickname} runs ${BCPLUS_SHORT_NAME} v${character.BCPVersion}`,
-            !isPlayer,
+                : `${character.Nickname} runs ${BCPLUS_SHORT_NAME} v${character.BCPVersion}`
+                    + (canOpen ? "" : " - no permission to view"),
+            !canOpen,
         );
+    }
+
+    /** Own menu always opens; others' when they run BC+ and their settings permit viewing. */
+    private canOpenMenuFor(character: BCPlusCharacter): boolean {
+        if (character.isPlayer()) {
+            return true;
+        }
+        if (character.BCPVersion === null) {
+            return false;
+        }
+        const authority = this.ModuleManager.getModule<Authority>("authority");
+        return authority?.remoteHasPermission(character, "gui.view") ?? false;
     }
 
     /** The BC+ button shows on your own sheet, and on others' once DataSync detects BC+ on them. */

@@ -6,11 +6,12 @@ import { RuleContext, RuleDefinition, RuleStateData, defaultRuleState } from "@/
 import { RULE_DEFINITIONS } from "@/rules/index";
 import { RulesListScreen } from "@/gui/RulesListScreen";
 import { GUIScreen } from "@/system/gui/GUIScreen";
-import { BCPNotifyPlayer } from "@/utils/Messaging";
+import { BCPMessageContent, BCPNotifyPlayer, SendBCPMessage } from "@/utils/Messaging";
 import { debug, warn } from "@/system/Console";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Roles from "@/modules/Roles";
 import type Authority from "@/modules/Authority";
+import type DataSync from "@/modules/DataSync";
 
 export default class Rules extends ModuleInstance {
 
@@ -45,6 +46,10 @@ export default class Rules extends ModuleInstance {
     }
 
     override get HasGUI(): boolean {
+        return true;
+    }
+
+    override get SupportsRemote(): boolean {
         return true;
     }
 
@@ -101,6 +106,30 @@ export default class Rules extends ModuleInstance {
         this.Events.emit("ruleChanged", { rule: id, active });
     }
 
+    setRuleEnforce(id: string, value: boolean): void {
+        this.ruleState(id).enforce = value;
+    }
+
+    setRuleLog(id: string, value: boolean): void {
+        this.ruleState(id).log = value;
+    }
+
+    /** Sets a rule's custom setting; the value must match the setting's declared type. */
+    setRuleSetting(id: string, name: string, value: unknown): boolean {
+        const definition = this.registry.get(id);
+        const setting = definition?.settings?.find((s) => s.name === name);
+        if (!setting) {
+            return false;
+        }
+        const valid = (setting.type === "checkbox" && typeof value === "boolean")
+            || (setting.type === "option" && typeof value === "string" && setting.options.includes(value));
+        if (!valid) {
+            return false;
+        }
+        this.ruleState(id).settings[name] = value;
+        return true;
+    }
+
     override Init(): Promise<void> {
         for (const definition of RULE_DEFINITIONS) {
             if (this.registry.has(definition.id)) {
@@ -118,6 +147,17 @@ export default class Rules extends ModuleInstance {
                 this.installRule(id);
             }
         }
+
+        // Incoming remote edits: validate permission and value here - the
+        // requester's UI is never trusted.
+        this.addSyncListener("RuleCommand", (sender, content) => this.onRuleCommand(sender, content));
+        this.addSyncListener("RuleCommandResult", (sender, content) => {
+            if (content.ok === false) {
+                BCPNotifyPlayer(`${sender.Name} rejected the rule change${typeof content.reason === "string" ? `: ${content.reason}` : "."}`);
+                // Our optimistic mirror is wrong - ask for a fresh sync
+                this.ModuleManager.getModule<DataSync>("data-sync")?.settingSync(true, sender.MemberNumber);
+            }
+        });
     }
 
     override Unload(): void {
@@ -174,5 +214,50 @@ export default class Rules extends ModuleInstance {
     private reportTrigger(rule: string, type: "trigger" | "triggerAttempt", target: number | null): void {
         debug(`Rule ${type}: ${rule}`, target === null ? "" : `target #${target}`);
         this.Events.emit("ruleTriggered", { rule, type, target });
+    }
+
+    private onRuleCommand(sender: Character, content: BCPMessageContent): void {
+        const senderNumber = sender.MemberNumber;
+        if (typeof senderNumber !== "number") {
+            return;
+        }
+        const reject = (reason: string): void => {
+            SendBCPMessage({ message: "RuleCommandResult", ok: false, rule: content.rule, reason }, senderNumber);
+        };
+
+        const { action, rule, name, value } = content;
+        if (typeof rule !== "string" || !this.registry.has(rule)) {
+            reject("unknown rule");
+            return;
+        }
+        const authority = this.ModuleManager.getModule<Authority>("authority");
+        if (!authority?.hasPermission(senderNumber, "rules.edit")) {
+            reject("no permission");
+            return;
+        }
+
+        let applied = false;
+        if (action === "setActive" && typeof value === "boolean") {
+            this.setRuleActive(rule, value);
+            applied = true;
+        } else if (action === "setEnforce" && typeof value === "boolean") {
+            this.setRuleEnforce(rule, value);
+            applied = true;
+        } else if (action === "setLog" && typeof value === "boolean") {
+            this.setRuleLog(rule, value);
+            applied = true;
+        } else if (action === "setSetting" && typeof name === "string") {
+            applied = this.setRuleSetting(rule, name, value);
+        }
+
+        if (!applied) {
+            reject("invalid command");
+            return;
+        }
+
+        const definition = this.registry.get(rule)!;
+        BCPNotifyPlayer(`${sender.Name} (#${senderNumber}) changed your rule "${definition.name}".`);
+        SendBCPMessage({ message: "RuleCommandResult", ok: true, rule }, senderNumber);
+        this.ModuleManager.getModule<DataSync>("data-sync")?.categorySync(this, senderNumber);
     }
 }

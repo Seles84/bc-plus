@@ -59,6 +59,11 @@ export abstract class ModuleInstance {
         return [];
     }
 
+    /** Whether this module's screen can operate on another character remotely. */
+    get SupportsRemote(): boolean {
+        return false;
+    }
+
     /** Default data/settings for this module; saved values win over these. */
     get Defaults(): Record<string, unknown> {
         return settingDefaults(this.Settings);

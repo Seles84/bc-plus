@@ -7,6 +7,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Stage 7 remote settings: the BC+ button on other BC+ users' sheets now opens their menu when their settings grant you viewing permission.
+- Remote rule management: view another player's rules from their synced data and change them (activate/enforce/log/settings) when permitted — every change is validated and applied by *their* client, which notifies them who changed what and confirms or rejects the request.
+- Permission previews: your standing toward another player is estimated from their synced role assignments plus visible BC relationships, so the UI greys out what you can't do; the target remains the final authority.
 - Stage 6a rules engine: rules restrict the player's behavior with per-rule active/enforce/log state and custom settings; hooks install when a rule activates and are removed cleanly when it deactivates.
 - Rules screen: browsable rule list with status, per-rule configuration page (toggles + custom settings), all gated on the `rules.edit` permission (Mistress by default).
 - First rules: Forbid whispering (with Lover-and-above exception), Forbid OOC messages, Forbid beep messages (plain beeps optionally allowed).
