@@ -4,6 +4,7 @@ import { BCPLUS_APP_NAME, BCPLUS_AUTHOR, BCPLUS_REPO, BCPLUS_VERSION } from "@/s
 import { log, warn } from "@/system/Console";
 import { InfoBeep } from "@/utils/BCUtils";
 import { BCPVersionCompare, parseBCPVersion } from "@/utils/Version";
+import { AnySetting } from "@/system/gui/Settings";
 
 /**
  * Core housekeeping module: announces BC+ readiness and, in tandem mode,
@@ -17,11 +18,23 @@ export default class Core extends ModuleInstance {
         Author: BCPLUS_AUTHOR,
         Description: "BC+ core housekeeping",
         Active: true,
-        Icon: "",
-        HoverText: "",
+        Icon: "Icons/General.png",
+        HoverText: "General BC+ settings: notifications and core behavior.",
         PublicData: false,
         Reference: "core",
+        MenuString: "General",
     };
+
+    override get Settings(): AnySetting[] {
+        return [
+            {
+                type: "checkbox",
+                name: "updateNotify",
+                label: "Notify me in-club after BC+ updates",
+                default: true,
+            },
+        ];
+    }
 
     override Load(): void {
         this.checkForUpdate();
@@ -51,7 +64,7 @@ export default class Core extends ModuleInstance {
             warn(`Could not compare versions (save: ${save.version}, current: ${BCPLUS_VERSION})`);
             return;
         }
-        if (BCPVersionCompare(current, savedVersion) > 0) {
+        if (BCPVersionCompare(current, savedVersion) > 0 && this.getSetting<boolean>("updateNotify")) {
             InfoBeep(`${BCPLUS_APP_NAME} updated to v${BCPLUS_VERSION}! Changelog: ${BCPLUS_REPO}/blob/main/CHANGE-LOG.md`, 8000);
         }
         if (save.version !== BCPLUS_VERSION) {

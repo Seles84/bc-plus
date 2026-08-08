@@ -1,5 +1,6 @@
 import { GetDotedPathType, PatchHook } from "bondage-club-mod-sdk";
 import { ModuleConfig } from "@/system/module/ModuleTypes";
+import { AnySetting, settingDefaults } from "@/system/gui/Settings";
 import type { BCPlus } from "@/index";
 import type SDK from "@/system/SDK";
 import type ModuleManager from "@/system/ModuleManager";
@@ -31,9 +32,27 @@ export abstract class ModuleInstance {
         this.Load();
     }
 
+    /** Settings shown on this module's auto-generated settings page. */
+    get Settings(): AnySetting[] {
+        return [];
+    }
+
+    /** Whether this module appears in the BC+ main menu. */
+    get HasGUI(): boolean {
+        return this.Settings.length > 0;
+    }
+
     /** Default data/settings for this module; saved values win over these. */
     get Defaults(): Record<string, unknown> {
-        return {};
+        return settingDefaults(this.Settings);
+    }
+
+    getSetting<T>(name: string): T {
+        return this.Data[name] as T;
+    }
+
+    setSetting(name: string, value: unknown): void {
+        this.Data[name] = value;
     }
 
     /**
