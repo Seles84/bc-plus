@@ -44,15 +44,7 @@ export default class Core extends ModuleInstance {
         InfoBeep(`${BCPLUS_APP_NAME} v${BCPLUS_VERSION} Ready! (${mode})`);
         log(`Ready! Running ${mode}.`);
 
-        if (this.BCMode === "tandem") {
-            const api = this.SDK.bcxAPI();
-            if (api) {
-                api.on("ruleTrigger", (data) => {
-                    // Placeholder: later stages react to BCX rule triggers (e.g. logging)
-                    log(`BCX rule triggered: ${data.rule} (${data.triggerType})`);
-                });
-            }
-        }
+        // BCX rule triggers are recorded by the Logging module in tandem mode
     }
 
     /** Notifies once after an update and stamps the save with the new version. */

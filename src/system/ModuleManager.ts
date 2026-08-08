@@ -5,6 +5,7 @@ import Authority from "@/modules/Authority";
 import Core from "@/modules/Core";
 import Curses from "@/modules/Curses";
 import DataSync from "@/modules/DataSync";
+import Logging from "@/modules/Logging";
 import Roles from "@/modules/Roles";
 import Rules from "@/modules/Rules";
 import { GUI } from "@/modules/GUI";
@@ -21,6 +22,7 @@ export default class ModuleManager {
             new Authority(parent),
             new Rules(parent),
             new Curses(parent),
+            new Logging(parent),
             new GUI(parent),
             new Core(parent),
         ];
