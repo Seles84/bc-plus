@@ -13,6 +13,10 @@ export interface BCPlusEvents {
     ruleTriggered: { rule: string; type: "trigger" | "triggerAttempt"; target: number | null };
     /** Fired when a rule is activated or deactivated. */
     ruleChanged: { rule: string; active: boolean };
+    /** Fired when a curse restores a slot's state. */
+    curseTriggered: { group: string; action: "add" | "remove" | "swap" | "update" };
+    /** Fired when a curse is created, removed, or (de)activated. */
+    curseChanged: { group: string; active: boolean };
 }
 
 type Listener<T> = (data: T) => void;
