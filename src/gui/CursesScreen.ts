@@ -1,28 +1,56 @@
 import { GUIPage, GUIScreen, PageOptions } from "@/system/gui/GUIScreen";
 import { ButtonActionWidget } from "@/system/gui/Widgets";
+import { CurseAccess, LocalCurseAccess, RemoteCurseAccess } from "@/system/curses/CurseAccess";
 import { CurseSlotData } from "@/system/curses/CurseTypes";
 import type { GUI } from "@/modules/GUI";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
+import type Authority from "@/modules/Authority";
 import type Curses from "@/modules/Curses";
 
 const PER_PAGE = 6;
+
+function buildAccess(curses: Curses, character: BCPlusCharacter | null): CurseAccess {
+    if (character && !character.isPlayer()) {
+        const authority = curses.ModuleManager.getModule<Authority>("authority");
+        return new RemoteCurseAccess(curses, authority, character);
+    }
+    return new LocalCurseAccess(curses);
+}
 
 function groupLabel(curses: Curses, group: string): string {
     return curses.curseableGroups().find((g) => g.Name === group)?.Description ?? group;
 }
 
+/** Reopens the screen when fresh data for the viewed character arrives. */
+function listenForSync(page: GUIPage, screen: GUIScreen): (() => void) | null {
+    const character = screen.Character;
+    if (!character || character.isPlayer()) {
+        return null;
+    }
+    return screen.Core.Events.on("characterSyncReceived", ({ memberNumber }) => {
+        if (memberNumber === character.MemberNumber) {
+            screen.reopen();
+        }
+    });
+}
+
 export class CursesListScreen extends GUIScreen {
 
-    get Title(): string {
-        return "Curses";
+    readonly access: CurseAccess;
+
+    constructor(module: Curses, character: BCPlusCharacter | null) {
+        super(module, character);
+        this.access = buildAccess(module, character);
     }
 
-    private get curses(): Curses {
-        return this.Module as Curses;
+    get Title(): string {
+        return this.Character && !this.Character.isPlayer()
+            ? `Curses - ${this.Character.Nickname}`
+            : "Curses";
     }
 
     protected buildPages(): GUIPage[] {
-        const slots = Object.values(this.curses.Slots);
+        const slots = Object.values(this.access.slots());
         const pages: GUIPage[] = [];
         for (let i = 0; i < Math.max(1, Math.ceil(slots.length / PER_PAGE)); i++) {
             pages.push(new CursesListPage(this, slots.slice(i * PER_PAGE, (i + 1) * PER_PAGE)));
@@ -32,6 +60,8 @@ export class CursesListScreen extends GUIScreen {
 }
 
 class CursesListPage extends GUIPage {
+
+    private removeListener: (() => void) | null = null;
 
     constructor(protected override readonly screen: CursesListScreen, private readonly slots: CurseSlotData[]) {
         super(screen);
@@ -50,8 +80,18 @@ class CursesListPage extends GUIPage {
         };
     }
 
+    override async create(): Promise<void> {
+        this.removeListener = listenForSync(this, this.screen);
+    }
+
+    override async destroy(): Promise<void> {
+        this.removeListener?.();
+        this.removeListener = null;
+    }
+
     render(): void {
-        const canEdit = this.curses.canEdit();
+        const access = this.screen.access;
+        const canEdit = access.canEdit();
         if (this.slots.length === 0) {
             DrawText("No slots are cursed yet.", 150, 250, "Gray");
         }
@@ -91,8 +131,11 @@ class CursesListPage extends GUIPage {
 
 export class AddCurseScreen extends GUIScreen {
 
+    readonly access: CurseAccess;
+
     constructor(module: Curses, character: BCPlusCharacter | null) {
         super(module, character);
+        this.access = buildAccess(module, character);
     }
 
     get Title(): string {
@@ -108,8 +151,12 @@ class AddCursePage extends GUIPage {
 
     private index = 0;
 
+    constructor(protected override readonly screen: AddCurseScreen) {
+        super(screen);
+    }
+
     private get curses(): Curses {
-        return this.Screen.Module as Curses;
+        return this.screen.Module as Curses;
     }
 
     get Config(): PageOptions {
@@ -124,10 +171,11 @@ class AddCursePage extends GUIPage {
     }
 
     private candidates(): AssetGroup[] {
-        return this.curses.curseableGroups().filter((g) => !this.curses.getSlot(g.Name));
+        return this.curses.curseableGroups().filter((g) => !this.screen.access.slot(g.Name));
     }
 
     render(): void {
+        const access = this.screen.access;
         const groups = this.candidates();
         if (groups.length === 0) {
             DrawText("Every slot is already cursed.", 150, 250, "Gray");
@@ -135,7 +183,7 @@ class AddCursePage extends GUIPage {
         }
         this.index = Math.min(this.index, groups.length - 1);
         const group = groups[this.index]!;
-        const worn = InventoryGet(Player, group.Name);
+        const worn = InventoryGet(access.subject(), group.Name);
 
         DrawText("Slot:", 150, 332, "Black");
         MainCanvas.textAlign = "center";
@@ -161,7 +209,7 @@ class AddCursePage extends GUIPage {
                 HoverText: worn ? "Only this exact item will be allowed" : "Nothing may be worn in this slot",
             },
             () => {
-                this.curses.addCurse(group.Name);
+                access.addCurse(group.Name);
                 this.Screen.exit();
             },
         ));
@@ -171,8 +219,11 @@ class AddCursePage extends GUIPage {
 
 export class CurseSlotScreen extends GUIScreen {
 
+    readonly access: CurseAccess;
+
     constructor(module: Curses, character: BCPlusCharacter | null, private readonly group: string) {
         super(module, character);
+        this.access = buildAccess(module, character);
     }
 
     get Title(): string {
@@ -209,24 +260,25 @@ class CurseSlotPage extends GUIPage {
     }
 
     render(): void {
-        const slot = this.curses.getSlot(this.screen.Group);
+        const access = this.screen.access;
+        const slot = access.slot(this.screen.Group);
         if (!slot) {
             this.Screen.exit();
             return;
         }
-        const canEdit = this.curses.canEdit();
+        const canEdit = access.canEdit();
 
         DrawCheckbox(150, 200, 64, 64, "Curse is active", slot.active, !canEdit);
         this.addClickHandler(() => {
             if (canEdit && MouseIn(150, 200, 64, 64)) {
-                this.curses.setActive(slot.group, !slot.active);
+                access.setActive(slot.group, !slot.active);
             }
         });
 
         DrawCheckbox(150, 280, 64, 64, "Slot may also be empty", slot.allowEmpty, !canEdit);
         this.addClickHandler(() => {
             if (canEdit && MouseIn(150, 280, 64, 64)) {
-                slot.allowEmpty = !slot.allowEmpty;
+                access.setAllowEmpty(slot.group, !slot.allowEmpty);
             }
         });
 
@@ -240,7 +292,7 @@ class CurseSlotPage extends GUIPage {
             DrawCheckbox(900, y, 64, 64, "Strict (exact state)", spec.strict, !canEdit);
             this.addClickHandler(() => {
                 if (canEdit && MouseIn(900, y, 64, 64)) {
-                    spec.strict = !spec.strict;
+                    access.setStrict(slot.group, i, !spec.strict);
                 }
             });
             if (canEdit) {
@@ -249,7 +301,7 @@ class CurseSlotPage extends GUIPage {
                 MainCanvas.textAlign = "left";
                 this.addClickHandler(() => {
                     if (MouseIn(1500, y, 60, 60)) {
-                        this.curses.removeItem(slot.group, i);
+                        access.removeItem(slot.group, i);
                     }
                 });
             }
@@ -259,16 +311,16 @@ class CurseSlotPage extends GUIPage {
             MainCanvas.textAlign = "center";
             this.addClickHandler(ButtonActionWidget(
                 { Left: 150, Top: 790, Width: 520, Height: 80 },
-                { Name: "Allow currently worn item", HoverText: "Adds what you are wearing in this slot to the allowed list" },
+                { Name: "Allow currently worn item", HoverText: "Adds what is worn in this slot to the allowed list" },
                 () => {
-                    this.curses.addCurrentItem(slot.group);
+                    access.addCurrentItem(slot.group);
                 },
             ));
             this.addClickHandler(ButtonActionWidget(
                 { Left: 720, Top: 790, Width: 400, Height: 80 },
                 { Name: "Remove this curse", HoverText: "Lifts the curse from this slot entirely" },
                 () => {
-                    this.curses.removeCurse(slot.group);
+                    access.removeCurse(slot.group);
                     this.Screen.exit();
                 },
             ));

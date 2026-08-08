@@ -6,6 +6,7 @@ import { LOG_MAX_ENTRIES, LOG_REMOTE_LIMIT, LogCategory, LogEntry } from "@/syst
 import { LoggingScreen } from "@/gui/LoggingScreen";
 import { GUIScreen } from "@/system/gui/GUIScreen";
 import { SendBCPMessage } from "@/utils/Messaging";
+import { jsonClone } from "@/utils/BCUtils";
 import { debug } from "@/system/Console";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Authority from "@/modules/Authority";
@@ -19,8 +20,8 @@ import type Curses from "@/modules/Curses";
  */
 export default class Logging extends ModuleInstance {
 
-    /** Fetched logs of other characters: entries, "denied", or "pending". */
-    private readonly remoteLogs = new Map<number, LogEntry[] | "denied" | "pending">();
+    /** Fetched logs of other characters: entries, "denied", "pending", or "timeout". */
+    private readonly remoteLogs = new Map<number, LogEntry[] | "denied" | "pending" | "timeout">();
 
     protected readonly SystemConfig: ModuleConfig = {
         Name: "Logging",
@@ -102,9 +103,16 @@ export default class Logging extends ModuleInstance {
     requestLog(memberNumber: number): void {
         this.remoteLogs.set(memberNumber, "pending");
         SendBCPMessage({ message: "LogRequest" }, memberNumber);
+        setTimeout(() => {
+            if (this.remoteLogs.get(memberNumber) === "pending") {
+                debug(`Log request to #${memberNumber} timed out`);
+                this.remoteLogs.set(memberNumber, "timeout");
+                this.Events.emit("logReceived", { memberNumber });
+            }
+        }, 10_000);
     }
 
-    getRemoteLog(memberNumber: number): LogEntry[] | "denied" | "pending" | undefined {
+    getRemoteLog(memberNumber: number): LogEntry[] | "denied" | "pending" | "timeout" | undefined {
         return this.remoteLogs.get(memberNumber);
     }
 
@@ -139,13 +147,15 @@ export default class Logging extends ModuleInstance {
                 return;
             }
             const authority = this.ModuleManager.getModule<Authority>("authority");
-            if (!authority?.hasPermission(senderNumber, "log.view")) {
+            const permitted = authority?.hasPermission(senderNumber, "log.view") ?? false;
+            debug(`Log request from #${senderNumber}: ${permitted ? "sending entries" : "denied"}`);
+            if (!permitted) {
                 SendBCPMessage({ message: "LogResponse", denied: true }, senderNumber);
                 return;
             }
             SendBCPMessage({
                 message: "LogResponse",
-                entries: this.Entries.slice(-LOG_REMOTE_LIMIT),
+                entries: jsonClone(this.Entries.slice(-LOG_REMOTE_LIMIT)),
             }, senderNumber);
         });
 

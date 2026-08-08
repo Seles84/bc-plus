@@ -104,6 +104,10 @@ class LogPage extends GUIPage {
                 DrawText(`${character.Nickname} does not permit you to view their log.`, 150, 250, "Gray");
                 return;
             }
+            if (fetched === "timeout") {
+                DrawText("No response - they may be busy, disconnected, or running an older BC+.", 150, 250, "Gray");
+                return;
+            }
         }
 
         if (this.entries.length === 0) {

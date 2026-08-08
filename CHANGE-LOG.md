@@ -14,6 +14,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Changes to public data (role assignments, rule states, curses) are now broadcast to the room as they happen, so others' permission previews update immediately — previously granting someone access only took effect for them after a rejoin or manual sync.
 
 ### Added
+- Remote curse management: people with the `curses.edit` permission can curse slots, lift curses, toggle/configure them, and manage allowed items on another BC+ user — every command validated and applied by the target's client (item captures happen against the target's own appearance).
+- Remote permission editing: the Authority screen works on other BC+ users for holders of `authority.edit`, via the same validated command path.
+- Remote log requests now time out after 10 seconds with a clear failure message instead of showing "Requesting log..." forever; log request handling is traced in dev builds.
 - Rule breach announcements: violations and blocked attempts are announced to the room as an action message (e.g. "Seles tried to use OOC in a message, which a rule forbids."), with per-rule wording and a per-rule "Announce breaches in chat" toggle (on by default).
 - Specific rule-change notifications: when someone changes your rules you now see exactly what happened ("activated", "stopped enforcing", "changed the settings of", ...), mirrored in the behavior log.
 - Member picker: role assignment now has a "Browse..." option listing people from your BC relationships, the current room (respecting blindness settings), and your friend list — no more typing member numbers. The picker is reusable for future member-selection needs.

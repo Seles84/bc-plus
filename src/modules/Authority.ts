@@ -40,6 +40,14 @@ export default class Authority extends ModuleInstance {
         }];
     }
 
+    override get SupportsRemote(): boolean {
+        return true;
+    }
+
+    override get EditPermission(): string | null {
+        return "authority.edit";
+    }
+
     /** @internal Called by the ModuleManager with every module's permission definitions. */
     registerPermissions(definitions: PermissionDefinition[]): void {
         for (const def of definitions) {
