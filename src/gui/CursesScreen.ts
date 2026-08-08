@@ -126,6 +126,17 @@ class CursesListPage extends GUIPage {
             ));
             MainCanvas.textAlign = "left";
         }
+
+        // Personal preference, shown only on your own curses screen
+        if (!this.Character || this.Character.isPlayer()) {
+            const announce = this.curses.Data.announce !== false;
+            DrawCheckbox(650, 878, 64, 64, "Announce curse activity in chat", announce, !canEdit);
+            this.addClickHandler(() => {
+                if (canEdit && MouseIn(650, 878, 64, 64)) {
+                    this.curses.Data.announce = !announce;
+                }
+            });
+        }
     }
 }
 
