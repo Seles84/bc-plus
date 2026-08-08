@@ -1,6 +1,7 @@
 import { GetDotedPathType, PatchHook } from "bondage-club-mod-sdk";
 import { ModuleConfig } from "@/system/module/ModuleTypes";
 import { AnySetting, settingDefaults } from "@/system/gui/Settings";
+import { AddSyncListener, BCPMessageContent, RemoveSyncListeners } from "@/utils/Messaging";
 import type { BCPlus } from "@/index";
 import type SDK from "@/system/SDK";
 import type ModuleManager from "@/system/ModuleManager";
@@ -25,6 +26,7 @@ export abstract class ModuleInstance {
     /** Removes everything this module changed in the game. */
     Unload(): void {
         this.removeHooks();
+        RemoveSyncListeners(this.Slug);
     }
 
     Reload(): void {
@@ -106,6 +108,11 @@ export abstract class ModuleInstance {
 
     protected patchFunction(target: string, patches: Record<string, string>): void {
         this.SDK.patchFunction(target, patches);
+    }
+
+    /** Listens for an incoming BC+ message type; removed automatically on Unload. */
+    protected addSyncListener(message: string, action: (sender: Character, content: BCPMessageContent) => void): void {
+        AddSyncListener(this.Slug, message, action);
     }
 
     protected removeHooks(): void {

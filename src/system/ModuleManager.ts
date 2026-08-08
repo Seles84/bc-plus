@@ -2,6 +2,7 @@ import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { debug, err } from "@/system/Console";
 import type { BCPlus } from "@/index";
 import Core from "@/modules/Core";
+import DataSync from "@/modules/DataSync";
 import { GUI } from "@/modules/GUI";
 
 export default class ModuleManager {
@@ -11,6 +12,7 @@ export default class ModuleManager {
 
     constructor(private readonly parent: BCPlus) {
         this.modules = [
+            new DataSync(parent),
             new GUI(parent),
             new Core(parent),
         ];
