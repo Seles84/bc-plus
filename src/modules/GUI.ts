@@ -55,12 +55,32 @@ export class GUI extends ModuleInstance {
             void this.currentSubscreen.destroy();
         }
         this.currentSubscreen = screen;
+        this.setSheetDOMVisible(screen === null);
         screen?.open();
     }
 
     closeSubscreen(): void {
         this.currentSubscreen = null;
+        this.setSheetDOMVisible(true);
     }
+
+    /**
+     * BC builds parts of the information sheet in DOM (appended to document.body),
+     * which stays visible over our canvas screens - hide it while a BC+ screen is open.
+     */
+    private setSheetDOMVisible(visible: boolean): void {
+        for (const id of GUI.SHEET_DOM_ELEMENTS) {
+            const element = document.getElementById(id);
+            if (element) {
+                element.style.visibility = visible ? "" : "hidden";
+            }
+        }
+    }
+
+    /** DOM element ids BC creates for the information sheet (extend as BC adds more). */
+    private static readonly SHEET_DOM_ELEMENTS = [
+        "AllowedInteractions-dropdown-container",
+    ];
 
     override async Init(): Promise<void> {
         if (GUI.instance) {
