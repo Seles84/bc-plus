@@ -46,11 +46,14 @@ export function SendBCPMessage(message: BCPMessageContent, target?: number): voi
 
 /** Sends an action-style message visible in chat, to the room or one character. */
 export function SendAction(content: string, target?: Character, dictionary: ChatMessageDictionary = []): void {
+    // The activity lookup for "BCPAction" intentionally misses; the dictionary
+    // entry's Tag matches BC's missing-text fallback exactly, so our Text is
+    // substituted in as the whole rendered message.
     ServerSend("ChatRoomChat", {
-        Content: "MayaScript",
+        Content: "BCPAction",
         Type: "Activity",
         Dictionary: [{
-            Tag: "MISSING ACTIVITY DESCRIPTION FOR KEYWORD MayaScript",
+            Tag: `MISSING TEXT IN "ActivityDictionary.csv": BCPAction`,
             Text: content,
         }, ...dictionary],
         Target: target?.MemberNumber,
@@ -66,10 +69,16 @@ export function SendEmote(content: string, target?: Character): void {
     });
 }
 
-/** Displays text to the local player only. */
+/** Displays text to the local player only, in BC+'s muted purple style. */
 export function NotifyPlayer(content: string, timeout?: number): void {
     const darkTheme = Player.ChatSettings?.ColorTheme === "Dark" || Player.ChatSettings?.ColorTheme === "Dark2";
-    ChatRoomSendLocal(`<p style='background-color:#00c2ff;color:${darkTheme ? "white" : "black"};margin-bottom:0.25em;margin-top:0'>${content}</p>`, timeout);
+    const background = darkTheme ? "#3b2e52" : "#e9e2f6";
+    const color = darkTheme ? "#f2eefa" : "#2c2140";
+    ChatRoomSendLocal(
+        `<p style='background-color:${background};color:${color};border-left:3px solid #8469b6;`
+        + `padding:2px 6px;margin-bottom:0.25em;margin-top:0'>${content}</p>`,
+        timeout,
+    );
 }
 
 /** Displays text to the local player, marked as coming from BC+. */
