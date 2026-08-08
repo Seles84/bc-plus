@@ -8,6 +8,8 @@ import { GUIScreen } from "@/system/gui/GUIScreen";
 import { BCPMessageContent, BCPNotifyPlayer, SendAction, SendBCPMessage } from "@/utils/Messaging";
 import { decodeExport, encodeExport } from "@/utils/ExportImport";
 import { jsonClone } from "@/utils/BCUtils";
+import { conditionsExpired, conditionsMet, sanitizeConditions } from "@/system/conditions/Conditions";
+import type Roles from "@/modules/Roles";
 import { debug, err } from "@/system/Console";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Authority from "@/modules/Authority";
@@ -203,6 +205,24 @@ export default class Curses extends ModuleInstance {
         }
     }
 
+    /** Sets a curse's conditions (sanitized); pass null/{} to clear. */
+    setCurseConditions(group: string, raw: unknown): boolean {
+        const slot = this.Slots[group];
+        if (!slot) {
+            return false;
+        }
+        const sanitized = sanitizeConditions(raw);
+        if (sanitized === null) {
+            return false;
+        }
+        if (Object.keys(sanitized).length === 0) {
+            delete slot.conditions;
+        } else {
+            slot.conditions = sanitized;
+        }
+        return true;
+    }
+
     /** Adds the currently worn item in the slot to its allowed list. */
     addCurrentItem(group: string): boolean {
         const slot = this.Slots[group];
@@ -283,6 +303,9 @@ export default class Curses extends ModuleInstance {
         } else if (action === "addCurrentItem" && this.Slots[group]) {
             applied = this.addCurrentItem(group);
             verb = "allowed your current item under the curse on";
+        } else if (action === "setConditions" && this.Slots[group]) {
+            applied = this.setCurseConditions(group, value ?? {});
+            verb = "changed the conditions of the curse on";
         }
 
         if (!applied) {
@@ -368,6 +391,29 @@ export default class Curses extends ModuleInstance {
     private checkSlot(slot: CurseSlotData): void {
         const suspended = this.suspendedUntil.get(slot.group) ?? 0;
         if (Date.now() < suspended) {
+            return;
+        }
+
+        // Timer expiry ends the curse
+        if (conditionsExpired(slot.conditions)) {
+            const label = this.curseableGroups().find((g) => g.Name === slot.group)?.Description ?? slot.group;
+            if (slot.conditions?.timerAction === "remove") {
+                this.removeCurse(slot.group);
+                BCPNotifyPlayer(`The curse on your ${label} has lifted.`);
+            } else {
+                if (slot.conditions) {
+                    delete slot.conditions.timerEnd;
+                    delete slot.conditions.timerAction;
+                }
+                this.setActive(slot.group, false);
+                BCPNotifyPlayer(`The curse on your ${label} has expired.`);
+            }
+            return;
+        }
+
+        // Requirements gate enforcement without ending the curse
+        if (!conditionsMet(slot.conditions, this.ModuleManager.getModule<Roles>("roles"))) {
+            this.consecutiveRestores.delete(slot.group);
             return;
         }
 

@@ -1,5 +1,6 @@
 import { RuleDefinition, RuleStateData, defaultRuleState } from "@/system/rules/RuleTypes";
 import { SendBCPMessage } from "@/utils/Messaging";
+import type { ConditionData } from "@/system/conditions/Conditions";
 import type Rules from "@/modules/Rules";
 import type Authority from "@/modules/Authority";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
@@ -17,6 +18,7 @@ export interface RuleAccess {
     setLog(id: string, value: boolean): void;
     setAnnounce(id: string, value: boolean): void;
     setSetting(id: string, name: string, value: unknown): void;
+    setConditions(id: string, conditions: ConditionData): void;
 }
 
 /** Direct access to the player's own rules. */
@@ -54,6 +56,10 @@ export class LocalRuleAccess implements RuleAccess {
 
     setSetting(id: string, name: string, value: unknown): void {
         this.rules.setRuleSetting(id, name, value);
+    }
+
+    setConditions(id: string, conditions: ConditionData): void {
+        this.rules.setRuleConditions(id, conditions);
     }
 }
 
@@ -112,6 +118,11 @@ export class RemoteRuleAccess implements RuleAccess {
     setSetting(id: string, name: string, value: unknown): void {
         this.send("setSetting", id, name, value);
         this.ensureMirror(id).settings[name] = value;
+    }
+
+    setConditions(id: string, conditions: ConditionData): void {
+        this.send("setConditions", id, undefined, conditions);
+        this.ensureMirror(id).conditions = conditions;
     }
 
     private mirror(): Record<string, RuleStateData> | undefined {

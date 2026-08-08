@@ -4,6 +4,8 @@ import { LocalRuleAccess, RemoteRuleAccess, RuleAccess } from "@/system/rules/Ru
 import { ButtonActionWidget } from "@/system/gui/Widgets";
 import { copyExportCode, promptImportCode } from "@/utils/ExportImport";
 import { BCPNotifyPlayer } from "@/utils/Messaging";
+import { ConditionsScreen } from "@/gui/ConditionsScreen";
+import { describeConditions } from "@/system/conditions/Conditions";
 import type { GUI } from "@/modules/GUI";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Authority from "@/modules/Authority";
@@ -231,6 +233,28 @@ class RuleConfigPage extends GUIPage {
                 }
             });
         });
+
+        // Conditions
+        MainCanvas.textAlign = "center";
+        this.addClickHandler(ButtonActionWidget(
+            { Left: 1400, Top: 300, Width: 400, Height: 64 },
+            { Name: "Conditions...", HoverText: "When this rule is in effect" },
+            () => {
+                this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(new ConditionsScreen(
+                    this.screen.Module,
+                    this.Character,
+                    {
+                        label: definition.name,
+                        removeLabel: "Deactivate & clear",
+                        get: () => access.state(definition.id).conditions ?? {},
+                        set: (c) => access.setConditions(definition.id, c),
+                        canEdit: () => access.canEdit(),
+                    },
+                ));
+            },
+        ));
+        MainCanvas.textAlign = "left";
+        DrawTextFit(describeConditions(state.conditions), 1400, 420, 460, "Gray");
 
         const settings = definition.settings ?? [];
         settings.forEach((setting, i) => {
