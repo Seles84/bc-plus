@@ -17,6 +17,8 @@ export interface BCPlusEvents {
     curseTriggered: { group: string; action: "add" | "remove" | "swap" | "update" };
     /** Fired when a curse is created, removed, or (de)activated. */
     curseChanged: { group: string; active: boolean };
+    /** Fired when a requested remote log (or denial) arrives. */
+    logReceived: { memberNumber: number };
 }
 
 type Listener<T> = (data: T) => void;

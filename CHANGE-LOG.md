@@ -7,6 +7,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Stage 9 behavior log: rule violations and blocked attempts, curse triggers, and remote rule changes are recorded (capped at 200 entries). In tandem mode, BCX rule triggers are logged too.
+- Log screen: newest-first paged view with timestamps and categories; clearing requires the `log.delete` permission (Owner default), and viewing — including your own log — requires `log.view` (Mistress default, self allowed).
+- Remote log viewing: the log is never broadcast; other BC+ users request it and your client only replies if they hold `log.view`.
 - Stage 8 curses: curse item/clothing slots so only permitted items can be worn. Each cursed slot holds a list of allowed items with per-item rules — strict items restore their exact captured state (color, type, crafting), loose items only need to be the same item. Slots can additionally allow (or be cursed to stay) empty.
 - Curse enforcement runs continuously with a per-slot cooldown; restorations notify the player and are announced on the event bus for the future Logging module.
 - Curses screens: cursed-slot overview, slot browser for adding curses (captures current state), and per-slot configuration (active, allow-empty, per-item strict/remove, allow currently worn item). Edits gated on the new `curses.edit` permission (Mistress default).

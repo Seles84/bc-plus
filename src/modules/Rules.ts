@@ -12,6 +12,7 @@ import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Roles from "@/modules/Roles";
 import type Authority from "@/modules/Authority";
 import type DataSync from "@/modules/DataSync";
+import type Logging from "@/modules/Logging";
 
 export default class Rules extends ModuleInstance {
 
@@ -258,6 +259,8 @@ export default class Rules extends ModuleInstance {
 
         const definition = this.registry.get(rule)!;
         BCPNotifyPlayer(`${sender.Name} (#${senderNumber}) changed your rule "${definition.name}".`);
+        this.ModuleManager.getModule<Logging>("logging")
+            ?.log("rule", `${sender.Name} (#${senderNumber}) changed rule "${definition.name}"`);
         SendBCPMessage({ message: "RuleCommandResult", ok: true, rule }, senderNumber);
         this.ModuleManager.getModule<DataSync>("data-sync")?.categorySync(this, senderNumber);
     }
