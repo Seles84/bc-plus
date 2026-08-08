@@ -30,6 +30,8 @@ export default class Curses extends ModuleInstance {
     private lastAnnounce = 0;
     /** Item restorations collected during the current enforcement tick. */
     private tickRestores: { group: string; itemName: string }[] = [];
+    /** Items removed by cursed-empty slots during the current enforcement tick. */
+    private tickRemovals: { group: string; itemName: string }[] = [];
     /** Restores since the slot last checked compliant; guards against fight loops. */
     private readonly consecutiveRestores = new Map<string, number>();
     private readonly suspendedUntil = new Map<string, number>();
@@ -247,6 +249,7 @@ export default class Curses extends ModuleInstance {
             return;
         }
         this.tickRestores = [];
+        this.tickRemovals = [];
         for (const slot of Object.values(this.Slots)) {
             if (slot.active) {
                 try {
@@ -256,14 +259,16 @@ export default class Curses extends ModuleInstance {
                 }
             }
         }
-        this.announceRestores();
+        this.announceTick();
     }
 
-    /** One aggregated room announcement per tick for re-added items. */
-    private announceRestores(): void {
+    /** One aggregated room announcement per tick for curse effects. */
+    private announceTick(): void {
         const restores = this.tickRestores;
+        const removals = this.tickRemovals;
         this.tickRestores = [];
-        if (restores.length === 0
+        this.tickRemovals = [];
+        if ((restores.length === 0 && removals.length === 0)
             || this.Data.announce === false
             || !ServerPlayerIsInChatRoom()
             || Date.now() - this.lastAnnounce < NOTIFY_COOLDOWN_MS) {
@@ -277,7 +282,15 @@ export default class Curses extends ModuleInstance {
             (this.curseableGroups().find((g) => g.Name === group)?.Description ?? group).toLocaleLowerCase();
 
         let text: string;
-        if (restores.length === 1) {
+        if (restores.length > 0 && removals.length > 0) {
+            text = `Multiple curses on ${name} have taken effect.`;
+        } else if (removals.length === 1) {
+            text = `The curse on ${name}'s ${slotName(removals[0]!.group)} causes ${possessive} ${removals[0]!.itemName} to fall off.`;
+        } else if (removals.length === 2) {
+            text = `The curses on ${name}'s ${slotName(removals[0]!.group)} and ${slotName(removals[1]!.group)} cause ${possessive} items to fall off.`;
+        } else if (removals.length > 2) {
+            text = `Multiple curses on ${name} cause ${possessive} items to fall off.`;
+        } else if (restores.length === 1) {
             text = `The curse on ${name}'s ${slotName(restores[0]!.group)} has caused ${possessive} ${restores[0]!.itemName} to reappear.`;
         } else if (restores.length === 2) {
             text = `The curses on ${name}'s ${slotName(restores[0]!.group)} and ${slotName(restores[1]!.group)} have caused ${possessive} items to reappear.`;
@@ -350,6 +363,13 @@ export default class Curses extends ModuleInstance {
         }
 
         if (spec === null) {
+            const removed = InventoryGet(Player, slot.group);
+            if (removed) {
+                this.tickRemovals.push({
+                    group: slot.group,
+                    itemName: removed.Craft?.Name || removed.Asset.Description,
+                });
+            }
             InventoryRemove(Player, slot.group, true);
         } else {
             const item = InventoryWear(
