@@ -155,6 +155,11 @@ export function RemoveSyncListeners(owner: string): void {
     }
 }
 
+/** Registered listener descriptions, for diagnostics (/bcp debug). */
+export function ListSyncListeners(): string[] {
+    return syncListeners.map((l) => `${l.owner}: ${l.message}`);
+}
+
 /** @internal Dispatches an incoming BC+ message to all matching listeners. */
 export function DispatchBCPMessage(sender: Character, content: BCPMessageContent): void {
     for (const listener of [...syncListeners]) {

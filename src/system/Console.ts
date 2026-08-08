@@ -32,7 +32,9 @@ export function err(...args: unknown[]): void {
 
 export function debug(...args: unknown[]): void {
     if (BCP_DEV_ENV) {
-        emit("debug", STYLES.DEBUG, args);
+        // console.log, not console.debug: Chrome hides the Verbose level by
+        // default and dev traces must be visible without DevTools tweaking
+        emit("log", STYLES.DEBUG, args);
     }
 }
 
