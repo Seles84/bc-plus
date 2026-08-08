@@ -30,14 +30,41 @@ export default class DataSync extends ModuleInstance {
         Reference: "data-sync",
     };
 
+    /** JSON snapshots of each public module's data as last broadcast, keyed by slug. */
+    private readonly lastBroadcast = new Map<string, string>();
+
     /** Shares the player's public module data (and BC+ version) with the room or one member. */
     settingSync(reply: boolean, target?: number): void {
+        const settings = this.collectPublicData();
+        if (target === undefined) {
+            // Full room broadcast doubles as the change-detection baseline
+            for (const [slug, data] of Object.entries(settings)) {
+                this.lastBroadcast.set(slug, JSON.stringify(data));
+            }
+        }
         SendBCPMessage({
             message: "SettingSync",
             version: BCPLUS_VERSION,
-            settings: this.collectPublicData(),
+            settings,
             reply,
         }, target);
+    }
+
+    /** Broadcasts any public module whose data changed since it was last shared. */
+    private broadcastChangedCategories(): void {
+        if (!ServerPlayerIsInChatRoom()) {
+            return;
+        }
+        for (const module of this.ModuleManager.Modules) {
+            if (!module.Config.PublicData || !module.Config.Active) {
+                continue;
+            }
+            const snapshot = JSON.stringify(jsonClone(module.Data));
+            if (this.lastBroadcast.get(module.Slug) !== snapshot) {
+                this.lastBroadcast.set(module.Slug, snapshot);
+                this.categorySync(module);
+            }
+        }
     }
 
     /** Shares one module's public data with the room or one member. */
@@ -87,6 +114,11 @@ export default class DataSync extends ModuleInstance {
         if (ChatRoomCharacter.length !== 0) {
             this.settingSync(true);
         }
+
+        // Keep others' mirrors fresh: whenever the save persists, broadcast
+        // any public module whose data changed (e.g. a role assignment made
+        // after the join handshake).
+        this.Events.on("saveSynced", () => this.broadcastChangedCategories());
     }
 
     private onSettingSync(sender: Character, content: BCPMessageContent): void {
