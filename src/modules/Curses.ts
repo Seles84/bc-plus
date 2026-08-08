@@ -5,7 +5,7 @@ import { Role } from "@/system/Roles";
 import { CurseItemSpec, CurseSlotData, adoptRestoredState, captureItemSpec, itemMatchesSpec } from "@/system/curses/CurseTypes";
 import { CursesListScreen } from "@/gui/CursesScreen";
 import { GUIScreen } from "@/system/gui/GUIScreen";
-import { BCPMessageContent, BCPNotifyPlayer, SendBCPMessage } from "@/utils/Messaging";
+import { BCPMessageContent, BCPNotifyPlayer, SendAction, SendBCPMessage } from "@/utils/Messaging";
 import { jsonClone } from "@/utils/BCUtils";
 import { debug } from "@/system/Console";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
@@ -23,6 +23,9 @@ export default class Curses extends ModuleInstance {
     private tickTimer: ReturnType<typeof setInterval> | null = null;
     private readonly lastRestore = new Map<string, number>();
     private readonly lastNotify = new Map<string, number>();
+    private lastAnnounce = 0;
+    /** Item restorations collected during the current enforcement tick. */
+    private tickRestores: { group: string; itemName: string }[] = [];
 
     protected readonly SystemConfig: ModuleConfig = {
         Name: "Curses",
@@ -49,7 +52,7 @@ export default class Curses extends ModuleInstance {
     }
 
     override get Defaults(): Record<string, unknown> {
-        return { slots: {} };
+        return { slots: {}, announce: true };
     }
 
     override get HasGUI(): boolean {
@@ -236,6 +239,7 @@ export default class Curses extends ModuleInstance {
         if (typeof Player === "undefined" || !Player.MemberNumber || !Array.isArray(Player.Appearance) || !ServerIsConnected) {
             return;
         }
+        this.tickRestores = [];
         for (const slot of Object.values(this.Slots)) {
             if (slot.active) {
                 try {
@@ -245,6 +249,35 @@ export default class Curses extends ModuleInstance {
                 }
             }
         }
+        this.announceRestores();
+    }
+
+    /** One aggregated room announcement per tick for re-added items. */
+    private announceRestores(): void {
+        const restores = this.tickRestores;
+        this.tickRestores = [];
+        if (restores.length === 0
+            || this.Data.announce === false
+            || !ServerPlayerIsInChatRoom()
+            || Date.now() - this.lastAnnounce < NOTIFY_COOLDOWN_MS) {
+            return;
+        }
+        this.lastAnnounce = Date.now();
+
+        const name = Player.Nickname || Player.Name;
+        const possessive = Player.GetPronouns() === "HeHim" ? "his" : "her";
+        const slotName = (group: string): string =>
+            (this.curseableGroups().find((g) => g.Name === group)?.Description ?? group).toLocaleLowerCase();
+
+        let text: string;
+        if (restores.length === 1) {
+            text = `The curse on ${name}'s ${slotName(restores[0]!.group)} has caused ${possessive} ${restores[0]!.itemName} to reappear.`;
+        } else if (restores.length === 2) {
+            text = `The curses on ${name}'s ${slotName(restores[0]!.group)} and ${slotName(restores[1]!.group)} have caused ${possessive} items to reappear.`;
+        } else {
+            text = `Multiple cursed items on ${name} are now in effect and have reappeared.`;
+        }
+        SendAction(text);
     }
 
     private checkSlot(slot: CurseSlotData): void {
@@ -305,6 +338,9 @@ export default class Curses extends ModuleInstance {
             const worn = InventoryGet(Player, slot.group);
             if (worn && worn.Asset.Name === spec.asset) {
                 adoptRestoredState(spec, worn);
+            }
+            if (action === "add" || action === "swap") {
+                this.tickRestores.push({ group: slot.group, itemName: spec.name });
             }
         }
         if (ServerPlayerIsInChatRoom()) {
