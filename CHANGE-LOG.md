@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Changes to public data (role assignments, rule states, curses) are now broadcast to the room as they happen, so others' permission previews update immediately — previously granting someone access only took effect for them after a rejoin or manual sync.
 
 ### Added
+- Speech pack 2 (8 new rules, 15 total): Doll talk (word/length limits), Replace spoken words (word:replacement pairs), Mandatory words, Restrained speech (allowed phrases only), Enforce faltering speech (st-st-stuttering), Block OOC while gagged, Order to greet the room, and Farewell on leave. In-character/OOC text is distinguished throughout — transforms and checks leave OOC text alone (except the gagged-OOC rule, which exists to block it).
 - Play presets (General settings): **Dominant** (BC+ rules, curses and logging never apply to you — local and remote attempts are refused), **Switch**/**Submissive** (everything available), **Slave** (removes your own access to change your rules, curses and permissions, after a confirmation). Leaving Slave does not restore self-access — that stays in the hands of whoever holds authority over you.
 - Export/Import: rules configurations and curse loadouts can be copied as shareable `BCP1:` codes and imported (validated and merged) — on the Rules and Curses screens.
 - Local settings screens now honor a module's own edit permission (a Slave-preset player cannot reopen Authority to unlock themselves).
