@@ -7,6 +7,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Stage 2 storage: save-file manager persisting to `Player.ExtensionSettings` (server-synced) or localStorage, with an always-written localStorage backup and recovery prompt.
+- Auto-sync: module data is exposed through a deep proxy; any mutation schedules a debounced save with a round-trip integrity check.
+- Save format `1:<lzstring-base64>:<hmac>` compatible with the original design; official builds sign saves with `BCP_SAVE_KEY` (Web Crypto HMAC-SHA256, no crypto dependency), unofficial builds mark saves with `-`.
+- Per-module persistent data: modules declare `Defaults` and read/write `this.Data`; new default keys merge into existing saves.
+- Storage utilities: wipe-all-data with member-number confirmation, storage-location switching, first-boot initialization.
+- Update detection: after an update, BC+ shows a changelog notification and stamps the save with the new version.
 - Stage 1 core framework: per-module hook tracking in the SDK wrapper (hooks are owned by a module slug and removed on unload), `patchFunction`, and `awaitChatRoom`.
 - Module system: `ModuleInstance` base class with Init/Load/Unload/Reload lifecycle, `ModuleManager` orchestration with per-module error isolation.
 - Typed internal event bus (`modeChanged`, `moduleLoaded`, `modulesLoaded`, `moduleUnloaded`).

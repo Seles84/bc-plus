@@ -3,6 +3,20 @@ import { readFileSync } from "node:fs";
 
 const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
 
+// Load .env (KEY=VALUE lines) without a dotenv dependency; real env vars win.
+let envFile = "";
+try {
+    envFile = readFileSync(new URL("./.env", import.meta.url), "utf8");
+} catch {
+    // no .env present - fine
+}
+for (const line of envFile.split(/\r?\n/)) {
+    const match = /^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/.exec(line);
+    if (match && process.env[match[1]] === undefined) {
+        process.env[match[1]] = match[2];
+    }
+}
+
 const args = process.argv.slice(2);
 const serve = args.includes("--serve");
 const dev = serve || args.includes("--dev");
@@ -23,6 +37,7 @@ const options = {
         BCP_VERSION: JSON.stringify(dev ? pkg.displayVersion : pkg.version),
         BCP_DEV_ENV: JSON.stringify(dev),
         BCP_STABLE: JSON.stringify(!dev),
+        BCP_SAVE_KEY: JSON.stringify(process.env.BCP_SAVE_KEY ?? ""),
     },
     logLevel: "info",
 };

@@ -3,6 +3,7 @@ import { ModuleConfig } from "@/system/module/ModuleTypes";
 import type { BCPlus } from "@/index";
 import type SDK from "@/system/SDK";
 import type ModuleManager from "@/system/ModuleManager";
+import type StorageManager from "@/system/StorageManager";
 import type { EventBus } from "@/system/EventBus";
 
 export abstract class ModuleInstance {
@@ -30,6 +31,19 @@ export abstract class ModuleInstance {
         this.Load();
     }
 
+    /** Default data/settings for this module; saved values win over these. */
+    get Defaults(): Record<string, unknown> {
+        return {};
+    }
+
+    /**
+     * This module's persistent data slice. Mutations are saved automatically.
+     * Available from Init() onwards (storage loads before modules).
+     */
+    get Data(): Record<string, unknown> {
+        return this.core.Storage.getModuleData(this.Slug, this.Defaults);
+    }
+
     get Config(): ModuleConfig {
         return this.SystemConfig;
     }
@@ -48,6 +62,10 @@ export abstract class ModuleInstance {
 
     get ModuleManager(): ModuleManager {
         return this.core.ModuleManager;
+    }
+
+    get Storage(): StorageManager {
+        return this.core.Storage;
     }
 
     get Events(): EventBus {

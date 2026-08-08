@@ -1,8 +1,9 @@
 import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { ModuleConfig } from "@/system/module/ModuleTypes";
-import { BCPLUS_APP_NAME, BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
-import { log } from "@/system/Console";
+import { BCPLUS_APP_NAME, BCPLUS_AUTHOR, BCPLUS_REPO, BCPLUS_VERSION } from "@/system/Constants";
+import { log, warn } from "@/system/Console";
 import { InfoBeep } from "@/utils/BCUtils";
+import { BCPVersionCompare, parseBCPVersion } from "@/utils/Version";
 
 /**
  * Core housekeeping module: announces BC+ readiness and, in tandem mode,
@@ -23,6 +24,7 @@ export default class Core extends ModuleInstance {
     };
 
     override Load(): void {
+        this.checkForUpdate();
         const mode = this.BCMode === "tandem"
             ? `tandem with BCX v${window.bcx?.version ?? "?"}`
             : "standalone";
@@ -37,6 +39,23 @@ export default class Core extends ModuleInstance {
                     log(`BCX rule triggered: ${data.rule} (${data.triggerType})`);
                 });
             }
+        }
+    }
+
+    /** Notifies once after an update and stamps the save with the new version. */
+    private checkForUpdate(): void {
+        const save = this.Storage.Data;
+        const savedVersion = parseBCPVersion(save.version);
+        const current = parseBCPVersion(BCPLUS_VERSION);
+        if (savedVersion === null || current === null) {
+            warn(`Could not compare versions (save: ${save.version}, current: ${BCPLUS_VERSION})`);
+            return;
+        }
+        if (BCPVersionCompare(current, savedVersion) > 0) {
+            InfoBeep(`${BCPLUS_APP_NAME} updated to v${BCPLUS_VERSION}! Changelog: ${BCPLUS_REPO}/blob/main/CHANGE-LOG.md`, 8000);
+        }
+        if (save.version !== BCPLUS_VERSION) {
+            save.version = BCPLUS_VERSION;
         }
     }
 }

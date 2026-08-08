@@ -2,18 +2,24 @@ import { BCPLUS_APP_NAME, BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constan
 import { err, log, warn } from "@/system/Console";
 import SDK from "@/system/SDK";
 import ModuleManager from "@/system/ModuleManager";
+import StorageManager from "@/system/StorageManager";
 import { EventBus } from "@/system/EventBus";
 import { parseBCPVersion } from "@/utils/Version";
 
 export class BCPlus {
     private readonly sdk: SDK = new SDK();
     private readonly events: EventBus = new EventBus();
+    private readonly storage: StorageManager = new StorageManager();
     private readonly moduleManager: ModuleManager = new ModuleManager(this);
     private bcxVersion: BCXVersion | null = null;
     private mode: BCMode = "control";
 
     get SDK(): SDK {
         return this.sdk;
+    }
+
+    get Storage(): StorageManager {
+        return this.storage;
     }
 
     get Events(): EventBus {
@@ -38,6 +44,10 @@ export class BCPlus {
         log(`${BCPLUS_APP_NAME} v${BCPLUS_VERSION} by ${BCPLUS_AUTHOR}`);
         await this.sdk.awaitLogin();
         this.detectBCX();
+        if (!await this.storage.init()) {
+            warn("Storage failed to initialize - BC+ will not load.");
+            return;
+        }
         await this.moduleManager.load();
     }
 
