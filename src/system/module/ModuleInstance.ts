@@ -1,5 +1,7 @@
 import { GetDotedPathType, PatchHook } from "bondage-club-mod-sdk";
-import { ModuleConfig } from "@/system/module/ModuleTypes";
+import { ModuleConfig, PermissionDefinition } from "@/system/module/ModuleTypes";
+import type { GUIScreen } from "@/system/gui/GUIScreen";
+import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import { AnySetting, settingDefaults } from "@/system/gui/Settings";
 import { AddSyncListener, BCPMessageContent, RemoveSyncListeners } from "@/utils/Messaging";
 import type { BCPlus } from "@/index";
@@ -41,7 +43,20 @@ export abstract class ModuleInstance {
 
     /** Whether this module appears in the BC+ main menu. */
     get HasGUI(): boolean {
-        return this.Settings.length > 0;
+        return this.Settings.length > 0 || this.SettingsScreen !== null;
+    }
+
+    /**
+     * Factory for this module's settings screen. Null uses the auto-generated
+     * screen when `Settings` exist; override for a custom screen.
+     */
+    get SettingsScreen(): ((character: BCPlusCharacter | null) => GUIScreen) | null {
+        return null;
+    }
+
+    /** Permissions this module exposes; collected into Authority at load. */
+    get Permissions(): PermissionDefinition[] {
+        return [];
     }
 
     /** Default data/settings for this module; saved values win over these. */

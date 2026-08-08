@@ -1,8 +1,10 @@
 import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { debug, err } from "@/system/Console";
 import type { BCPlus } from "@/index";
+import Authority from "@/modules/Authority";
 import Core from "@/modules/Core";
 import DataSync from "@/modules/DataSync";
+import Roles from "@/modules/Roles";
 import { GUI } from "@/modules/GUI";
 
 export default class ModuleManager {
@@ -13,6 +15,8 @@ export default class ModuleManager {
     constructor(private readonly parent: BCPlus) {
         this.modules = [
             new DataSync(parent),
+            new Roles(parent),
+            new Authority(parent),
             new GUI(parent),
             new Core(parent),
         ];
@@ -33,6 +37,14 @@ export default class ModuleManager {
                 debug(`Initialized module: ${module.Config.Name} v${module.Config.Version}`);
             } catch (e) {
                 err(`Failed to initialize module ${module.Config.Name}:`, e);
+            }
+        }
+
+        // Collect permission definitions before any module loads
+        const authority = this.getModule<Authority>("authority");
+        if (authority) {
+            for (const module of active) {
+                authority.registerPermissions(module.Permissions);
             }
         }
 

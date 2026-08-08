@@ -58,7 +58,9 @@ class MainMenuPage extends GUIPage {
                     HoverText: module.Config.Active ? module.Config.HoverText : "Module is deactivated",
                 },
                 () => {
-                    GUI.instance?.setSubscreen(new ModuleSettingsScreen(module, this.Character));
+                    const screen = module.SettingsScreen?.(this.Character)
+                        ?? new ModuleSettingsScreen(module, this.Character);
+                    GUI.instance?.setSubscreen(screen);
                 },
             ));
         });

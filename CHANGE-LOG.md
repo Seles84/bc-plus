@@ -7,6 +7,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Stage 5 roles & authority: seven-role hierarchy (Club Owner > Owner > Lover > Mistress > Whitelist > Friend > Public) combining BC relationships with manually assigned lists.
+- Roles screen: one page per assignable role showing BC-derived members and manual assignments, with add/remove by member number.
+- Authority module: modules register permissions; each becomes a configurable "lowest role allowed" + "allow on myself" pair with a central `hasPermission` check (blacklisted members always denied).
+- Initial permissions: view BC+ settings (Friend), edit permission settings (Owner), manage role assignments (Owner).
+- Modules can provide custom settings screens in the main menu.
 - Stage 4 messaging & sync: hidden-message protocol (`Type: Hidden`, `Content: BCP`) for BC+-to-BC+ communication with a per-module listener registry.
 - Presence handshake: BC+ announces itself (version + public module data) when joining a room or loading in one; other BC+ users reply directly.
 - Other characters' BC+ version and public data are tracked; their information sheet now shows a BC+ badge with their version.
