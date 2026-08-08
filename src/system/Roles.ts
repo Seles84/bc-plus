@@ -1,6 +1,7 @@
 /** BC+ role hierarchy; lower value = higher authority. */
 export enum Role {
-    ClubOwner = 0,
+    /** The player's actual BC Owner - derived from the game, never assigned manually */
+    BCOwner = 0,
     Owner = 1,
     Lover = 2,
     Mistress = 3,
@@ -10,7 +11,7 @@ export enum Role {
 }
 
 export const RoleNames: readonly string[] = [
-    "Club Owner",
+    "BC Owner",
     "Owner",
     "Lover",
     "Mistress",
