@@ -62,6 +62,9 @@ if (serve) {
         servedir: "dist",
         port: SERVE_PORT,
         host: "127.0.0.1",
+        // Lets the dev loader use crossorigin="anonymous", so BC+ errors
+        // surface with full stack traces instead of opaque "Script error."
+        cors: { origin: "*" },
     });
     console.log(`BC+ dev server running: http://localhost:${port}/bcplus.js`);
 } else {

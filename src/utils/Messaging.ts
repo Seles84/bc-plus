@@ -31,8 +31,8 @@ export function GetBCPMessageFromChat(message: ServerChatRoomMessage): BCPMessag
 export function SendBCPMessage(message: BCPMessageContent, target?: number): void {
     // ChatRoomData is set before the screen switch finishes during an async
     // room join - accept either signal so announcements are not dropped.
-    if (!ServerPlayerIsInChatRoom() && ChatRoomData == null) {
-        err(`Dropped BCP message "${message.message}" - not in a chat room`);
+    if (!ServerIsConnected || (!ServerPlayerIsInChatRoom() && ChatRoomData == null)) {
+        err(`Dropped BCP message "${message.message}" - not connected/in a chat room`);
         return;
     }
     debug(`Sending BCP "${message.message}"${target === undefined ? " to room" : ` to #${target}`}`);

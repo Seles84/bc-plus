@@ -141,7 +141,8 @@ export default class Curses extends ModuleInstance {
 
     /** Enforcement pass: restore any cursed slot whose contents violate its specs. */
     private check(): void {
-        if (typeof Player === "undefined" || !Player.MemberNumber || !Array.isArray(Player.Appearance)) {
+        // Pause enforcement entirely while disconnected/relogging
+        if (typeof Player === "undefined" || !Player.MemberNumber || !Array.isArray(Player.Appearance) || !ServerIsConnected) {
             return;
         }
         for (const slot of Object.values(this.Slots)) {
