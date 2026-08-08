@@ -125,6 +125,12 @@ export abstract class ModuleInstance {
         return this.core.Mode;
     }
 
+    /** The player's play preset (Dominant/Switch/Submissive/Slave). */
+    get Preset(): string {
+        const core = this.core.ModuleManager.getModule("core") as { getPreset?: () => string } | undefined;
+        return core?.getPreset?.() ?? "Switch";
+    }
+
     /** Hook a BC function; the hook is owned by this module and removed on Unload. */
     protected addHook<TFunctionName extends string>(
         functionName: TFunctionName,

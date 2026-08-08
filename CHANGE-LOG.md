@@ -14,6 +14,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Changes to public data (role assignments, rule states, curses) are now broadcast to the room as they happen, so others' permission previews update immediately — previously granting someone access only took effect for them after a rejoin or manual sync.
 
 ### Added
+- Play presets (General settings): **Dominant** (BC+ rules, curses and logging never apply to you — local and remote attempts are refused), **Switch**/**Submissive** (everything available), **Slave** (removes your own access to change your rules, curses and permissions, after a confirmation). Leaving Slave does not restore self-access — that stays in the hands of whoever holds authority over you.
+- Export/Import: rules configurations and curse loadouts can be copied as shareable `BCP1:` codes and imported (validated and merged) — on the Rules and Curses screens.
+- Local settings screens now honor a module's own edit permission (a Slave-preset player cannot reopen Authority to unlock themselves).
 - Remote curse management: people with the `curses.edit` permission can curse slots, lift curses, toggle/configure them, and manage allowed items on another BC+ user — every command validated and applied by the target's client (item captures happen against the target's own appearance).
 - Remote permission editing: the Authority screen works on other BC+ users for holders of `authority.edit`, via the same validated command path.
 - Remote log requests now time out after 10 seconds with a clear failure message instead of showing "Requesting log..." forever; log request handling is traced in dev builds.

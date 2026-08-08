@@ -46,10 +46,16 @@ export class ModuleSettingsScreen extends GUIScreen {
     }
 
     canEdit(): boolean {
-        if (!this.Remote) {
-            return true;
-        }
         const permission = this.Module.EditPermission;
+        if (!this.Remote) {
+            // Local editing honors the module's own permission too (e.g. the
+            // Slave preset removes self-access to Authority)
+            if (!permission) {
+                return true;
+            }
+            const authority = this.Module.ModuleManager.getModule<Authority>("authority");
+            return authority?.hasPermission(Player.MemberNumber ?? -1, permission) ?? true;
+        }
         if (!permission) {
             return false;
         }

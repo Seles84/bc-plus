@@ -77,6 +77,9 @@ export default class Logging extends ModuleInstance {
 
     /** Appends an entry, pruning the oldest beyond the cap. */
     log(category: LogCategory, message: string): void {
+        if (this.Preset === "Dominant") {
+            return;
+        }
         const entries = this.Entries;
         entries.push({ time: Date.now(), category, message });
         if (entries.length > LOG_MAX_ENTRIES) {
