@@ -60,7 +60,7 @@ class MainMenuPage extends GUIPage {
                 () => {
                     const screen = module.SettingsScreen?.(this.Character)
                         ?? new ModuleSettingsScreen(module, this.Character);
-                    this.Core.ModuleManager.getModule<GUI>("gui")?.setSubscreen(screen);
+                    this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(screen);
                 },
             ));
         });
