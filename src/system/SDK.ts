@@ -1,5 +1,5 @@
 import bcModSdk, { GetDotedPathType, ModSDKModAPI, PatchHook } from "bondage-club-mod-sdk";
-import { BCPLUS_APP_NAME, BCPLUS_NAME, BCPLUS_REPO, BCPLUS_SHORT_NAME, BCPLUS_VERSION } from "@/system/Constants";
+import { BCPLUS_APP_NAME, BCPLUS_REPO, BCPLUS_SHORT_NAME, BCPLUS_VERSION } from "@/system/Constants";
 import { debug } from "@/system/Console";
 
 interface HookedFunction {
@@ -106,9 +106,9 @@ export default class SDK {
         });
     }
 
-    /** The BCX mod API for BC+, if BCX is installed. */
+    /** The BCX mod API for BC+, if BCX is installed. Must use the exact name we registered with ModSDK. */
     bcxAPI(): BCX_ModAPI | undefined {
-        return window.bcx?.getModApi(BCPLUS_NAME);
+        return window.bcx?.getModApi(BCPLUS_SHORT_NAME);
     }
 
     bcxInstalled(): boolean {

@@ -7,7 +7,7 @@ import { LoggingScreen } from "@/gui/LoggingScreen";
 import { GUIScreen } from "@/system/gui/GUIScreen";
 import { SendBCPMessage } from "@/utils/Messaging";
 import { jsonClone } from "@/utils/BCUtils";
-import { debug } from "@/system/Console";
+import { debug, warn } from "@/system/Console";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Authority from "@/modules/Authority";
 import type Rules from "@/modules/Rules";
@@ -132,12 +132,16 @@ export default class Logging extends ModuleInstance {
             this.log("curse", `The curse ${verbs[action]} ${label}`);
         });
 
-        // In tandem mode, BCX rule triggers land in the BC+ log too
-        const bcxAPI = this.SDK.bcxAPI();
-        if (bcxAPI) {
-            bcxAPI.on("ruleTrigger", (data) => {
+        // In tandem mode, BCX rule triggers land in the BC+ log too. Guarded:
+        // a BCX API failure must never take down the rest of this module
+        // (its absence once silently disabled all remote log listeners).
+        try {
+            const bcxAPI = this.SDK.bcxAPI();
+            bcxAPI?.on("ruleTrigger", (data) => {
                 this.log("rule", `BCX rule "${data.rule}" ${data.triggerType === "triggerAttempt" ? "blocked an action" : "was violated"}`);
             });
+        } catch (e) {
+            warn("Could not subscribe to BCX rule triggers:", e);
         }
 
         // Remote log viewing: request/response, gated by log.view on OUR side
