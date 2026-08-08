@@ -4,6 +4,8 @@ import { CurseAccess, LocalCurseAccess, RemoteCurseAccess } from "@/system/curse
 import { CurseSlotData } from "@/system/curses/CurseTypes";
 import { copyExportCode, promptImportCode } from "@/utils/ExportImport";
 import { BCPNotifyPlayer } from "@/utils/Messaging";
+import { ConditionsScreen } from "@/gui/ConditionsScreen";
+import { describeConditions } from "@/system/conditions/Conditions";
 import type { GUI } from "@/modules/GUI";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Authority from "@/modules/Authority";
@@ -326,6 +328,28 @@ class CurseSlotPage extends GUIPage {
                 access.setAllowEmpty(slot.group, !slot.allowEmpty);
             }
         });
+
+        // Conditions
+        MainCanvas.textAlign = "center";
+        this.addClickHandler(ButtonActionWidget(
+            { Left: 1400, Top: 200, Width: 400, Height: 64 },
+            { Name: "Conditions...", HoverText: "When this curse is in effect" },
+            () => {
+                this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(new ConditionsScreen(
+                    this.screen.Module,
+                    this.Character,
+                    {
+                        label: this.screen.Title,
+                        removeLabel: "Lift curse",
+                        get: () => access.slot(this.screen.Group)?.conditions ?? {},
+                        set: (c) => access.setConditions(this.screen.Group, c),
+                        canEdit: () => access.canEdit(),
+                    },
+                ));
+            },
+        ));
+        MainCanvas.textAlign = "left";
+        DrawTextFit(describeConditions(slot.conditions), 1400, 320, 460, "Gray");
 
         DrawText("Allowed items (each with its own rules):", 150, 400, "Black");
         if (slot.items.length === 0) {

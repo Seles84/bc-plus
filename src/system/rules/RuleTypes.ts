@@ -54,6 +54,8 @@ export interface RuleDefinition {
     load(ctx: RuleContext): void;
 }
 
+import type { ConditionData } from "@/system/conditions/Conditions";
+
 /** Per-rule persisted state. */
 export interface RuleStateData {
     active: boolean;
@@ -62,6 +64,8 @@ export interface RuleStateData {
     /** Whether breaches are announced to the room as an action message */
     announce: boolean;
     settings: Record<string, unknown>;
+    /** When the rule is in effect; absent = always while active */
+    conditions?: ConditionData;
 }
 
 export function defaultRuleState(definition: RuleDefinition): RuleStateData {

@@ -9,6 +9,7 @@ import { GUIScreen } from "@/system/gui/GUIScreen";
 import { BCPMessageContent, BCPNotifyPlayer, SendAction, SendBCPMessage } from "@/utils/Messaging";
 import { decodeExport, encodeExport } from "@/utils/ExportImport";
 import { jsonClone } from "@/utils/BCUtils";
+import { conditionsExpired, conditionsMet, sanitizeConditions } from "@/system/conditions/Conditions";
 import { debug, warn } from "@/system/Console";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Roles from "@/modules/Roles";
@@ -20,6 +21,7 @@ export default class Rules extends ModuleInstance {
 
     private readonly registry = new Map<string, RuleDefinition>();
     private readonly installed = new Set<string>();
+    private timerCheck: ReturnType<typeof setInterval> | null = null;
 
     protected readonly SystemConfig: ModuleConfig = {
         Name: "Rules",
@@ -178,6 +180,29 @@ export default class Rules extends ModuleInstance {
         this.ruleState(id).announce = value;
     }
 
+    /** Sets a rule's conditions (sanitized); pass null/{} to clear. */
+    setRuleConditions(id: string, raw: unknown): boolean {
+        if (!this.registry.has(id)) {
+            return false;
+        }
+        const sanitized = sanitizeConditions(raw);
+        if (sanitized === null) {
+            return false;
+        }
+        if (Object.keys(sanitized).length === 0) {
+            delete this.ruleState(id).conditions;
+        } else {
+            this.ruleState(id).conditions = sanitized;
+        }
+        return true;
+    }
+
+    /** Whether the rule currently applies (active + conditions met). */
+    ruleInEffect(id: string): boolean {
+        const state = this.ruleState(id);
+        return state.active && conditionsMet(state.conditions, this.ModuleManager.getModule<Roles>("roles"));
+    }
+
     /** Sets a rule's custom setting; the value must match the setting's declared type. */
     setRuleSetting(id: string, name: string, value: unknown): boolean {
         const definition = this.registry.get(id);
@@ -215,6 +240,24 @@ export default class Rules extends ModuleInstance {
             }
         }
 
+        // Timer expiry: an expired rule deactivates itself
+        this.timerCheck = setInterval(() => {
+            for (const id of this.registry.keys()) {
+                const state = this.ruleState(id);
+                if (state.active && conditionsExpired(state.conditions)) {
+                    const name = this.registry.get(id)!.name;
+                    if (state.conditions?.timerAction === "remove") {
+                        delete state.conditions;
+                    } else if (state.conditions) {
+                        delete state.conditions.timerEnd;
+                        delete state.conditions.timerAction;
+                    }
+                    this.setRuleActive(id, false);
+                    BCPNotifyPlayer(`The rule "${name}" has expired.`);
+                }
+            }
+        }, 5000);
+
         // Incoming remote edits: validate permission and value here - the
         // requester's UI is never trusted.
         this.addSyncListener("RuleCommand", (sender, content) => this.onRuleCommand(sender, content));
@@ -228,6 +271,10 @@ export default class Rules extends ModuleInstance {
     }
 
     override Unload(): void {
+        if (this.timerCheck !== null) {
+            clearInterval(this.timerCheck);
+            this.timerCheck = null;
+        }
         for (const id of [...this.installed]) {
             this.uninstallRule(id);
         }
@@ -266,13 +313,19 @@ export default class Rules extends ModuleInstance {
                 this.SDK.addHook(this.hookOwner(definition.id), functionName, priority, hook);
             },
             setting: <T>(name: string): T => state().settings[name] as T,
-            isEnforced: () => state().active && state().enforce,
-            isLogged: () => state().active && state().log,
+            isEnforced: () => state().enforce && this.ruleInEffect(definition.id),
+            isLogged: () => state().log && this.ruleInEffect(definition.id),
             trigger: (target?: number | null) => {
+                if (!this.ruleInEffect(definition.id)) {
+                    return;
+                }
                 this.reportTrigger(definition.id, "trigger", target ?? null);
                 this.announceBreach(definition, "trigger");
             },
             triggerAttempt: (target?: number | null) => {
+                if (!this.ruleInEffect(definition.id)) {
+                    return;
+                }
                 this.reportTrigger(definition.id, "triggerAttempt", target ?? null);
                 this.announceBreach(definition, "triggerAttempt");
             },
@@ -348,6 +401,9 @@ export default class Rules extends ModuleInstance {
         } else if (action === "setSetting" && typeof name === "string") {
             applied = this.setRuleSetting(rule, name, value);
             verb = "changed the settings of";
+        } else if (action === "setConditions") {
+            applied = this.setRuleConditions(rule, value ?? {});
+            verb = "changed the conditions of";
         }
 
         if (!applied) {

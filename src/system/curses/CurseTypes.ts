@@ -28,6 +28,8 @@ export interface CurseSlotData {
     active: boolean;
     allowEmpty: boolean;
     items: CurseItemSpec[];
+    /** When the curse is in effect; absent = always while active */
+    conditions?: import("@/system/conditions/Conditions").ConditionData;
 }
 
 /** Property keys that change on their own and must not count as violations. */
