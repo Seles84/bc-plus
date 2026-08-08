@@ -5,6 +5,7 @@ import Authority from "@/modules/Authority";
 import Core from "@/modules/Core";
 import DataSync from "@/modules/DataSync";
 import Roles from "@/modules/Roles";
+import Rules from "@/modules/Rules";
 import { GUI } from "@/modules/GUI";
 
 export default class ModuleManager {
@@ -17,6 +18,7 @@ export default class ModuleManager {
             new DataSync(parent),
             new Roles(parent),
             new Authority(parent),
+            new Rules(parent),
             new GUI(parent),
             new Core(parent),
         ];
