@@ -3,7 +3,7 @@ import { ButtonActionWidget } from "@/system/gui/Widgets";
 import { ModuleSettingsScreen } from "@/gui/ModuleSettings";
 import { BCPLUS_REPO, BCPLUS_VERSION } from "@/system/Constants";
 import { ModuleInstance } from "@/system/module/ModuleInstance";
-import { GUI } from "@/modules/GUI";
+import type { GUI } from "@/modules/GUI";
 
 export class MainMenu extends GUIScreen {
 
@@ -60,7 +60,7 @@ class MainMenuPage extends GUIPage {
                 () => {
                     const screen = module.SettingsScreen?.(this.Character)
                         ?? new ModuleSettingsScreen(module, this.Character);
-                    GUI.instance?.setSubscreen(screen);
+                    this.Core.ModuleManager.getModule<GUI>("gui")?.setSubscreen(screen);
                 },
             ));
         });
