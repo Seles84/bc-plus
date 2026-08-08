@@ -1,5 +1,5 @@
 import * as esbuild from "esbuild";
-import { readFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, readFileSync } from "node:fs";
 
 const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
 
@@ -33,6 +33,9 @@ const options = {
     target: "es2022",
     minify: !dev,
     sourcemap: dev ? "inline" : false,
+    loader: {
+        ".png": "dataurl",
+    },
     define: {
         BCP_VERSION: JSON.stringify(dev ? pkg.displayVersion : pkg.version),
         BCP_DEV_ENV: JSON.stringify(dev),
@@ -41,6 +44,16 @@ const options = {
     },
     logLevel: "info",
 };
+
+// Ship the matching loader userscript next to the bundle: in dev/serve it can be
+// installed straight from http://localhost:3045/bcplusLoader.user.js (Tampermonkey
+// offers installation when a .user.js URL is opened); in stable builds it lands in
+// dist/ ready for the Pages deployment.
+mkdirSync("dist", { recursive: true });
+copyFileSync(
+    dev ? "static-dev/bcplusLoader.user.js" : "static-stable/bcplusLoader.user.js",
+    "dist/bcplusLoader.user.js",
+);
 
 if (serve) {
     const ctx = await esbuild.context(options);

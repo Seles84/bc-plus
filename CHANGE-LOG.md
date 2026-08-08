@@ -7,6 +7,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Stage 3 GUI framework: BC+ button on the information sheet (repositioned in tandem mode to avoid BCX's button) opening a canvas-rendered main menu.
+- Screen/page system with standard chrome (title, back button, help overlay, multi-page navigation) and immediate-mode click regions.
+- Auto-generated per-module settings screens driven by each module's `Settings` declaration (checkbox and option widgets), persisted via module data.
+- Main menu lists all modules with a GUI, shows player/version/mode status, and links to the changelog.
+- Core module setting: toggle for post-update notifications.
+- Dev/serve builds copy the dev loader to `dist/`, so it can be installed directly from `http://localhost:3045/bcplusLoader.user.js`; stable builds stage the stable loader for Pages deployment.
 - Stage 2 storage: save-file manager persisting to `Player.ExtensionSettings` (server-synced) or localStorage, with an always-written localStorage backup and recovery prompt.
 - Auto-sync: module data is exposed through a deep proxy; any mutation schedules a debounced save with a round-trip integrity check.
 - Save format `1:<lzstring-base64>:<hmac>` compatible with the original design; official builds sign saves with `BCP_SAVE_KEY` (Web Crypto HMAC-SHA256, no crypto dependency), unofficial builds mark saves with `-`.
