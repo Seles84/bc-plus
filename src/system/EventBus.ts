@@ -9,6 +9,10 @@ export interface BCPlusEvents {
     moduleUnloaded: { slug: string };
     /** Fired when BC+ presence/data arrives from another character in the room. */
     characterSyncReceived: { memberNumber: number };
+    /** Fired when a rule is violated (trigger) or an action was blocked (triggerAttempt). */
+    ruleTriggered: { rule: string; type: "trigger" | "triggerAttempt"; target: number | null };
+    /** Fired when a rule is activated or deactivated. */
+    ruleChanged: { rule: string; active: boolean };
 }
 
 type Listener<T> = (data: T) => void;

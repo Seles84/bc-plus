@@ -7,6 +7,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Stage 6a rules engine: rules restrict the player's behavior with per-rule active/enforce/log state and custom settings; hooks install when a rule activates and are removed cleanly when it deactivates.
+- Rules screen: browsable rule list with status, per-rule configuration page (toggles + custom settings), all gated on the `rules.edit` permission (Mistress by default).
+- First rules: Forbid whispering (with Lover-and-above exception), Forbid OOC messages, Forbid beep messages (plain beeps optionally allowed).
+- Rule violations and blocked attempts are reported on the event bus, ready for the Logging module.
 - Stage 5 roles & authority: seven-role hierarchy (Club Owner > Owner > Lover > Mistress > Whitelist > Friend > Public) combining BC relationships with manually assigned lists.
 - Roles screen: one page per assignable role showing BC-derived members and manual assignments, with add/remove by member number.
 - Authority module: modules register permissions; each becomes a configurable "lowest role allowed" + "allow on myself" pair with a central `hasPermission` check (blacklisted members always denied).
