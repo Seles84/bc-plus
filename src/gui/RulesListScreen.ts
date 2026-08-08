@@ -63,7 +63,7 @@ class RulesListPage extends GUIPage {
                 { Left: 150, Top: y, Width: 1100, Height: 90 },
                 { Name: definition.name, HoverText: definition.description },
                 () => {
-                    this.Core.ModuleManager.getModule<GUI>("gui")?.setSubscreen(
+                    this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(
                         new RuleConfigScreen(this.rules, this.Character, definition),
                     );
                 },
@@ -94,14 +94,6 @@ export class RuleConfigScreen extends GUIScreen {
 
     protected buildPages(): GUIPage[] {
         return [new RuleConfigPage(this)];
-    }
-
-    /** Back returns to the rules list instead of closing BC+ screens. */
-    override exit(): void {
-        void this.ActivePage?.destroy();
-        this.Core.ModuleManager.getModule<GUI>("gui")?.setSubscreen(
-            new RulesListScreen(this.Module, this.Character),
-        );
     }
 }
 

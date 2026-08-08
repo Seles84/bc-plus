@@ -115,6 +115,11 @@ export abstract class GUIScreen {
         void this.setPage(0);
     }
 
+    /** @internal Called by the GUI module when navigating back to this screen. */
+    reopen(): void {
+        void this.setPage(this.pageIndex);
+    }
+
     /** Called every frame while this screen is active. */
     render(): void {
         const page = this.ActivePage;
@@ -168,9 +173,9 @@ export abstract class GUIScreen {
         page.dispatchClick();
     }
 
+    /** Steps back to the previous BC+ screen, or out of BC+ from the root screen. */
     exit(): void {
-        void this.ActivePage?.destroy();
-        this.module.ModuleManager.getModule<GUI>("gui")?.closeSubscreen();
+        this.module.ModuleManager.getModule<GUI>("gui")?.backSubscreen();
     }
 
     nextPage(): void {

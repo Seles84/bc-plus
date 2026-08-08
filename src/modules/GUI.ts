@@ -50,16 +50,43 @@ export class GUI extends ModuleInstance {
         return this.currentSubscreen;
     }
 
+    private screenStack: GUIScreen[] = [];
+
+    /** Opens a screen as the new root, dropping any navigation history. */
     setSubscreen(screen: GUIScreen | null): void {
         if (this.currentSubscreen) {
             void this.currentSubscreen.destroy();
         }
+        this.screenStack = [];
         this.currentSubscreen = screen;
         this.setSheetDOMVisible(screen === null);
         screen?.open();
     }
 
+    /** Navigates deeper: the current screen is remembered and restored on back. */
+    pushSubscreen(screen: GUIScreen): void {
+        if (this.currentSubscreen) {
+            void this.currentSubscreen.destroy();
+            this.screenStack.push(this.currentSubscreen);
+        }
+        this.currentSubscreen = screen;
+        this.setSheetDOMVisible(false);
+        screen.open();
+    }
+
+    /** Steps back one screen; closes BC+ entirely when the history is empty. */
+    backSubscreen(): void {
+        if (this.currentSubscreen) {
+            void this.currentSubscreen.destroy();
+        }
+        const previous = this.screenStack.pop() ?? null;
+        this.currentSubscreen = previous;
+        this.setSheetDOMVisible(previous === null);
+        previous?.reopen();
+    }
+
     closeSubscreen(): void {
+        this.screenStack = [];
         this.currentSubscreen = null;
         this.setSheetDOMVisible(true);
     }
