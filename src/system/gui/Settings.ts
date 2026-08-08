@@ -22,7 +22,15 @@ export interface OptionSetting extends SettingBase {
     onSet?: (value: string, prevValue: string) => void;
 }
 
-export type AnySetting = CheckboxSetting | OptionSetting;
+export interface TextSetting extends SettingBase {
+    type: "text";
+    default: string;
+    /** Maximum input length (default 256) */
+    maxChars?: number;
+    onSet?: (value: string, prevValue: string) => void;
+}
+
+export type AnySetting = CheckboxSetting | OptionSetting | TextSetting;
 
 /** Extracts `{ name: default }` records for merging into module defaults. */
 export function settingDefaults(settings: AnySetting[]): Record<string, unknown> {

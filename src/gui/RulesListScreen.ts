@@ -114,6 +114,8 @@ export class RuleConfigScreen extends GUIScreen {
 
 class RuleConfigPage extends GUIPage {
 
+    private readonly inputs = new Map<string, string>();
+
     constructor(protected override readonly screen: RuleConfigScreen) {
         super(screen);
     }
@@ -126,6 +128,40 @@ class RuleConfigPage extends GUIPage {
             showHelp: true,
             helpText: this.screen.Definition.description,
         };
+    }
+
+    private inputId(name: string): string {
+        return `BCP_rule_${name}`;
+    }
+
+    override async create(): Promise<void> {
+        const definition = this.screen.Definition;
+        const access = this.screen.access;
+        for (const setting of definition.settings ?? []) {
+            if (setting.type !== "text") {
+                continue;
+            }
+            const id = this.inputId(setting.name);
+            const current = String(access.state(definition.id).settings[setting.name] ?? setting.default);
+            const element = ElementCreateInput(id, "text", current, String(setting.maxChars ?? 256));
+            element.addEventListener("change", () => {
+                access.setSetting(definition.id, setting.name, element.value);
+            });
+            this.inputs.set(setting.name, id);
+        }
+    }
+
+    override async destroy(): Promise<void> {
+        const definition = this.screen.Definition;
+        const access = this.screen.access;
+        for (const [name, id] of this.inputs) {
+            const element = document.getElementById(id) as HTMLInputElement | null;
+            if (element && element.value !== String(access.state(definition.id).settings[name] ?? "")) {
+                access.setSetting(definition.id, name, element.value);
+            }
+            ElementRemove(id);
+        }
+        this.inputs.clear();
     }
 
     render(): void {
@@ -195,6 +231,18 @@ class RuleConfigPage extends GUIPage {
                         const next = setting.options[(index + direction + setting.options.length) % setting.options.length]!;
                         access.setSetting(definition.id, setting.name, next);
                     });
+                    break;
+                }
+                case "text": {
+                    DrawText(setting.label, 150, y + 32, "Black");
+                    const id = this.inputs.get(setting.name);
+                    if (id) {
+                        const element = document.getElementById(id) as HTMLInputElement | null;
+                        if (element) {
+                            element.disabled = !active;
+                        }
+                        ElementPosition(id, 1250, y + 27, 750, 60);
+                    }
                     break;
                 }
             }
