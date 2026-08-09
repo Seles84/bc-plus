@@ -4,6 +4,8 @@ import { BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
 import { Role, RoleNames } from "@/system/Roles";
 import { AnySetting } from "@/system/gui/Settings";
 import { warn } from "@/system/Console";
+import { AuthorityScreen } from "@/gui/AuthorityScreen";
+import type { GUIScreen } from "@/system/gui/GUIScreen";
 import type Roles from "@/modules/Roles";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 
@@ -67,6 +69,10 @@ export default class Authority extends ModuleInstance {
 
     override get EditPermission(): string | null {
         return "authority.edit";
+    }
+
+    override get SettingsScreen(): ((character: BCPlusCharacter | null) => GUIScreen) | null {
+        return (character) => new AuthorityScreen(this, character);
     }
 
     /** Every registered permission, for grant checklists and diagnostics. */
