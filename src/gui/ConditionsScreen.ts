@@ -95,21 +95,28 @@ class ConditionsPage extends GUIPage {
         DrawText("Timer:", LABEL_X, 232, "Black");
         MainCanvas.textAlign = "center";
         this.addClickHandler(ButtonActionWidget(
-            { Left: CONTROL_X, Top: 200, Width: 120, Height: 64 },
+            { Left: CONTROL_X, Top: 200, Width: 90, Height: 64 },
             { Name: "Off", Active: canEdit, HoverText: "Remove the timer" },
             () => this.update((c) => { delete c.timerEnd; delete c.timerAction; }),
         ));
-        const HOUR = 60 * 60_000;
+        const MINUTE = 60_000;
+        const HOUR = 60 * MINUTE;
         const DAY = 24 * HOUR;
         const adjustments: { label: string; ms: number }[] = [
             { label: "-1d", ms: -DAY },
             { label: "-1h", ms: -HOUR },
+            { label: "-15m", ms: -15 * MINUTE },
+            { label: "-5m", ms: -5 * MINUTE },
+            { label: "-1m", ms: -MINUTE },
+            { label: "+1m", ms: MINUTE },
+            { label: "+5m", ms: 5 * MINUTE },
+            { label: "+15m", ms: 15 * MINUTE },
             { label: "+1h", ms: HOUR },
             { label: "+1d", ms: DAY },
         ];
         adjustments.forEach((adjustment, i) => {
             this.addClickHandler(ButtonActionWidget(
-                { Left: CONTROL_X + 140 + i * 140, Top: 200, Width: 120, Height: 64 },
+                { Left: CONTROL_X + 100 + i * 100, Top: 200, Width: 90, Height: 64 },
                 { Name: adjustment.label, Active: canEdit, HoverText: `Adjust the timer by ${adjustment.label}` },
                 () => this.update((c) => {
                     const now = Date.now();
@@ -130,7 +137,7 @@ class ConditionsPage extends GUIPage {
             typeof conditions.timerEnd === "number"
                 ? `Ends in ${formatDuration(Math.max(0, conditions.timerEnd - Date.now()))}`
                 : "No timer",
-            CONTROL_X + 140 + adjustments.length * 140 + 20, 232, "Gray",
+            CONTROL_X + 100 + adjustments.length * 100 + 20, 232, "Gray",
         );
 
         if (typeof conditions.timerEnd === "number") {
