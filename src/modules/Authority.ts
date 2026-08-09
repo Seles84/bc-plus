@@ -8,6 +8,27 @@ import type Roles from "@/modules/Roles";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 
 /**
+ * Whether a grant set covers a permission, honoring scoped entries
+ * (`perm:scope`). Full grants cover every scope; without a queried scope,
+ * any scoped grant still counts as access to the permission in general.
+ */
+function matchGrants(grants: Set<string>, permissionId: string, scope?: string): boolean {
+    if (grants.has(permissionId)) {
+        return true;
+    }
+    if (scope !== undefined) {
+        return grants.has(`${permissionId}:${scope}`);
+    }
+    const prefix = `${permissionId}:`;
+    for (const grant of grants) {
+        if (grant.startsWith(prefix)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/**
  * Central permission checks. Modules register PermissionDefinitions
  * (collected by the ModuleManager); each becomes a configurable pair of
  * "lowest role allowed" and "can I do this to myself".
@@ -89,8 +110,11 @@ export default class Authority extends ModuleInstance {
     /**
      * Whether the given member may use the given permission on the player.
      * Unknown permissions and blacklisted members are always denied.
+     * @param scope - The specific object being touched (rule id, curse slot);
+     *   scoped custom-role grants (`perm:scope`) only pass for their scope.
+     *   Without a scope, any grant for the permission counts as access.
      */
-    hasPermission(memberNumber: number, permissionId: string): boolean {
+    hasPermission(memberNumber: number, permissionId: string, scope?: string): boolean {
         const def = this.registry.get(permissionId);
         if (!def) {
             warn(`Checked unknown permission: ${permissionId}`);
@@ -112,7 +136,7 @@ export default class Authority extends ModuleInstance {
             return true;
         }
         // Custom roles grant additively on top of the hierarchy
-        return roles.customGrantsOf(memberNumber).has(permissionId);
+        return matchGrants(roles.customGrantsOf(memberNumber), permissionId, scope);
     }
 
     /**
@@ -122,9 +146,9 @@ export default class Authority extends ModuleInstance {
      * UI to offer. Whitelist/Friend standing is not visible remotely, so the
      * preview can under-estimate (never over-estimates roles it can see).
      */
-    remoteHasPermission(character: BCPlusCharacter, permissionId: string): boolean {
+    remoteHasPermission(character: BCPlusCharacter, permissionId: string, scope?: string): boolean {
         if (character.isPlayer()) {
-            return this.hasPermission(Player.MemberNumber ?? -1, permissionId);
+            return this.hasPermission(Player.MemberNumber ?? -1, permissionId, scope);
         }
         const def = this.registry.get(permissionId);
         if (!def) {
@@ -141,12 +165,13 @@ export default class Authority extends ModuleInstance {
         const me = Player.MemberNumber ?? -1;
         const customRoles = character.BCPData?.["roles"]?.["customRoles"];
         if (typeof customRoles === "object" && customRoles !== null) {
+            const grants = new Set<string>();
             for (const role of Object.values(customRoles as Record<string, { members?: number[]; grants?: string[] }>)) {
-                if (Array.isArray(role.members) && role.members.includes(me)
-                    && Array.isArray(role.grants) && role.grants.includes(permissionId)) {
-                    return true;
+                if (Array.isArray(role.members) && role.members.includes(me) && Array.isArray(role.grants)) {
+                    role.grants.forEach((g) => grants.add(g));
                 }
             }
+            return matchGrants(grants, permissionId, scope);
         }
         return false;
     }
