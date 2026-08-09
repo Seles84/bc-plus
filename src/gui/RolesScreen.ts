@@ -74,9 +74,14 @@ export class RolesScreen extends GUIScreen {
         return this.Module as Roles;
     }
 
-    canEdit(): boolean {
+    canAssign(): boolean {
         const authority = this.Module.ModuleManager.getModule<Authority>("authority");
-        return authority?.hasPermission(Player.MemberNumber ?? -1, "roles.manage") ?? false;
+        return authority?.hasPermission(Player.MemberNumber ?? -1, "roles.assign") ?? false;
+    }
+
+    canRevoke(): boolean {
+        const authority = this.Module.ModuleManager.getModule<Authority>("authority");
+        return authority?.hasPermission(Player.MemberNumber ?? -1, "roles.revoke") ?? false;
     }
 
     /** Built-in assignable ranks followed by custom role ids. */
@@ -151,7 +156,7 @@ class RolesTablePage extends GUIPage {
                 + "relationships; Owner and Mistress are ranks in the hierarchy; custom roles (create "
                 + "them top right) are permission bundles that grant exactly what you configure - "
                 + "click a custom role's name to set its grants. Whitelist and Friend follow your BC "
-                + "lists and are not listed. Managing assignments requires roles.manage.",
+                + "lists and are not listed. Adding assignments requires roles.assign; removing them requires roles.revoke.",
         };
     }
 
@@ -164,14 +169,15 @@ class RolesTablePage extends GUIPage {
     }
 
     render(): void {
-        const canEdit = this.screen.canEdit();
+        const canAssign = this.screen.canAssign();
+        const canRevoke = this.screen.canRevoke();
 
         DrawText("Role", COL_ROLE, 225, "Gray");
         DrawText("ID", COL_ID, 225, "Gray");
         DrawText("Name", COL_NAME, 225, "Gray");
         DrawEmptyRect(COL_ROLE, 245, 1700 - COL_ROLE + 60, 0, "Gray");
 
-        if (canEdit) {
+        if (canAssign) {
             MainCanvas.textAlign = "center";
             this.addClickHandler(ButtonActionWidget(
                 { Left: 1520, Top: 150, Width: 280, Height: 60 },
@@ -217,7 +223,7 @@ class RolesTablePage extends GUIPage {
             DrawText(row.name, COL_NAME, y + 40, row.empty ? "Gray" : "Black");
             if (row.derived) {
                 DrawText("from BC", COL_ACTION - 40, y + 40, "Gray");
-            } else if (canEdit && !row.empty) {
+            } else if (canRevoke && !row.empty) {
                 MainCanvas.textAlign = "center";
                 DrawButton(COL_ACTION, y, 60, 60, "X", "White", "", `Remove ${row.name} from ${this.screen.roleLabel(row.role)}`);
                 MainCanvas.textAlign = "left";
@@ -231,8 +237,13 @@ class RolesTablePage extends GUIPage {
             DrawEmptyRect(COL_ROLE, y + ROW_HEIGHT - 4, 1700 - COL_ROLE + 60, 0, "#ddd");
         });
 
-        if (!canEdit) {
-            DrawText("You do not have permission to manage roles; viewing only.", COL_ROLE, 905, "Gray");
+        if (!canAssign) {
+            DrawText(
+                canRevoke
+                    ? "You may remove assignments but not add new ones."
+                    : "You do not have permission to manage roles; viewing only.",
+                COL_ROLE, 905, "Gray",
+            );
             return;
         }
 
@@ -330,9 +341,9 @@ export class CustomRoleScreen extends GUIScreen {
         return `Role - ${roles.getCustomRole(this.roleId)?.name ?? "?"}`;
     }
 
-    canEditRoles(): boolean {
+    canDeleteRole(): boolean {
         const authority = this.Module.ModuleManager.getModule<Authority>("authority");
-        return authority?.hasPermission(Player.MemberNumber ?? -1, "roles.manage") ?? false;
+        return authority?.hasPermission(Player.MemberNumber ?? -1, "roles.revoke") ?? false;
     }
 
     protected buildPages(): GUIPage[] {
@@ -359,7 +370,7 @@ class CustomRolePage extends GUIPage {
             helpText: "A custom role grants exactly the ticked permissions to its members, on top of "
                 + "whatever their rank already allows. Grants are additive only - a custom role can "
                 + "never take permissions away. Editing grants requires authority.edit; deleting the "
-                + "role requires roles.manage.",
+                + "role requires roles.revoke.",
         };
     }
 
@@ -371,7 +382,7 @@ class CustomRolePage extends GUIPage {
         }
         const authority = this.Core.ModuleManager.getModule<Authority>("authority");
         const canEditGrants = authority?.hasPermission(Player.MemberNumber ?? -1, "authority.edit") ?? false;
-        const canManage = this.screen.canEditRoles();
+        const canManage = this.screen.canDeleteRole();
 
         DrawText(`Members: ${role.members.length} (assign on the Roles table)`, 150, 230, "Gray");
         DrawText("This role grants:", 150, 300, "Black");

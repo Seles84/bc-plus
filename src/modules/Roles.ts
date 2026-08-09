@@ -51,12 +51,20 @@ export default class Roles extends ModuleInstance {
     };
 
     override get Permissions(): PermissionDefinition[] {
-        return [{
-            id: "roles.manage",
-            label: "Manage role assignments",
-            defaultRole: Role.Owner,
-            defaultSelf: true,
-        }];
+        return [
+            {
+                id: "roles.assign",
+                label: "Assign roles (and create custom roles)",
+                defaultRole: Role.Owner,
+                defaultSelf: true,
+            },
+            {
+                id: "roles.revoke",
+                label: "Remove roles (and delete custom roles)",
+                defaultRole: Role.Owner,
+                defaultSelf: true,
+            },
+        ];
     }
 
     override get Defaults(): Record<string, unknown> {
