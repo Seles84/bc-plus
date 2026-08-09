@@ -1,5 +1,5 @@
 import { ModuleInstance } from "@/system/module/ModuleInstance";
-import { ModuleConfig } from "@/system/module/ModuleTypes";
+import { ModuleConfig, SettingsFooterRenderer } from "@/system/module/ModuleTypes";
 import { BCPLUS_APP_NAME, BCPLUS_AUTHOR, BCPLUS_REPO, BCPLUS_VERSION } from "@/system/Constants";
 import { log, warn } from "@/system/Console";
 import { InfoBeep } from "@/utils/BCUtils";
@@ -67,6 +67,42 @@ export default class Core extends ModuleInstance {
     getPreset(): BCPPreset {
         const value = this.getSetting<string>("preset");
         return (PRESETS as readonly string[]).includes(value) ? value as BCPPreset : "Switch";
+    }
+
+    /** While in the future, the reset button is armed and a second click wipes. */
+    private resetArmedUntil = 0;
+
+    /** Two-step "Reset BC+" button: arm on first click, wipe on the second within 3s. */
+    override get SettingsFooter(): SettingsFooterRenderer | null {
+        return (addClickHandler) => {
+            const armed = Date.now() < this.resetArmedUntil;
+            const prevAlign = MainCanvas.textAlign;
+            MainCanvas.textAlign = "center";
+            DrawButton(
+                150, 880, 340, 70,
+                armed ? "Confirm reset" : "Reset BC+",
+                armed ? "#ff5252" : "#c94f4f",
+                "",
+                armed
+                    ? "Click again to wipe ALL BC+ data and reload"
+                    : "Factory reset - wipes every BC+ setting, rule, curse, role and log entry",
+            );
+            MainCanvas.textAlign = prevAlign;
+            addClickHandler(() => {
+                if (!MouseIn(150, 880, 340, 70)) {
+                    return;
+                }
+                if (Date.now() < this.resetArmedUntil) {
+                    this.resetArmedUntil = 0;
+                    if (this.Storage.wipeAllData(false)) {
+                        BCPNotifyPlayer("BC+ has been reset. Reloading...");
+                        setTimeout(() => window.location.reload(), 1500);
+                    }
+                } else {
+                    this.resetArmedUntil = Date.now() + 3000;
+                }
+            });
+        };
     }
 
     /** Whether the first-run welcome has not been completed yet. */

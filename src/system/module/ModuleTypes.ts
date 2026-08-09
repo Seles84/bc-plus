@@ -12,6 +12,9 @@ export interface PermissionDefinition {
     defaultSelf: boolean;
 }
 
+/** Renders extra widgets at the bottom of a module's settings page (own view only). */
+export type SettingsFooterRenderer = (addClickHandler: (handler: () => void) => void) => void;
+
 export interface ModuleConfig {
     /** Display name of the module */
     Name: string;
