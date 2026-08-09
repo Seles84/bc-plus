@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+- The `roles.manage` permission is split into `roles.assign` (add role assignments, create custom roles) and `roles.revoke` (remove assignments, delete custom roles) — so someone can be allowed to promote without being able to demote, or vice versa. Both default to Owner; existing custom-role grants of the old permission become inert.
+
 ### Added
 - Praise, scold and notes: when viewing someone's log with the right permissions, you can praise or scold them (with an optional message) or attach a note — the entry lands in their behavior log with your name, they're notified, and your view refreshes. Two new permissions: `log.praise` and `log.note` (both Mistress default).
 - Originator tracking: rules and curses now record who set them — shown on the rule config screen and hover details ("Set by ...") and on the curse slot screen ("Cursed by ..."). Recorded by your own client from the validated command sender; cleared when a rule deactivates; imports are attributed to the importer.
