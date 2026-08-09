@@ -64,6 +64,7 @@ export interface RuleDefinition {
 }
 
 import type { ConditionData } from "@/system/conditions/Conditions";
+import type { Originator } from "@/system/module/ModuleTypes";
 
 /** Per-rule persisted state. */
 export interface RuleStateData {
@@ -75,6 +76,8 @@ export interface RuleStateData {
     settings: Record<string, unknown>;
     /** When the rule is in effect; absent = always while active */
     conditions?: ConditionData;
+    /** Who activated the rule (cleared on deactivation) */
+    addedBy?: Originator;
 }
 
 export function defaultRuleState(definition: RuleDefinition): RuleStateData {

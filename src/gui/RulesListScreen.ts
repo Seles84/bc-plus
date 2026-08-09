@@ -106,9 +106,10 @@ class RulesListPage extends GUIPage {
             const status = state.active
                 ? `Active${state.enforce ? ", enforced" : ""}${state.log ? ", logged" : ""}${state.announce ? ", announced" : ""}`
                 : "Not active";
+            const origin = state.active && state.addedBy ? ` Set by ${state.addedBy.name} (#${state.addedBy.member}).` : "";
             DrawInfoPanel(
                 `${definition.name}  ·  ${definition.category}`,
-                `${definition.description} — ${status}. ${describeConditions(state.conditions)}.`,
+                `${definition.description} — ${status}. ${describeConditions(state.conditions)}.${origin}`,
                 { Left: COL_X[1 - column]!, Top: LIST_TOP, Width: NAME_W + CHIP_W + 60, Height: ROWS_PER_COL * ROW_H - 16 },
             );
         }
@@ -261,6 +262,9 @@ class RuleConfigPage extends GUIPage {
         ));
         MainCanvas.textAlign = "left";
         DrawTextFit(describeConditions(state.conditions), 1400, 420, 460, "Gray");
+        if (state.active && state.addedBy) {
+            DrawTextFit(`Set by ${state.addedBy.name} (#${state.addedBy.member})`, 1400, 470, 460, "Gray");
+        }
 
         const settings = definition.settings ?? [];
         settings.forEach((setting, i) => {

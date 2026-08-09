@@ -15,6 +15,12 @@ export interface PermissionDefinition {
 /** Renders extra widgets at the bottom of a module's settings page (own view only). */
 export type SettingsFooterRenderer = (addClickHandler: (handler: () => void) => void) => void;
 
+/** Who set a rule/curse: recorded target-side, never trusted from the requester. */
+export interface Originator {
+    member: number;
+    name: string;
+}
+
 export interface ModuleConfig {
     /** Display name of the module */
     Name: string;

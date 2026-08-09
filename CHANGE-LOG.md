@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- Originator tracking: rules and curses now record who set them — shown on the rule config screen and hover details ("Set by ...") and on the curse slot screen ("Cursed by ..."). Recorded by your own client from the validated command sender; cleared when a rule deactivates; imports are attributed to the importer.
+- Commands can be scoped in custom-role grants: a role can grant exactly the commands you pick (e.g. only Kneel), with anything else rejected per-command by the target's client.
+
 ### Changed
 - Authority screen is now a table: one row per permission with its name, a lowest-role selector and the self-access checkbox — all permissions on one page instead of two rows each across two pages. Works identically for remote viewing/editing.
 - Presets lock once chosen: picking a preset (in the welcome flow or General settings) asks for confirmation and then locks the choice — only a factory reset clears it. The General option shows as disabled while locked.
