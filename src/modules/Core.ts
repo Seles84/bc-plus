@@ -5,7 +5,7 @@ import { log, warn } from "@/system/Console";
 import { InfoBeep } from "@/utils/BCUtils";
 import { BCPVersionCompare, parseBCPVersion } from "@/utils/Version";
 import { AnySetting } from "@/system/gui/Settings";
-import { confirmBox } from "@/system/Console";
+import { modalConfirm } from "@/gui/Modal";
 import { BCPNotifyPlayer } from "@/utils/Messaging";
 import type Authority from "@/modules/Authority";
 
@@ -38,7 +38,13 @@ export default class Core extends ModuleInstance {
         return {
             ...super.Defaults,
             firstRun: true,
+            presetLocked: false,
         };
+    }
+
+    /** Once a preset has been explicitly chosen, it is locked until a factory reset. */
+    isPresetLocked(): boolean {
+        return this.Data.presetLocked === true;
     }
 
     override get Settings(): AnySetting[] {
@@ -49,10 +55,12 @@ export default class Core extends ModuleInstance {
                 label: "Play preset",
                 hoverText: "Dominant: BC+ rules, curses and logging never apply to you. "
                     + "Switch/Submissive: everything available. "
-                    + "Slave: locks you out of changing your own rules, curses and permissions.",
+                    + "Slave: locks you out of changing your own rules, curses and permissions. "
+                    + "Once chosen, the preset is locked - only a factory reset clears it.",
                 options: [...PRESETS],
                 default: "Switch",
-                onSet: (value, prev) => this.onPresetChanged(value as BCPPreset, prev as BCPPreset),
+                active: () => !this.isPresetLocked(),
+                onSet: (value, prev) => void this.onPresetChanged(value as BCPPreset, prev as BCPPreset),
             },
             {
                 type: "checkbox",
@@ -94,10 +102,12 @@ export default class Core extends ModuleInstance {
                 }
                 if (Date.now() < this.resetArmedUntil) {
                     this.resetArmedUntil = 0;
-                    if (this.Storage.wipeAllData(false)) {
-                        BCPNotifyPlayer("BC+ has been reset. Reloading...");
-                        setTimeout(() => window.location.reload(), 1500);
-                    }
+                    void this.Storage.wipeAllData(false).then((wiped) => {
+                        if (wiped) {
+                            BCPNotifyPlayer("BC+ has been reset. Reloading...");
+                            setTimeout(() => window.location.reload(), 1500);
+                        }
+                    });
                 } else {
                     this.resetArmedUntil = Date.now() + 3000;
                 }
@@ -114,41 +124,45 @@ export default class Core extends ModuleInstance {
         this.Data.firstRun = false;
     }
 
-    /** Applies a preset choice with full side effects (used by the welcome screen). */
-    choosePreset(value: BCPPreset): void {
-        const prev = this.getPreset();
-        if (value === prev) {
-            return;
+    /**
+     * Applies a preset choice with full side effects (used by the welcome
+     * screen); resolves with whether the choice was confirmed and applied.
+     */
+    async choosePreset(value: BCPPreset): Promise<boolean> {
+        if (this.isPresetLocked()) {
+            return false;
         }
+        const prev = this.getPreset();
         this.setSetting("preset", value);
-        this.onPresetChanged(value, prev);
+        return this.onPresetChanged(value, prev);
     }
 
-    private onPresetChanged(value: BCPPreset, prev: BCPPreset): void {
+    private async onPresetChanged(value: BCPPreset, prev: BCPPreset): Promise<boolean> {
+        const warning = value === "Slave"
+            ? "\n\nSlave removes your OWN access to change your rules, curses and permissions - "
+            + "only people your permissions allow (e.g. your Owner) will be able to change them for you."
+            : "";
+        const confirmed = await modalConfirm(
+            `Set your preset to ${value}?\nOnce chosen, the preset is locked - only a factory reset clears it.${warning}`,
+            value === "Slave",
+        );
+        if (!confirmed) {
+            this.setSetting("preset", prev);
+            return false;
+        }
         if (value === "Slave") {
-            if (!confirmBox(
-                "The Slave preset removes your OWN access to change your rules, curses and permissions.\n"
-                + "Only people your permissions allow (e.g. your Owner) will be able to change them for you.\n"
-                + "Are you sure?",
-            )) {
-                this.setSetting("preset", prev);
-                return;
-            }
             const authority = this.ModuleManager.getModule<Authority>("authority");
             for (const permission of SLAVE_LOCKED_PERMISSIONS) {
                 authority?.setSetting(`${permission}.self`, false);
             }
             BCPNotifyPlayer("Slave preset applied: your rules, curses and permissions are now in others' hands.");
-        } else if (prev === "Slave") {
-            // Leaving Slave does NOT restore self-access automatically - that
-            // is up to whoever holds authority.edit (possibly still you, if
-            // it was never locked or someone restored it).
-            BCPNotifyPlayer(`Preset changed to ${value}. Self-access permissions are not restored automatically.`);
         }
         if (value === "Dominant") {
             BCPNotifyPlayer("Dominant preset: BC+ rules, curses and logging will not apply to you.");
         }
+        this.Data.presetLocked = true;
         (this.ModuleManager.getModule("rules") as { applyPreset?: () => void } | undefined)?.applyPreset?.();
+        return true;
     }
 
     override Load(): void {

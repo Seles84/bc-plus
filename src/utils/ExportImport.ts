@@ -1,4 +1,5 @@
 import { BCPNotifyPlayer } from "@/utils/Messaging";
+import { modalPrompt } from "@/gui/Modal";
 
 const CODE_PREFIX = "BCP1";
 const MAX_CODE_LENGTH = 30_000;
@@ -26,21 +27,21 @@ export function decodeExport(code: string, expectedType: string): unknown | null
     }
 }
 
-/** Copies a code to the clipboard, falling back to a copyable prompt. */
+/** Copies a code to the clipboard, falling back to a copyable modal. */
 export function copyExportCode(code: string): void {
     const clipboard = navigator.clipboard;
     if (clipboard?.writeText) {
         clipboard.writeText(code).then(
             () => BCPNotifyPlayer("Export code copied to clipboard."),
-            () => window.prompt("Copy the export code:", code),
+            () => void modalPrompt("Copy the export code:", code, 40_000),
         );
     } else {
-        window.prompt("Copy the export code:", code);
+        void modalPrompt("Copy the export code:", code, 40_000);
     }
 }
 
 /** Asks the player to paste a code; null when cancelled/empty. */
-export function promptImportCode(): string | null {
-    const code = window.prompt("Paste a BC+ code:");
+export async function promptImportCode(): Promise<string | null> {
+    const code = await modalPrompt("Paste a BC+ code:", "", 40_000);
     return code && code.trim().length > 0 ? code.trim() : null;
 }
