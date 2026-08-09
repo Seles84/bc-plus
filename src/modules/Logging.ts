@@ -131,6 +131,11 @@ export default class Logging extends ModuleInstance {
         return this.remoteLogs.get(memberNumber);
     }
 
+    /** Asks another character to clear their log; their client validates log.delete. */
+    requestClear(memberNumber: number): void {
+        SendBCPMessage({ message: "LogClear" }, memberNumber);
+    }
+
     override Load(): void {
         this.Events.on("ruleTriggered", ({ rule, type, target }) => {
             const name = this.ModuleManager.getModule<Rules>("rules")?.getDefinition(rule)?.name ?? rule;
@@ -176,6 +181,32 @@ export default class Logging extends ModuleInstance {
                 message: "LogResponse",
                 entries: jsonClone(this.Entries.slice(-LOG_REMOTE_LIMIT)),
             }, senderNumber);
+        });
+
+        // Remote log clearing - validated here against log.delete
+        this.addSyncListener("LogClear", (sender) => {
+            const senderNumber = sender.MemberNumber;
+            if (typeof senderNumber !== "number") {
+                return;
+            }
+            const authority = this.ModuleManager.getModule<Authority>("authority");
+            if (!authority?.hasPermission(senderNumber, "log.delete")) {
+                SendBCPMessage({ message: "LogClearResult", ok: false, reason: "no permission" }, senderNumber);
+                return;
+            }
+            this.clear();
+            BCPNotifyPlayer(`${sender.Name} (#${senderNumber}) cleared your behavior log.`);
+            SendBCPMessage({ message: "LogClearResult", ok: true }, senderNumber);
+        });
+
+        this.addSyncListener("LogClearResult", (sender, content) => {
+            const senderNumber = sender.MemberNumber;
+            if (content.ok === false) {
+                BCPNotifyPlayer(`${sender.Name} rejected the clear${typeof content.reason === "string" ? `: ${content.reason}` : "."}`);
+            } else if (typeof senderNumber === "number") {
+                BCPNotifyPlayer(`${sender.Name}'s log has been cleared.`);
+                this.requestLog(senderNumber);
+            }
         });
 
         // Praise/scold/notes from others - validated here, entry composed here

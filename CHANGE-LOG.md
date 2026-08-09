@@ -6,23 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
-### Changed
-- The `roles.manage` permission is split into `roles.assign` (add role assignments, create custom roles) and `roles.revoke` (remove assignments, delete custom roles) — so someone can be allowed to promote without being able to demote, or vice versa. Both default to Owner; existing custom-role grants of the old permission become inert.
-
 ### Added
+- Remote role management: the Roles screen now works on other BC+ users — see their role table (BC Owner and Lover from their visible relationships, Owner/Mistress/custom roles from their synced data) and add or remove assignments if their `roles.assign`/`roles.revoke` permissions allow you. Every change is validated by their client and confirmed via their auto-broadcast; they get notified and it lands in their log. Creating custom roles and editing grants stays local-only.
+- Remote log clearing: a "Clear log" button on someone else's log (shown when their `log.delete` permission allows you), with a confirmation dialog. Their client validates, they're notified who cleared it, and your view refreshes.
 - Praise, scold and notes: when viewing someone's log with the right permissions, you can praise or scold them (with an optional message) or attach a note — the entry lands in their behavior log with your name, they're notified, and your view refreshes. Two new permissions: `log.praise` and `log.note` (both Mistress default).
 - Originator tracking: rules and curses now record who set them — shown on the rule config screen and hover details ("Set by ...") and on the curse slot screen ("Cursed by ..."). Recorded by your own client from the validated command sender; cleared when a rule deactivates; imports are attributed to the importer.
 - Commands can be scoped in custom-role grants: a role can grant exactly the commands you pick (e.g. only Kneel), with anything else rejected per-command by the target's client.
-
-### Changed
-- Authority screen is now a table: one row per permission with its name, a lowest-role selector and the self-access checkbox — all permissions on one page instead of two rows each across two pages. Works identically for remote viewing/editing.
-- Presets lock once chosen: picking a preset (in the welcome flow or General settings) asks for confirmation and then locks the choice — only a factory reset clears it. The General option shows as disabled while locked.
-- All browser popups (alert/confirm/prompt) replaced with BC+-styled in-page dialogs: dark themed, Enter confirms, Escape cancels, and they work everywhere — including during login before any screen exists.
-
-### Added
 - "Reset BC+" button on the General settings page: click once to arm it ("Confirm reset", 3-second window), click again to wipe all BC+ data and reload — same effect as `/bcp reset`.
 - First-run welcome: new installs get a welcome notification pointing at the profile button, and the first menu open shows a short BC+ tour followed by the preset choice (with honest descriptions of each — including exactly what Slave gives up). Existing installs see it once too. "Decide later" keeps the Switch default.
 - `/bcp reset` — factory reset: wipes all BC+ data (rules, curses, roles, permissions, log) after typing your member number to confirm, then reloads the club into a fresh first-time state.
+
+### Changed
+- Presets now configure your permissions to match when chosen: Dominant closes everything to others (BC Owner threshold) with full self-access; Switch applies the balanced defaults; Submissive is the defaults plus public viewing; Slave is Submissive plus removing your own access to rules, curses, permissions, roles and log clearing. The welcome tour and preset descriptions spell this out.
+- Presets lock once chosen: picking a preset (in the welcome flow or General settings) asks for confirmation and then locks the choice — only a factory reset clears it. The General option shows as disabled while locked, and the lock is enforced even if something bypasses the disabled UI control.
+- The `roles.manage` permission is split into `roles.assign` (add role assignments, create custom roles) and `roles.revoke` (remove assignments, delete custom roles) — so someone can be allowed to promote without being able to demote, or vice versa. Both default to Owner; existing custom-role grants of the old permission become inert.
+- Authority screen is now a table: one row per permission with its name, a lowest-role selector and the self-access checkbox — all permissions on one page instead of two rows each across two pages. Works identically for remote viewing/editing.
+- All browser popups (alert/confirm/prompt) replaced with BC+-styled in-page dialogs: dark themed, Enter confirms, Escape cancels, and they work everywhere — including during login before any screen exists.
 
 ## [0.3.0] - 2026-08-09
 
