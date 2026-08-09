@@ -13,6 +13,7 @@ import type Authority from "@/modules/Authority";
 import type Roles from "@/modules/Roles";
 import type Rules from "@/modules/Rules";
 import type Curses from "@/modules/Curses";
+import type Commands from "@/modules/Commands";
 import type { ManualRole } from "@/modules/Roles";
 
 interface ScopeItem {
@@ -29,6 +30,10 @@ function scopeItemsFor(core: BCPlus, permissionId: string): ScopeItem[] | null {
     if (permissionId === "curses.edit") {
         const curses = core.ModuleManager.getModule<Curses>("curses");
         return curses?.curseableGroups().map((g) => ({ id: g.Name as string, label: g.Description })) ?? null;
+    }
+    if (permissionId === "commands.use") {
+        const commands = core.ModuleManager.getModule<Commands>("commands");
+        return commands?.Definitions.map((d) => ({ id: d.id, label: d.name })) ?? null;
     }
     return null;
 }

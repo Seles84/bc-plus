@@ -101,8 +101,8 @@ export default class Commands extends ModuleInstance {
             return;
         }
         const authority = this.ModuleManager.getModule<Authority>("authority");
-        if (!authority?.hasPermission(senderNumber, "commands.use")) {
-            reject("no permission");
+        if (!authority?.hasPermission(senderNumber, "commands.use", definition.id)) {
+            reject("no permission for this command");
             return;
         }
         const argument = typeof content.argument === "string"

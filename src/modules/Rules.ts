@@ -12,6 +12,7 @@ import { jsonClone } from "@/utils/BCUtils";
 import { conditionsExpired, conditionsMet, sanitizeConditions } from "@/system/conditions/Conditions";
 import { debug, warn } from "@/system/Console";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
+import type { Originator } from "@/system/module/ModuleTypes";
 import type Roles from "@/modules/Roles";
 import type Authority from "@/modules/Authority";
 import type DataSync from "@/modules/DataSync";
@@ -137,7 +138,7 @@ export default class Rules extends ModuleInstance {
         return applied;
     }
 
-    setRuleActive(id: string, active: boolean): void {
+    setRuleActive(id: string, active: boolean, by?: Originator): void {
         if (active && this.Preset === "Dominant") {
             BCPNotifyPlayer("Your Dominant preset does not accept rules.");
             return;
@@ -148,8 +149,10 @@ export default class Rules extends ModuleInstance {
         }
         state.active = active;
         if (active) {
+            state.addedBy = by ?? { member: Player.MemberNumber ?? -1, name: Player.Nickname || Player.Name };
             this.installRule(id);
         } else {
+            delete state.addedBy;
             this.uninstallRule(id);
         }
         this.Events.emit("ruleChanged", { rule: id, active });
@@ -396,7 +399,7 @@ export default class Rules extends ModuleInstance {
         let applied = false;
         let verb = "changed";
         if (action === "setActive" && typeof value === "boolean") {
-            this.setRuleActive(rule, value);
+            this.setRuleActive(rule, value, { member: senderNumber, name: sender.Name });
             verb = value ? "activated" : "deactivated";
             applied = true;
         } else if (action === "setEnforce" && typeof value === "boolean") {

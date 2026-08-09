@@ -12,6 +12,7 @@ import { conditionsExpired, conditionsMet, sanitizeConditions } from "@/system/c
 import type Roles from "@/modules/Roles";
 import { debug, err } from "@/system/Console";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
+import type { Originator } from "@/system/module/ModuleTypes";
 import type Authority from "@/modules/Authority";
 import type Logging from "@/modules/Logging";
 
@@ -108,6 +109,8 @@ export default class Curses extends ModuleInstance {
         for (const [group, raw] of Object.entries(payload as Record<string, unknown>)) {
             const slot = this.sanitizeSlot(group, raw, validGroups);
             if (slot) {
+                // Imports are attributed to the importer, never the code's author
+                slot.addedBy = { member: Player.MemberNumber ?? -1, name: Player.Nickname || Player.Name };
                 this.Slots[group] = slot;
                 applied++;
             }
@@ -159,7 +162,7 @@ export default class Curses extends ModuleInstance {
     }
 
     /** Curses a slot, capturing its current state: worn item becomes the first allowed item, empty stays empty. */
-    addCurse(group: AssetGroupName): CurseSlotData {
+    addCurse(group: AssetGroupName, by?: Originator): CurseSlotData {
         const existing = this.Slots[group];
         if (existing) {
             return existing;
@@ -170,6 +173,7 @@ export default class Curses extends ModuleInstance {
             active: true,
             allowEmpty: worn === null,
             items: worn ? [captureItemSpec(worn, true)] : [],
+            addedBy: by ?? { member: Player.MemberNumber ?? -1, name: Player.Nickname || Player.Name },
         };
         this.Slots[group] = slot;
         this.Events.emit("curseChanged", { group, active: true });
@@ -280,7 +284,7 @@ export default class Curses extends ModuleInstance {
         let applied = false;
         let verb = "changed the curse on";
         if (action === "addCurse" && this.curseableGroups().some((g) => g.Name === group)) {
-            this.addCurse(group as AssetGroupName);
+            this.addCurse(group as AssetGroupName, { member: senderNumber, name: sender.Name });
             verb = "cursed";
             applied = true;
         } else if (action === "removeCurse" && this.Slots[group]) {

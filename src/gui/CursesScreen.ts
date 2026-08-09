@@ -327,6 +327,9 @@ class CurseSlotPage extends GUIPage {
         ));
         MainCanvas.textAlign = "left";
         DrawTextFit(describeConditions(slot.conditions), 1400, 320, 460, "Gray");
+        if (slot.addedBy) {
+            DrawTextFit(`Cursed by ${slot.addedBy.name} (#${slot.addedBy.member})`, 1400, 370, 460, "Gray");
+        }
 
         DrawText("Allowed items (each with its own rules):", 150, 400, "Black");
         if (slot.items.length === 0) {
