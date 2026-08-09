@@ -73,19 +73,24 @@ class WelcomePage extends GUIPage {
 const PRESET_CHOICES: { preset: BCPPreset; blurb: string }[] = [
     {
         preset: "Dominant",
-        blurb: "You hold the keys. Rules, curses and the log never apply to you - BC+ is your toolkit for managing others.",
+        blurb: "You hold the keys. Rules, curses and the log never apply to you, and your permissions "
+            + "start fully closed - nobody gets access unless you open it. BC+ is your toolkit for managing others.",
     },
     {
         preset: "Switch",
-        blurb: "Everything available, nothing locked. The balanced default - change it any time in General settings.",
+        blurb: "The balanced middle: everything available, permissions at sensible defaults "
+            + "(your Owner and Mistresses can manage you; you keep full self-access).",
     },
     {
         preset: "Submissive",
-        blurb: "Everything available and ready for the receiving end. You keep control of your own settings.",
+        blurb: "Ready for the receiving end: anyone may view your BC+, your Owner and Mistresses can "
+            + "manage you - and you keep control of your own settings.",
     },
     {
         preset: "Slave",
-        blurb: "Hands off the wheel: after a confirmation, you lose access to your own rules, curses and permissions. Only those you empower can change them - and only they can give control back.",
+        blurb: "Hands off the wheel: after a confirmation, you lose self-access to your rules, curses, "
+            + "permissions, roles and log clearing. Only those you empower can change them - and only "
+            + "they can give control back.",
     },
 ];
 
@@ -106,7 +111,7 @@ class PresetPage extends GUIPage {
 
     render(): void {
         const core = this.Core.ModuleManager.getModule("core") as Core | undefined;
-        DrawText("Pick the preset that fits you - it only sets sensible starting points.", 150, 220, "Gray");
+        DrawText("Pick the preset that fits you - it configures your permissions to match and then locks in. Only a factory reset clears it.", 150, 220, "Gray");
 
         MainCanvas.textAlign = "center";
         PRESET_CHOICES.forEach((choice, i) => {

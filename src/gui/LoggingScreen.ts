@@ -1,7 +1,7 @@
 import { GUIPage, GUIScreen, PageOptions } from "@/system/gui/GUIScreen";
 import { LogEntry, formatLogTime } from "@/system/logging/LogTypes";
 import { ButtonActionWidget } from "@/system/gui/Widgets";
-import { modalPrompt } from "@/gui/Modal";
+import { modalConfirm, modalPrompt } from "@/gui/Modal";
 import { SendBCPMessage } from "@/utils/Messaging";
 import type Authority from "@/modules/Authority";
 import type Logging from "@/modules/Logging";
@@ -160,6 +160,18 @@ class LogPage extends GUIPage {
             { Left: 630, Top: 910, Width: 260, Height: 70 },
             { Name: "Leave note", Active: canNote, HoverText: "Attach a note to their log" },
             () => this.sendEntry(character.MemberNumber, "note", "Note text:", false),
+        ));
+        const canClear = authority?.remoteHasPermission(character, "log.delete") ?? false;
+        this.addClickHandler(ButtonActionWidget(
+            { Left: 1450, Top: 910, Width: 300, Height: 70 },
+            { Name: "Clear log", Active: canClear, HoverText: "Removes all entries from their log (their client validates)" },
+            () => {
+                void modalConfirm(`Clear ${character.Nickname}'s entire behavior log?`, true).then((confirmed) => {
+                    if (confirmed) {
+                        this.logging.requestClear(character.MemberNumber);
+                    }
+                });
+            },
         ));
         MainCanvas.textAlign = "left";
     }

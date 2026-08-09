@@ -1,6 +1,6 @@
 import { GUIPage, GUIScreen, PageOptions } from "@/system/gui/GUIScreen";
 import { Role, roleName } from "@/system/Roles";
-import { MemberNumberToName } from "@/utils/Messaging";
+import { MemberNumberToName, SendBCPMessage } from "@/utils/Messaging";
 import { UserSelectScreen } from "@/gui/UserSelectScreen";
 import { ButtonActionWidget } from "@/system/gui/Widgets";
 import { modalInfo, modalPrompt } from "@/gui/Modal";
@@ -14,7 +14,7 @@ import type Roles from "@/modules/Roles";
 import type Rules from "@/modules/Rules";
 import type Curses from "@/modules/Curses";
 import type Commands from "@/modules/Commands";
-import type { ManualRole } from "@/modules/Roles";
+import type { CustomRoleData, ManualRole } from "@/modules/Roles";
 
 interface ScopeItem {
     id: string;
@@ -61,26 +61,67 @@ interface RoleRow {
     empty?: boolean;
 }
 
+/** The roles data being displayed: live local lists, or a synced remote mirror. */
+interface RolesView {
+    owners: number[];
+    mistresses: number[];
+    customRoles: Record<string, Pick<CustomRoleData, "name" | "members">>;
+}
+
 export class RolesScreen extends GUIScreen {
 
     /** Which role the add-controls assign; survives page flips. */
     addRole: AssignableRole = Role.Owner;
 
     get Title(): string {
-        return "Roles";
+        return this.Remote ? `Roles - ${this.Character!.Nickname}` : "Roles";
     }
 
     private get roles(): Roles {
         return this.Module as Roles;
     }
 
+    /** Whether we are viewing (and remotely managing) another character's roles. */
+    get Remote(): boolean {
+        return this.Character !== null && !this.Character.isPlayer();
+    }
+
+    /** The role lists to display - own live data, or the target's synced mirror (sanitized). */
+    viewData(): RolesView {
+        if (!this.Remote) {
+            return {
+                owners: this.roles.manualList(Role.Owner),
+                mistresses: this.roles.manualList(Role.Mistress),
+                customRoles: this.roles.CustomRoles,
+            };
+        }
+        const mirror = (this.Character!.BCPData?.["roles"] ?? {}) as Record<string, unknown>;
+        const numbers = (v: unknown): number[] => (Array.isArray(v) ? v.filter((m): m is number => typeof m === "number") : []);
+        const customRoles: RolesView["customRoles"] = {};
+        const raw = mirror.customRoles;
+        if (raw && typeof raw === "object") {
+            for (const [id, role] of Object.entries(raw as Record<string, Partial<CustomRoleData>>)) {
+                if (role && typeof role.name === "string") {
+                    customRoles[id] = { name: role.name, members: numbers(role.members) };
+                }
+            }
+        }
+        return { owners: numbers(mirror.owners), mistresses: numbers(mirror.mistresses), customRoles };
+    }
+
     canAssign(): boolean {
         const authority = this.Module.ModuleManager.getModule<Authority>("authority");
+        if (this.Remote) {
+            return authority?.remoteHasPermission(this.Character!, "roles.assign") ?? false;
+        }
         return authority?.hasPermission(Player.MemberNumber ?? -1, "roles.assign") ?? false;
     }
 
     canRevoke(): boolean {
         const authority = this.Module.ModuleManager.getModule<Authority>("authority");
+        if (this.Remote) {
+            return authority?.remoteHasPermission(this.Character!, "roles.revoke") ?? false;
+        }
         return authority?.hasPermission(Player.MemberNumber ?? -1, "roles.revoke") ?? false;
     }
 
@@ -88,35 +129,36 @@ export class RolesScreen extends GUIScreen {
     assignableRoles(): AssignableRole[] {
         return [
             ...(Object.keys(MANUAL_ROLE_KEYS).map(Number) as ManualRole[]),
-            ...Object.keys(this.roles.CustomRoles),
+            ...Object.keys(this.viewData().customRoles),
         ];
     }
 
     roleLabel(role: Role | string): string {
         return typeof role === "string"
-            ? (this.roles.getCustomRole(role)?.name ?? "?")
+            ? (this.viewData().customRoles[role]?.name ?? "?")
             : roleName(role);
     }
 
     buildRows(): RoleRow[] {
-        const roles = this.roles;
+        const view = this.viewData();
+        const bc = this.Remote ? this.Character!.Character : Player;
         const rows: RoleRow[] = [];
 
-        if (Player.Ownership && typeof Player.Ownership.MemberNumber === "number") {
-            rows.push({ role: Role.BCOwner, member: Player.Ownership.MemberNumber, name: Player.Ownership.Name, derived: true });
+        if (bc.Ownership && typeof bc.Ownership.MemberNumber === "number") {
+            rows.push({ role: Role.BCOwner, member: bc.Ownership.MemberNumber, name: bc.Ownership.Name, derived: true });
         }
-        for (const member of roles.manualList(Role.Owner)) {
+        for (const member of view.owners) {
             rows.push({ role: Role.Owner, member, name: MemberNumberToName(member), derived: false });
         }
-        for (const lover of Player.Lovership ?? []) {
+        for (const lover of bc.Lovership ?? []) {
             if (typeof lover.MemberNumber === "number") {
                 rows.push({ role: Role.Lover, member: lover.MemberNumber, name: lover.Name, derived: true });
             }
         }
-        for (const member of roles.manualList(Role.Mistress)) {
+        for (const member of view.mistresses) {
             rows.push({ role: Role.Mistress, member, name: MemberNumberToName(member), derived: false });
         }
-        for (const [id, role] of Object.entries(roles.CustomRoles)) {
+        for (const [id, role] of Object.entries(view.customRoles)) {
             if (role.members.length === 0) {
                 rows.push({ role: id, member: -1, name: "(no members)", derived: false, empty: true });
             }
@@ -125,6 +167,11 @@ export class RolesScreen extends GUIScreen {
             }
         }
         return rows;
+    }
+
+    /** Wire key for an assignable role, as the RoleCommand handler expects it. */
+    roleKey(role: AssignableRole): string {
+        return typeof role === "string" ? role : MANUAL_ROLE_KEYS[role];
     }
 
     protected buildPages(): GUIPage[] {
@@ -139,6 +186,8 @@ export class RolesScreen extends GUIScreen {
 
 class RolesTablePage extends GUIPage {
 
+    private removeListener: (() => void) | null = null;
+
     constructor(protected override readonly screen: RolesScreen, private readonly rows: RoleRow[]) {
         super(screen);
     }
@@ -152,20 +201,33 @@ class RolesTablePage extends GUIPage {
             showTitle: true,
             showBack: true,
             showHelp: true,
-            helpText: "All BC+ role assignments in one table. BC Owner and Lover follow your in-game "
+            helpText: "All BC+ role assignments in one table. BC Owner and Lover follow the in-game "
                 + "relationships; Owner and Mistress are ranks in the hierarchy; custom roles (create "
                 + "them top right) are permission bundles that grant exactly what you configure - "
-                + "click a custom role's name to set its grants. Whitelist and Friend follow your BC "
-                + "lists and are not listed. Adding assignments requires roles.assign; removing them requires roles.revoke.",
+                + "click a custom role's name to set its grants. Whitelist and Friend follow the BC "
+                + "lists and are not listed. Adding assignments requires roles.assign; removing them "
+                + "requires roles.revoke. On someone else's roles, their client validates every change.",
         };
     }
 
     override async create(): Promise<void> {
         ElementCreateInput(INPUT_ID, "number", "", "9");
+        const character = this.Character;
+        if (character && !character.isPlayer()) {
+            // Remote changes are not applied optimistically - the target's
+            // auto-broadcast refreshes the mirror, and this rebuilds the table
+            this.removeListener = this.Core.Events.on("characterSyncReceived", ({ memberNumber }) => {
+                if (memberNumber === character.MemberNumber) {
+                    this.screen.reopen();
+                }
+            });
+        }
     }
 
     override async destroy(): Promise<void> {
         ElementRemove(INPUT_ID);
+        this.removeListener?.();
+        this.removeListener = null;
     }
 
     render(): void {
@@ -177,7 +239,7 @@ class RolesTablePage extends GUIPage {
         DrawText("Name", COL_NAME, 225, "Gray");
         DrawEmptyRect(COL_ROLE, 245, 1700 - COL_ROLE + 60, 0, "Gray");
 
-        if (canAssign) {
+        if (canAssign && !this.screen.Remote) {
             MainCanvas.textAlign = "center";
             this.addClickHandler(ButtonActionWidget(
                 { Left: 1520, Top: 150, Width: 280, Height: 60 },
@@ -203,7 +265,7 @@ class RolesTablePage extends GUIPage {
         this.rows.forEach((row, i) => {
             const y = ROW_TOP + i * ROW_HEIGHT;
             const isCustom = typeof row.role === "string";
-            if (isCustom) {
+            if (isCustom && !this.screen.Remote) {
                 // Custom role names are clickable: they open the grants editor
                 this.addClickHandler(ButtonActionWidget(
                     { Left: COL_ROLE - 10, Top: y, Width: 300, Height: 60 },
@@ -276,14 +338,26 @@ class RolesTablePage extends GUIPage {
         });
     }
 
+    /** The displayed member list for a role; only mutate this in local mode. */
     private memberList(role: AssignableRole): number[] | null {
+        const view = this.screen.viewData();
         if (typeof role === "string") {
-            return this.roles.getCustomRole(role)?.members ?? null;
+            return view.customRoles[role]?.members ?? null;
         }
-        return this.roles.manualList(role);
+        return role === Role.Owner ? view.owners : view.mistresses;
     }
 
     private removeMember(row: RoleRow): void {
+        if (this.screen.Remote) {
+            // Their client validates roles.revoke; the ACK'd sync refreshes us
+            SendBCPMessage({
+                message: "RoleCommand",
+                action: "revoke",
+                role: this.screen.roleKey(row.role as AssignableRole),
+                member: row.member,
+            }, this.Character!.MemberNumber);
+            return;
+        }
         const list = this.memberList(row.role as AssignableRole);
         const index = list?.indexOf(row.member) ?? -1;
         if (list && index !== -1) {
@@ -306,7 +380,24 @@ class RolesTablePage extends GUIPage {
      * nav-stack return refreshes the table, and addFromInput reopens itself.
      */
     private addMember(value: number): void {
-        if (!Number.isInteger(value) || value < 0 || value === Player.MemberNumber) {
+        if (!Number.isInteger(value) || value < 0) {
+            return;
+        }
+        if (this.screen.Remote) {
+            // Can't assign the target to their own roles; everything else
+            // their client validates against roles.assign
+            if (value === this.Character!.MemberNumber) {
+                return;
+            }
+            SendBCPMessage({
+                message: "RoleCommand",
+                action: "assign",
+                role: this.screen.roleKey(this.screen.addRole),
+                member: value,
+            }, this.Character!.MemberNumber);
+            return;
+        }
+        if (value === Player.MemberNumber) {
             return;
         }
         const list = this.memberList(this.screen.addRole);

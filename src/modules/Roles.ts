@@ -1,10 +1,14 @@
 import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { ModuleConfig, PermissionDefinition } from "@/system/module/ModuleTypes";
 import { BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
-import { Role } from "@/system/Roles";
+import { Role, roleName } from "@/system/Roles";
 import { GUIScreen } from "@/system/gui/GUIScreen";
 import { RolesScreen } from "@/gui/RolesScreen";
+import { BCPNotifyPlayer, MemberNumberToName, SendBCPMessage } from "@/utils/Messaging";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
+import type Authority from "@/modules/Authority";
+import type Logging from "@/modules/Logging";
+import type DataSync from "@/modules/DataSync";
 
 /** Storage keys for the manually assigned role lists. BC Owner and Lover are never manual. */
 export const MANUAL_ROLE_KEYS = {
@@ -76,6 +80,10 @@ export default class Roles extends ModuleInstance {
     }
 
     override get HasGUI(): boolean {
+        return true;
+    }
+
+    override get SupportsRemote(): boolean {
         return true;
     }
 
@@ -179,5 +187,92 @@ export default class Roles extends ModuleInstance {
             }
         }
         return grants;
+    }
+
+    /** Display label for an assignable role key ("owners"/"mistresses"/custom id). */
+    private roleKeyLabel(key: string): string {
+        if (key === "owners") {
+            return roleName(Role.Owner);
+        }
+        if (key === "mistresses") {
+            return roleName(Role.Mistress);
+        }
+        return this.getCustomRole(key)?.name ?? "?";
+    }
+
+    /** The member list behind an assignable role key, or null when unknown. */
+    private roleKeyList(key: string): number[] | null {
+        if (key === "owners") {
+            return this.manualList(Role.Owner);
+        }
+        if (key === "mistresses") {
+            return this.manualList(Role.Mistress);
+        }
+        return this.getCustomRole(key)?.members ?? null;
+    }
+
+    override Load(): void {
+        // Remote role management: validated HERE - the requester is never trusted
+        this.addSyncListener("RoleCommand", (sender, content) => {
+            const senderNumber = sender.MemberNumber;
+            if (typeof senderNumber !== "number") {
+                return;
+            }
+            const reject = (reason: string): void => {
+                SendBCPMessage({ message: "RoleCommandResult", ok: false, reason }, senderNumber);
+            };
+
+            const { action, role, member } = content;
+            if ((action !== "assign" && action !== "revoke") || typeof role !== "string"
+                || typeof member !== "number" || !Number.isInteger(member) || member < 0) {
+                reject("invalid command");
+                return;
+            }
+            const list = this.roleKeyList(role);
+            if (!list) {
+                reject("unknown role");
+                return;
+            }
+            const authority = this.ModuleManager.getModule<Authority>("authority");
+            const permission = action === "assign" ? "roles.assign" : "roles.revoke";
+            if (!authority?.hasPermission(senderNumber, permission)) {
+                reject("no permission");
+                return;
+            }
+            if (action === "assign") {
+                if (member === Player.MemberNumber) {
+                    reject("cannot assign you to your own roles");
+                    return;
+                }
+                if (list.includes(member)) {
+                    reject("already assigned");
+                    return;
+                }
+                list.push(member);
+            } else {
+                const index = list.indexOf(member);
+                if (index === -1) {
+                    reject("not assigned");
+                    return;
+                }
+                list.splice(index, 1);
+            }
+
+            const label = this.roleKeyLabel(role);
+            const memberName = MemberNumberToName(member);
+            const verb = action === "assign" ? "assigned" : "removed";
+            const preposition = action === "assign" ? "to" : "from";
+            BCPNotifyPlayer(`${sender.Name} (#${senderNumber}) ${verb} ${memberName} (#${member}) ${preposition} your ${label} role.`);
+            this.ModuleManager.getModule<Logging>("logging")
+                ?.log("role", `${sender.Name} (#${senderNumber}) ${verb} ${memberName} (#${member}) ${preposition} role "${label}"`);
+            SendBCPMessage({ message: "RoleCommandResult", ok: true }, senderNumber);
+            this.ModuleManager.getModule<DataSync>("data-sync")?.categorySync(this, senderNumber);
+        });
+
+        this.addSyncListener("RoleCommandResult", (sender, content) => {
+            if (content.ok === false) {
+                BCPNotifyPlayer(`${sender.Name} rejected the role change${typeof content.reason === "string" ? `: ${content.reason}` : "."}`);
+            }
+        });
     }
 }

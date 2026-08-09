@@ -7,13 +7,14 @@ import { BCPVersionCompare, parseBCPVersion } from "@/utils/Version";
 import { AnySetting } from "@/system/gui/Settings";
 import { modalConfirm } from "@/gui/Modal";
 import { BCPNotifyPlayer } from "@/utils/Messaging";
+import { Role, RoleNames } from "@/system/Roles";
 import type Authority from "@/modules/Authority";
 
 export type BCPPreset = "Dominant" | "Switch" | "Submissive" | "Slave";
 export const PRESETS: readonly BCPPreset[] = ["Dominant", "Switch", "Submissive", "Slave"];
 
 /** Permissions the Slave preset removes self-access to. */
-const SLAVE_LOCKED_PERMISSIONS = ["rules.edit", "curses.edit", "authority.edit"];
+const SLAVE_SELF_LOCKED = ["rules.edit", "curses.edit", "authority.edit", "roles.assign", "roles.revoke", "log.delete"];
 
 /**
  * Core housekeeping module: run preset, update notifications and, in tandem
@@ -53,9 +54,9 @@ export default class Core extends ModuleInstance {
                 type: "option",
                 name: "preset",
                 label: "Play preset",
-                hoverText: "Dominant: BC+ rules, curses and logging never apply to you. "
-                    + "Switch/Submissive: everything available. "
-                    + "Slave: locks you out of changing your own rules, curses and permissions. "
+                hoverText: "Dominant: BC+ rules, curses and logging never apply to you and permissions start closed. "
+                    + "Switch/Submissive: everything available with sensible permission defaults. "
+                    + "Slave: locks you out of changing your own rules, curses, permissions and roles. "
                     + "Once chosen, the preset is locked - only a factory reset clears it.",
                 options: [...PRESETS],
                 default: "Switch",
@@ -138,31 +139,66 @@ export default class Core extends ModuleInstance {
     }
 
     private async onPresetChanged(value: BCPPreset, prev: BCPPreset): Promise<boolean> {
+        // Defense in depth: the UI disables the option while locked, but no
+        // path may change a locked preset short of a factory reset
+        if (this.isPresetLocked()) {
+            this.setSetting("preset", prev);
+            return false;
+        }
         const warning = value === "Slave"
-            ? "\n\nSlave removes your OWN access to change your rules, curses and permissions - "
-            + "only people your permissions allow (e.g. your Owner) will be able to change them for you."
+            ? "\n\nSlave removes your OWN access to change your rules, curses, permissions and roles, "
+            + "and to clear your log - only people your permissions allow (e.g. your Owner) can."
             : "";
         const confirmed = await modalConfirm(
-            `Set your preset to ${value}?\nOnce chosen, the preset is locked - only a factory reset clears it.${warning}`,
+            `Set your preset to ${value}?\nThis configures your permissions to match and locks the preset - `
+            + `only a factory reset clears it.${warning}`,
             value === "Slave",
         );
         if (!confirmed) {
             this.setSetting("preset", prev);
             return false;
         }
+        this.applyPresetProfile(value);
         if (value === "Slave") {
-            const authority = this.ModuleManager.getModule<Authority>("authority");
-            for (const permission of SLAVE_LOCKED_PERMISSIONS) {
-                authority?.setSetting(`${permission}.self`, false);
-            }
-            BCPNotifyPlayer("Slave preset applied: your rules, curses and permissions are now in others' hands.");
-        }
-        if (value === "Dominant") {
-            BCPNotifyPlayer("Dominant preset: BC+ rules, curses and logging will not apply to you.");
+            BCPNotifyPlayer("Slave preset applied: your rules, curses, permissions, roles and log are in others' hands.");
+        } else if (value === "Dominant") {
+            BCPNotifyPlayer("Dominant preset: BC+ rules, curses and logging will not apply to you, and others get no access by default.");
+        } else {
+            BCPNotifyPlayer(`${value} preset applied.`);
         }
         this.Data.presetLocked = true;
         (this.ModuleManager.getModule("rules") as { applyPreset?: () => void } | undefined)?.applyPreset?.();
         return true;
+    }
+
+    /**
+     * Sets every permission's role threshold and self flag to match the preset:
+     * - Dominant: others get nothing (BC Owner threshold everywhere), full self-access
+     * - Switch: the registry defaults (the balanced middle)
+     * - Submissive: defaults, plus anyone may view (gui.view -> Public)
+     * - Slave: like Submissive, but self-access to rules/curses/permissions/
+     *   roles/log-clearing is removed
+     */
+    private applyPresetProfile(preset: BCPPreset): void {
+        const authority = this.ModuleManager.getModule<Authority>("authority");
+        if (!authority) {
+            return;
+        }
+        for (const def of authority.PermissionDefs) {
+            let role: Role = def.defaultRole;
+            let self = def.defaultSelf;
+            if (preset === "Dominant") {
+                role = Role.BCOwner;
+                self = true;
+            } else if ((preset === "Submissive" || preset === "Slave") && def.id === "gui.view") {
+                role = Role.Public;
+            }
+            if (preset === "Slave" && SLAVE_SELF_LOCKED.includes(def.id)) {
+                self = false;
+            }
+            authority.setSetting(`${def.id}.role`, RoleNames[role]!);
+            authority.setSetting(`${def.id}.self`, self);
+        }
     }
 
     override Load(): void {
