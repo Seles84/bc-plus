@@ -1,6 +1,6 @@
 import { GUIPage, GUIScreen, PageOptions } from "@/system/gui/GUIScreen";
 import { ButtonActionWidget } from "@/system/gui/Widgets";
-import { ConditionData, TIMER_PRESETS, formatDuration } from "@/system/conditions/Conditions";
+import { ConditionData, formatDuration } from "@/system/conditions/Conditions";
 import { Role, RoleNames } from "@/system/Roles";
 import { jsonClone } from "@/utils/BCUtils";
 import type { ModuleInstance } from "@/system/module/ModuleInstance";
@@ -85,21 +85,43 @@ class ConditionsPage extends GUIPage {
         const conditions = this.target.get();
         const canEdit = this.target.canEdit();
 
-        // --- Timer ---
-        DrawText("Timer:", 150, 232, "Black");
+        // Layout grid: labels at LABEL_X, controls from CONTROL_X, mode buttons in one right column
+        const LABEL_X = 150;
+        const CONTROL_X = 480;
+        const MODE_X = 1290;
+        const MODE_W = 300;
+
+        // --- Timer: relative adjustments on the current end time ---
+        DrawText("Timer:", LABEL_X, 232, "Black");
         MainCanvas.textAlign = "center";
         this.addClickHandler(ButtonActionWidget(
-            { Left: 320, Top: 200, Width: 120, Height: 64 },
-            { Name: "Off", Active: canEdit, HoverText: "No timer" },
+            { Left: CONTROL_X, Top: 200, Width: 120, Height: 64 },
+            { Name: "Off", Active: canEdit, HoverText: "Remove the timer" },
             () => this.update((c) => { delete c.timerEnd; delete c.timerAction; }),
         ));
-        TIMER_PRESETS.forEach((preset, i) => {
+        const HOUR = 60 * 60_000;
+        const DAY = 24 * HOUR;
+        const adjustments: { label: string; ms: number }[] = [
+            { label: "-1d", ms: -DAY },
+            { label: "-1h", ms: -HOUR },
+            { label: "+1h", ms: HOUR },
+            { label: "+1d", ms: DAY },
+        ];
+        adjustments.forEach((adjustment, i) => {
             this.addClickHandler(ButtonActionWidget(
-                { Left: 460 + i * 140, Top: 200, Width: 120, Height: 64 },
-                { Name: preset.label, Active: canEdit, HoverText: `End in ${preset.label}` },
+                { Left: CONTROL_X + 140 + i * 140, Top: 200, Width: 120, Height: 64 },
+                { Name: adjustment.label, Active: canEdit, HoverText: `Adjust the timer by ${adjustment.label}` },
                 () => this.update((c) => {
-                    c.timerEnd = Date.now() + preset.ms;
-                    c.timerAction ??= "deactivate";
+                    const now = Date.now();
+                    const base = typeof c.timerEnd === "number" && c.timerEnd > now ? c.timerEnd : now;
+                    const next = base + adjustment.ms;
+                    if (next <= now) {
+                        delete c.timerEnd;
+                        delete c.timerAction;
+                    } else {
+                        c.timerEnd = next;
+                        c.timerAction ??= "deactivate";
+                    }
                 }),
             ));
         });
@@ -108,17 +130,17 @@ class ConditionsPage extends GUIPage {
             typeof conditions.timerEnd === "number"
                 ? `Ends in ${formatDuration(Math.max(0, conditions.timerEnd - Date.now()))}`
                 : "No timer",
-            1080, 232, "Gray",
+            CONTROL_X + 140 + adjustments.length * 140 + 20, 232, "Gray",
         );
 
         if (typeof conditions.timerEnd === "number") {
             const action = conditions.timerAction === "remove" ? this.target.removeLabel : "Deactivate";
-            DrawText("When it ends:", 150, 312, "Black");
+            DrawText("When it ends:", LABEL_X, 312, "Black");
             MainCanvas.textAlign = "center";
-            DrawBackNextButton(460, 280, 350, 64, action, canEdit ? "White" : "#ddd", "", () => "", () => "", !canEdit);
+            DrawBackNextButton(CONTROL_X, 280, 350, 64, action, canEdit ? "White" : "#ddd", "", () => "", () => "", !canEdit);
             MainCanvas.textAlign = "left";
             this.addClickHandler(() => {
-                if (canEdit && MouseIn(460, 280, 350, 64)) {
+                if (canEdit && MouseIn(CONTROL_X, 280, 350, 64)) {
                     this.update((c) => { c.timerAction = c.timerAction === "remove" ? "deactivate" : "remove"; });
                 }
             });
@@ -126,12 +148,12 @@ class ConditionsPage extends GUIPage {
 
         // --- Room type ---
         const roomTypeLabel = conditions.roomType === undefined ? "Any room" : (conditions.roomType === "public" ? "Public rooms only" : "Private rooms only");
-        DrawText("Room:", 150, 412, "Black");
+        DrawText("Room:", LABEL_X, 412, "Black");
         MainCanvas.textAlign = "center";
-        DrawBackNextButton(460, 380, 350, 64, roomTypeLabel, canEdit ? "White" : "#ddd", "", () => "", () => "", !canEdit);
+        DrawBackNextButton(CONTROL_X, 380, 350, 64, roomTypeLabel, canEdit ? "White" : "#ddd", "", () => "", () => "", !canEdit);
         MainCanvas.textAlign = "left";
         this.addClickHandler(() => {
-            if (canEdit && MouseIn(460, 380, 350, 64)) {
+            if (canEdit && MouseIn(CONTROL_X, 380, 350, 64)) {
                 this.update((c) => {
                     c.roomType = c.roomType === undefined ? "public" : (c.roomType === "public" ? "private" : undefined);
                 });
@@ -140,23 +162,23 @@ class ConditionsPage extends GUIPage {
 
         // --- Role presence ---
         const roleModeLabel = conditions.roleMode === undefined ? "Ignored" : (conditions.roleMode === "present" ? "Present" : "Absent");
-        DrawText("Role:", 150, 512, "Black");
+        DrawText("Role:", LABEL_X, 512, "Black");
         MainCanvas.textAlign = "center";
-        DrawBackNextButton(460, 480, 350, 64, `${RoleNames[conditions.role ?? Role.Owner]}+`, canEdit ? "White" : "#ddd", "", () => "", () => "", !canEdit);
-        DrawBackNextButton(850, 480, 300, 64, roleModeLabel, canEdit ? "White" : "#ddd", "", () => "", () => "", !canEdit);
+        DrawBackNextButton(CONTROL_X, 480, 350, 64, `${RoleNames[conditions.role ?? Role.Owner]}+`, canEdit ? "White" : "#ddd", "", () => "", () => "", !canEdit);
+        DrawBackNextButton(MODE_X, 480, MODE_W, 64, roleModeLabel, canEdit ? "White" : "#ddd", "", () => "", () => "", !canEdit);
         MainCanvas.textAlign = "left";
         this.addClickHandler(() => {
             if (!canEdit) {
                 return;
             }
-            if (MouseIn(460, 480, 350, 64)) {
+            if (MouseIn(CONTROL_X, 480, 350, 64)) {
                 this.update((c) => {
-                    const direction = MouseX < 460 + 175 ? -1 : 1;
+                    const direction = MouseX < CONTROL_X + 175 ? -1 : 1;
                     const current = c.role ?? Role.Owner;
                     c.role = ((current + direction + RoleNames.length) % RoleNames.length) as Role;
                 });
             }
-            if (MouseIn(850, 480, 300, 64)) {
+            if (MouseIn(MODE_X, 480, MODE_W, 64)) {
                 this.update((c) => {
                     if (c.roleMode === undefined) {
                         c.roleMode = "present";
@@ -172,17 +194,17 @@ class ConditionsPage extends GUIPage {
 
         // --- Member presence ---
         const membersModeLabel = conditions.membersMode === undefined ? "Ignored" : (conditions.membersMode === "present" ? "Present" : "Absent");
-        DrawText("Members:", 150, 612, "Black");
-        ElementPosition(MEMBERS_INPUT, 610, 607, 640, 60);
+        DrawText("Members:", LABEL_X, 612, "Black");
+        ElementPosition(MEMBERS_INPUT, CONTROL_X + 380, 607, 760, 60);
         const membersInput = document.getElementById(MEMBERS_INPUT) as HTMLInputElement | null;
         if (membersInput) {
             membersInput.disabled = !canEdit;
         }
         MainCanvas.textAlign = "center";
-        DrawBackNextButton(990, 580, 300, 64, membersModeLabel, canEdit ? "White" : "#ddd", "", () => "", () => "", !canEdit);
+        DrawBackNextButton(MODE_X, 580, MODE_W, 64, membersModeLabel, canEdit ? "White" : "#ddd", "", () => "", () => "", !canEdit);
         MainCanvas.textAlign = "left";
         this.addClickHandler(() => {
-            if (canEdit && MouseIn(990, 580, 300, 64)) {
+            if (canEdit && MouseIn(MODE_X, 580, MODE_W, 64)) {
                 this.update((c) => {
                     if (c.membersMode === undefined) {
                         c.membersMode = "present";
@@ -197,17 +219,17 @@ class ConditionsPage extends GUIPage {
 
         // --- Room names ---
         const roomsModeLabel = conditions.roomNamesMode === undefined ? "Ignored" : (conditions.roomNamesMode === "in" ? "In these rooms" : "Not in these");
-        DrawText("Room names:", 150, 712, "Black");
-        ElementPosition(ROOMS_INPUT, 610, 707, 640, 60);
+        DrawText("Room names:", LABEL_X, 712, "Black");
+        ElementPosition(ROOMS_INPUT, CONTROL_X + 380, 707, 760, 60);
         const roomsInput = document.getElementById(ROOMS_INPUT) as HTMLInputElement | null;
         if (roomsInput) {
             roomsInput.disabled = !canEdit;
         }
         MainCanvas.textAlign = "center";
-        DrawBackNextButton(990, 680, 300, 64, roomsModeLabel, canEdit ? "White" : "#ddd", "", () => "", () => "", !canEdit);
+        DrawBackNextButton(MODE_X, 680, MODE_W, 64, roomsModeLabel, canEdit ? "White" : "#ddd", "", () => "", () => "", !canEdit);
         MainCanvas.textAlign = "left";
         this.addClickHandler(() => {
-            if (canEdit && MouseIn(990, 680, 300, 64)) {
+            if (canEdit && MouseIn(MODE_X, 680, MODE_W, 64)) {
                 this.update((c) => {
                     if (c.roomNamesMode === undefined) {
                         c.roomNamesMode = "in";
