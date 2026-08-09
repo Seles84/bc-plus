@@ -141,6 +141,22 @@ export default class TextCommands extends ModuleInstance {
             },
         },
         {
+            name: "reset",
+            description: "Factory reset: wipe ALL BC+ data (rules, curses, roles, permissions, log)",
+            handler: () => {
+                this.reply("Factory reset requested - confirm in the popup. This wipes every BC+ "
+                    + "setting, rule, curse, role and log entry, then reloads the club.");
+                setTimeout(() => {
+                    if (this.Storage.wipeAllData(true)) {
+                        this.reply("BC+ has been reset. Reloading...");
+                        setTimeout(() => window.location.reload(), 1500);
+                    } else {
+                        this.reply("Reset cancelled.");
+                    }
+                }, 100);
+            },
+        },
+        {
             name: "debug",
             description: "Show BC+ diagnostic state",
             handler: () => {

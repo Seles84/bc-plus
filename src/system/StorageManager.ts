@@ -25,6 +25,8 @@ export default class StorageManager {
     private storageLocation: StorageType = StorageType.ExtensionSettings;
     private isApplying = false;
     private syncTimer: ReturnType<typeof setTimeout> | null = null;
+    /** After a wipe, nothing may write again until reload - a pending debounced sync would resurrect the data. */
+    private wiped = false;
 
     /** Invoked after every successful persist (used to broadcast public data changes). */
     onAfterSync: (() => void) | null = null;
@@ -140,6 +142,9 @@ export default class StorageManager {
 
     /** Persists the current save file to the active storage location (plus backup). */
     async sync(): Promise<void> {
+        if (this.wiped) {
+            return;
+        }
         if (!this.saveFile) {
             throw new Error("Save file not loaded");
         }
@@ -180,14 +185,17 @@ export default class StorageManager {
         void this.safeSync();
     }
 
-    wipeAllData(ask: boolean = true): void {
+    /** Wipes all BC+ data everywhere; returns whether the wipe happened. */
+    wipeAllData(ask: boolean = true): boolean {
         if (ask) {
             const answer = prompt("Are you sure you want to wipe all BC+ data?\nThis cannot be undone!\nEnter your member number to confirm");
             if (answer !== Player.MemberNumber?.toString()) {
-                return;
+                return false;
             }
         }
         this.clear();
+        this.wiped = true;
+        return true;
     }
 
     getLocalStorageName(backup: boolean): string {
