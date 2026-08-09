@@ -42,18 +42,21 @@ export function DrawInfoPanel(title: string, text: string, panel: WidgetPosition
 
 /**
  * Draws a wide button with optional icon and returns its click handler
- * (for GUIPage.addClickHandler).
+ * (for GUIPage.addClickHandler). Labels are drawn left-aligned by the
+ * widget itself, so the ambient canvas text-align cannot misplace them
+ * (DrawButton's own label assumes centered alignment and overflows
+ * otherwise).
  */
 export function ButtonActionWidget(pos: WidgetPosition, conf: ButtonWidgetConfig, performAction: () => void): () => void {
     const active = conf.Active ?? true;
     const color = active ? "White" : "#ddd";
 
-    if (conf.Icon) {
-        DrawButton(pos.Left, pos.Top, pos.Width, pos.Height, "", color, conf.Icon, conf.HoverText, !active);
-        DrawTextFit(conf.Name, pos.Left + 90, pos.Top + pos.Height / 2, pos.Width - 100, "Black");
-    } else {
-        DrawButton(pos.Left, pos.Top, pos.Width, pos.Height, conf.Name, color, "", conf.HoverText, !active);
-    }
+    const prevAlign = MainCanvas.textAlign;
+    MainCanvas.textAlign = "left";
+    DrawButton(pos.Left, pos.Top, pos.Width, pos.Height, "", color, conf.Icon || "", conf.HoverText, !active);
+    const textLeft = conf.Icon ? 90 : 20;
+    DrawTextFit(conf.Name, pos.Left + textLeft, pos.Top + pos.Height / 2, pos.Width - textLeft - 20, "Black");
+    MainCanvas.textAlign = prevAlign;
 
     return () => {
         if (active && MouseIn(pos.Left, pos.Top, pos.Width, pos.Height)) {
