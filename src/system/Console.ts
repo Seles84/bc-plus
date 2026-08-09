@@ -38,10 +38,3 @@ export function debug(...args: unknown[]): void {
     }
 }
 
-export function msgBox(message: string): void {
-    alert(`${BCPLUS_SHORT_NAME}: ${message}`);
-}
-
-export function confirmBox(message: string): boolean {
-    return confirm(`${BCPLUS_SHORT_NAME}: ${message}`);
-}

@@ -3,6 +3,7 @@ import { Role, roleName } from "@/system/Roles";
 import { MemberNumberToName } from "@/utils/Messaging";
 import { UserSelectScreen } from "@/gui/UserSelectScreen";
 import { ButtonActionWidget } from "@/system/gui/Widgets";
+import { modalInfo, modalPrompt } from "@/gui/Modal";
 import { MANUAL_ROLE_KEYS } from "@/modules/Roles";
 import type { GUI } from "@/modules/GUI";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
@@ -171,13 +172,14 @@ class RolesTablePage extends GUIPage {
                 { Left: 1520, Top: 150, Width: 280, Height: 60 },
                 { Name: "Create role...", HoverText: "Create a custom role: a bundle of permission grants" },
                 () => {
-                    const name = window.prompt("Name for the new role:");
-                    if (name !== null && name.trim().length > 0) {
-                        if (this.roles.createCustomRole(name) === null) {
-                            window.alert("Could not create the role (empty name or too many roles).");
+                    void modalPrompt("Name for the new role:", "", 30).then((name) => {
+                        if (name !== null && name.trim().length > 0) {
+                            if (this.roles.createCustomRole(name) === null) {
+                                void modalInfo("Could not create the role (empty name or too many roles).");
+                            }
+                            this.screen.reopen();
                         }
-                        this.screen.reopen();
-                    }
+                    });
                 },
             ));
             MainCanvas.textAlign = "left";

@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+- Presets lock once chosen: picking a preset (in the welcome flow or General settings) asks for confirmation and then locks the choice — only a factory reset clears it. The General option shows as disabled while locked.
+- All browser popups (alert/confirm/prompt) replaced with BC+-styled in-page dialogs: dark themed, Enter confirms, Escape cancels, and they work everywhere — including during login before any screen exists.
+
 ### Added
 - "Reset BC+" button on the General settings page: click once to arm it ("Confirm reset", 3-second window), click again to wipe all BC+ data and reload — same effect as `/bcp reset`.
 - First-run welcome: new installs get a welcome notification pointing at the profile button, and the first menu open shows a short BC+ tour followed by the preset choice (with honest descriptions of each — including exactly what Slave gives up). Existing installs see it once too. "Decide later" keeps the Switch default.

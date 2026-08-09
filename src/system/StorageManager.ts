@@ -1,6 +1,7 @@
 import { AUTH_STRING_SIZE, SAVE_FILE_VERSION, SaveFile, StorageType, defaultSaveFile } from "@/system/storage/SaveFile";
 import { BCPLUS_STORAGE } from "@/system/Constants";
-import { confirmBox, debug, err, info, log, msgBox } from "@/system/Console";
+import { debug, err, info, log } from "@/system/Console";
+import { modalConfirm, modalInfo, modalPrompt } from "@/gui/Modal";
 import { hmacSHA256 } from "@/utils/Crypto";
 
 export type VerifyResponse = "Success" | "Failed" | "Unofficial";
@@ -75,7 +76,7 @@ export default class StorageManager {
         } else {
             if (typeof Player.ExtensionSettings !== "object" || Player.ExtensionSettings === null) {
                 err("Player.ExtensionSettings could not be found, please report this to the developer.");
-                msgBox("Failed to load data, please see console for more details.");
+                await modalInfo("Failed to load data, please see the console for more details.");
                 return false;
             }
             const fromServer: unknown = Player.ExtensionSettings[BCPLUS_STORAGE];
@@ -85,7 +86,7 @@ export default class StorageManager {
 
         if (saved === null) {
             const backup = localStorage.getItem(this.getLocalStorageName(true));
-            if (typeof backup === "string" && confirmBox("A backup of your data was found, would you like to use it?")) {
+            if (typeof backup === "string" && await modalConfirm("A backup of your data was found, would you like to use it?")) {
                 saved = backup;
                 this.storageLocation = StorageType.LocalStorage;
             }
@@ -99,7 +100,7 @@ export default class StorageManager {
 
         try {
             const verdict = await this.verifySaveFile(saved);
-            if (verdict === "Unofficial" && !confirmBox(
+            if (verdict === "Unofficial" && !await modalConfirm(
                 "You are using an unofficial version of BC+.\n"
                 + "If you continue, you will not be able to return to the official version without resetting your data.\n"
                 + "Are you sure you want to continue?",
@@ -110,7 +111,7 @@ export default class StorageManager {
             return true;
         } catch (e) {
             err("Failed to load save data:", e);
-            if (confirmBox(`Failed to load save data...\n${String(e)}\nContinue with a full reset?`)) {
+            if (await modalConfirm(`Failed to load save data...\n${String(e)}\nContinue with a full reset?`, true)) {
                 this.clear();
                 await this.firstBoot();
                 return true;
@@ -186,9 +187,11 @@ export default class StorageManager {
     }
 
     /** Wipes all BC+ data everywhere; returns whether the wipe happened. */
-    wipeAllData(ask: boolean = true): boolean {
+    async wipeAllData(ask: boolean = true): Promise<boolean> {
         if (ask) {
-            const answer = prompt("Are you sure you want to wipe all BC+ data?\nThis cannot be undone!\nEnter your member number to confirm");
+            const answer = await modalPrompt(
+                "Are you sure you want to wipe all BC+ data?\nThis cannot be undone!\nEnter your member number to confirm:",
+            );
             if (answer !== Player.MemberNumber?.toString()) {
                 return false;
             }

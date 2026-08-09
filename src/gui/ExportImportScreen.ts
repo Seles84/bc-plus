@@ -94,14 +94,15 @@ class ExportImportPage extends GUIPage {
             { Left: 850, Top: y, Width: 220, Height: 64 },
             { Name: "Import", Active: canImport, HoverText: canImport ? "Apply a pasted code" : "Requires the matching edit permission" },
             () => {
-                const code = promptImportCode();
-                if (code !== null) {
-                    const applied = importAction(code);
-                    BCPNotifyPlayer(applied > 0
-                        ? `Imported ${applied} ${unit}${applied === 1 ? "" : "s"}.`
-                        : "That code could not be read.");
-                    this.screen.reopen();
-                }
+                void promptImportCode().then((code) => {
+                    if (code !== null) {
+                        const applied = importAction(code);
+                        BCPNotifyPlayer(applied > 0
+                            ? `Imported ${applied} ${unit}${applied === 1 ? "" : "s"}.`
+                            : "That code could not be read.");
+                        this.screen.reopen();
+                    }
+                });
             },
         ));
     }

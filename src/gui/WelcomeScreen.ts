@@ -115,9 +115,12 @@ class PresetPage extends GUIPage {
                 { Left: 150, Top: y, Width: 360, Height: 90 },
                 { Name: choice.preset },
                 () => {
-                    core?.choosePreset(choice.preset);
-                    // Slave shows a confirm; if it was declined the preset reverted
-                    this.screen.finish();
+                    // The choice confirms via modal; declining keeps you on this page
+                    void core?.choosePreset(choice.preset).then((applied) => {
+                        if (applied) {
+                            this.screen.finish();
+                        }
+                    });
                 },
             ));
             MainCanvas.textAlign = "left";

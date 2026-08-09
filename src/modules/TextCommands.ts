@@ -147,12 +147,14 @@ export default class TextCommands extends ModuleInstance {
                 this.reply("Factory reset requested - confirm in the popup. This wipes every BC+ "
                     + "setting, rule, curse, role and log entry, then reloads the club.");
                 setTimeout(() => {
-                    if (this.Storage.wipeAllData(true)) {
-                        this.reply("BC+ has been reset. Reloading...");
-                        setTimeout(() => window.location.reload(), 1500);
-                    } else {
-                        this.reply("Reset cancelled.");
-                    }
+                    void this.Storage.wipeAllData(true).then((wiped) => {
+                        if (wiped) {
+                            this.reply("BC+ has been reset. Reloading...");
+                            setTimeout(() => window.location.reload(), 1500);
+                        } else {
+                            this.reply("Reset cancelled.");
+                        }
+                    });
                 }, 100);
             },
         },
