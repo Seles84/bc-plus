@@ -2,6 +2,7 @@ import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { debug, err } from "@/system/Console";
 import type { BCPlus } from "@/index";
 import Authority from "@/modules/Authority";
+import Commands from "@/modules/Commands";
 import Core from "@/modules/Core";
 import Curses from "@/modules/Curses";
 import DataSync from "@/modules/DataSync";
@@ -23,6 +24,7 @@ export default class ModuleManager {
             new Authority(parent),
             new Rules(parent),
             new Curses(parent),
+            new Commands(parent),
             new Logging(parent),
             new TextCommands(parent),
             new GUI(parent),
