@@ -7,6 +7,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Changed
+- Main menu: hovering a module button now shows its description in a fixed panel on the right at normal, readable size, instead of BC's one-line tooltip that shrank long text into illegibility.
+
+### Changed
 - The top role is now **BC Owner**: it always reflects your actual in-game owner and can no longer be assigned manually. The Owner role below it remains the manual list for additional owners.
 - The **Lover** role likewise follows your in-game loverships only and can no longer be assigned manually. Owner and Mistress remain the assignable roles.
 
