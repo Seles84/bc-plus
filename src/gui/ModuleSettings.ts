@@ -145,5 +145,9 @@ class SettingsPage extends GUIPage {
                 }
             }
         });
+
+        if (!screen.Remote) {
+            screen.Module.SettingsFooter?.((handler) => this.addClickHandler(handler));
+        }
     }
 }

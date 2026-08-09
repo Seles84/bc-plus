@@ -1,5 +1,5 @@
 import { GetDotedPathType, PatchHook } from "bondage-club-mod-sdk";
-import { ModuleConfig, PermissionDefinition } from "@/system/module/ModuleTypes";
+import { ModuleConfig, PermissionDefinition, SettingsFooterRenderer } from "@/system/module/ModuleTypes";
 import type { GUIScreen } from "@/system/gui/GUIScreen";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import { AnySetting, settingDefaults } from "@/system/gui/Settings";
@@ -69,6 +69,11 @@ export abstract class ModuleInstance {
      * SettingCommand; null means the settings are never editable remotely.
      */
     get EditPermission(): string | null {
+        return null;
+    }
+
+    /** Extra widgets at the bottom of this module's settings page (own view only). */
+    get SettingsFooter(): SettingsFooterRenderer | null {
         return null;
     }
 
