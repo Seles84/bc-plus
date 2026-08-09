@@ -4,6 +4,7 @@ import { Role } from "@/system/Roles";
 import { BCPLUS_AUTHOR, BCPLUS_SHORT_NAME, BCPLUS_VERSION } from "@/system/Constants";
 import { GUIScreen } from "@/system/gui/GUIScreen";
 import { MainMenu } from "@/gui/MainMenu";
+import { WelcomeScreen } from "@/gui/WelcomeScreen";
 import { BCPlusCharacter, getChatroomCharacter } from "@/utils/BCPlusCharacter";
 import { debug } from "@/system/Console";
 import type Authority from "@/modules/Authority";
@@ -141,7 +142,12 @@ export class GUI extends ModuleInstance {
             const character = this.getInformationSheetCharacter();
             if (character && this.canOpenMenuFor(character) && MouseIn(...this.bcPlusButton)) {
                 debug(`Opening BC+ main menu for ${character.toString()}`);
-                this.setSubscreen(new MainMenu(this, character));
+                const core = this.ModuleManager.getModule("core") as { isFirstRun?: () => boolean } | undefined;
+                if (character.isPlayer() && core?.isFirstRun?.()) {
+                    this.setSubscreen(new WelcomeScreen(this, character));
+                } else {
+                    this.setSubscreen(new MainMenu(this, character));
+                }
                 return;
             }
             next(args);
