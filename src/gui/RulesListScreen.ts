@@ -1,7 +1,7 @@
 import { GUIPage, GUIScreen, PageOptions } from "@/system/gui/GUIScreen";
 import { RuleDefinition } from "@/system/rules/RuleTypes";
 import { LocalRuleAccess, RemoteRuleAccess, RuleAccess } from "@/system/rules/RuleAccess";
-import { ButtonActionWidget } from "@/system/gui/Widgets";
+import { ButtonActionWidget, DrawInfoPanel } from "@/system/gui/Widgets";
 import { copyExportCode, promptImportCode } from "@/utils/ExportImport";
 import { BCPNotifyPlayer } from "@/utils/Messaging";
 import { ConditionsScreen } from "@/gui/ConditionsScreen";
@@ -11,7 +11,14 @@ import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Authority from "@/modules/Authority";
 import type Rules from "@/modules/Rules";
 
-const PER_PAGE = 6;
+const PER_PAGE = 16;
+const LIST_COLS = 2;
+const ROWS_PER_COL = PER_PAGE / LIST_COLS;
+const ROW_H = 78;
+const LIST_TOP = 195;
+const NAME_W = 520;
+const CHIP_W = 170;
+const COL_X = [125, 1010];
 
 function buildAccess(rules: Rules, character: BCPlusCharacter | null): RuleAccess {
     if (character && !character.isPlayer()) {
@@ -66,27 +73,51 @@ class RulesListPage extends GUIPage {
 
     render(): void {
         const access = this.screen.access;
-        if (!access.canEdit()) {
-            DrawText("You do not have permission to change these rules; viewing only.", 150, 190, "Gray");
-        }
+        let hovered: { definition: RuleDefinition; column: number } | null = null;
+
         this.definitions.forEach((definition, i) => {
-            const y = 220 + i * 110;
+            const column = Math.floor(i / ROWS_PER_COL);
+            const x = COL_X[column]!;
+            const y = LIST_TOP + (i % ROWS_PER_COL) * ROW_H;
             const state = access.state(definition.id);
-            const status = state.active
-                ? `Active${state.enforce ? " / Enforced" : ""}${state.log ? " / Logged" : ""}`
-                : "Inactive";
+
             this.addClickHandler(ButtonActionWidget(
-                { Left: 150, Top: y, Width: 1100, Height: 90 },
-                { Name: definition.name, HoverText: definition.description },
+                { Left: x, Top: y, Width: NAME_W, Height: 62 },
+                { Name: definition.name },
                 () => {
                     this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(
                         new RuleConfigScreen(this.screen.Module as Rules, this.Character, definition),
                     );
                 },
             ));
-            DrawText(status, 1300, y + 45, state.active ? "Green" : "Gray");
-            DrawText(definition.category, 1600, y + 45, "Gray");
+            const chip = state.active ? (state.enforce ? "Enforced" : "Active") : "Off";
+            DrawText(chip, x + NAME_W + 20, y + 40, state.active ? "Green" : "Gray");
+            if (state.conditions && Object.keys(state.conditions).length > 0) {
+                DrawText("◈", x + NAME_W + CHIP_W, y + 40, "Gray");
+            }
+
+            if (MouseIn(x, y, NAME_W + CHIP_W, 62)) {
+                hovered = { definition, column };
+            }
         });
+
+        // Hovering a rule shows its details over the opposite column (BCX-style)
+        if (hovered !== null) {
+            const { definition, column } = hovered as { definition: RuleDefinition; column: number };
+            const state = access.state(definition.id);
+            const status = state.active
+                ? `Active${state.enforce ? ", enforced" : ""}${state.log ? ", logged" : ""}${state.announce ? ", announced" : ""}`
+                : "Not active";
+            DrawInfoPanel(
+                `${definition.name}  ·  ${definition.category}`,
+                `${definition.description} — ${status}. ${describeConditions(state.conditions)}.`,
+                { Left: COL_X[1 - column]!, Top: LIST_TOP, Width: NAME_W + CHIP_W + 60, Height: ROWS_PER_COL * ROW_H - 16 },
+            );
+        }
+
+        if (!access.canEdit()) {
+            DrawText("You do not have permission to change these rules; viewing only.", 600, 920, "Gray");
+        }
 
         // Export/import own rules as shareable codes (local screen only)
         if ((!this.Character || this.Character.isPlayer()) && access.canEdit()) {
