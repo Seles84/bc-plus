@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Two rules from the BCX survey (17 total): **Listen to my voice** — configured sentences appear to the player at random intervals as a voice only they can see; **Ready to be summoned** — allowed members can summon the player from anywhere in the club via beep, pulling them to the summoner's room after a delay.
+- Rules can now own timers (cleared automatically on deactivation) — the framework piece behind Listen to my voice.
 - Scoped grants: a custom role's rules or curses grant can be limited to specific rules or specific slots ("Everything / N selected / None" in the grants editor). Members can then use the permission on exactly those items — commands touching anything else are rejected by the target's client.
 - Custom roles: create your own roles ("Create role..." on the Roles screen) as flexible permission bundles — each grants exactly the permissions you tick to its members, on top of whatever their rank already allows. Grants are additive only: a custom role can never outrank BC Owner, take permissions away, or drop anyone below Public. Click a custom role's name in the table to configure its grants (requires `authority.edit`); creating/deleting/assigning requires `roles.manage`. Custom-role grants work remotely too — someone granted curse access through a custom role can manage your curses from their client.
 

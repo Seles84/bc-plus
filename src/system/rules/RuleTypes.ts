@@ -16,6 +16,15 @@ export interface RuleContext {
     /** Current value of one of this rule's custom settings. */
     setting<T>(name: string): T;
 
+    /**
+     * Runs a callback on an interval while the rule is installed; cleared
+     * automatically when the rule deactivates.
+     */
+    interval(callback: () => void, ms: number): void;
+
+    /** True when the rule applies at all (active and conditions met). */
+    inEffect(): boolean;
+
     /** True when the rule should block the action. */
     isEnforced(): boolean;
 
