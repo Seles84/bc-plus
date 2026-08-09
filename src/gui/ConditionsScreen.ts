@@ -133,12 +133,6 @@ class ConditionsPage extends GUIPage {
             ));
         });
         MainCanvas.textAlign = "left";
-        DrawText(
-            typeof conditions.timerEnd === "number"
-                ? `Ends in ${formatDuration(Math.max(0, conditions.timerEnd - Date.now()))}`
-                : "No timer",
-            CONTROL_X + 100 + adjustments.length * 100 + 20, 232, "Gray",
-        );
 
         if (typeof conditions.timerEnd === "number") {
             const action = conditions.timerAction === "remove" ? this.target.removeLabel : "Deactivate";
@@ -146,6 +140,9 @@ class ConditionsPage extends GUIPage {
             MainCanvas.textAlign = "center";
             DrawBackNextButton(CONTROL_X, 280, 350, 64, action, canEdit ? "White" : "#ddd", "", () => "", () => "", !canEdit);
             MainCanvas.textAlign = "left";
+            // Remaining time lives on this row - after the buttons it would
+            // run under the help icon
+            DrawText(`Ends in ${formatDuration(Math.max(0, conditions.timerEnd - Date.now()))}`, CONTROL_X + 390, 312, "Gray");
             this.addClickHandler(() => {
                 if (canEdit && MouseIn(CONTROL_X, 280, 350, 64)) {
                     this.update((c) => { c.timerAction = c.timerAction === "remove" ? "deactivate" : "remove"; });
