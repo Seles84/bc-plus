@@ -25,6 +25,16 @@ import {
     PreventBlacklisting,
     PreventWhitelisting,
 } from "@/rules/ProtectionRules";
+import {
+    ForbidKeysOthers,
+    ForbidKeysSelf,
+    ForbidLockOthers,
+    ForbidLockSelf,
+    ForbidPickOthers,
+    ForbidPickSelf,
+    ForbidRemotesOthers,
+    ForbidRemotesSelf,
+} from "@/rules/LocksRules";
 
 /** Every rule BC+ ships, in display order. */
 export const RULE_DEFINITIONS: readonly RuleDefinition[] = [
@@ -52,4 +62,12 @@ export const RULE_DEFINITIONS: readonly RuleDefinition[] = [
     ForbidDisowning,
     PreventBlacklisting,
     PreventWhitelisting,
+    ForbidRemotesSelf,
+    ForbidRemotesOthers,
+    ForbidKeysSelf,
+    ForbidKeysOthers,
+    ForbidPickSelf,
+    ForbidPickOthers,
+    ForbidLockSelf,
+    ForbidLockOthers,
 ];

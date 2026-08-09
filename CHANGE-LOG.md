@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- Locks & keys pack (8 rules, 32 total): forbid using remotes / keys / lockpicks / locks, each in a "on self" and "on others" variant. While enforced, the relevant dialog buttons simply don't appear.
+
+### Changed
+- Commands screen: descriptions now wrap onto two lines instead of shrinking to fit one; the Set emoticon description is shortened (the full emoticon list was crowding the row).
+
 ## [0.2.0] - 2026-08-09
 
 ### Added

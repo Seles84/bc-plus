@@ -84,10 +84,8 @@ class CommandsPage extends GUIPage {
                 },
             ));
             MainCanvas.textAlign = "left";
-            DrawTextFit(
-                definition.description + (definition.argument ? " (uses the argument field)" : ""),
-                600, y + 40, 1250, "Gray",
-            );
+            const text = definition.description + (definition.argument ? " (uses the argument field)" : "");
+            DrawTextWrap(text, 600 - 1250 / 2, y - 5, 1250, 80, "Gray");
         });
 
         DrawText("Argument:", 150, 910, "Black");
