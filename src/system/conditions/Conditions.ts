@@ -27,13 +27,6 @@ export interface ConditionData {
     membersMode?: "present" | "absent";
 }
 
-export const TIMER_PRESETS: { label: string; ms: number }[] = [
-    { label: "15m", ms: 15 * 60_000 },
-    { label: "1h", ms: 60 * 60_000 },
-    { label: "4h", ms: 4 * 60 * 60_000 },
-    { label: "24h", ms: 24 * 60 * 60_000 },
-];
-
 function parseMembers(raw: string | undefined): number[] {
     return (raw ?? "")
         .split(",")
