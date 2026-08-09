@@ -5,7 +5,7 @@ import { AnySetting } from "@/system/gui/Settings";
 import { PermissionDefinition } from "@/system/module/ModuleTypes";
 import type Authority from "@/modules/Authority";
 
-const PER_PAGE = 9;
+const PER_PAGE = 8;
 const ROW_TOP = 250;
 const ROW_H = 75;
 const COL_NAME = 150;
