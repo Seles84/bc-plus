@@ -2,8 +2,6 @@ import { GUIPage, GUIScreen, PageOptions } from "@/system/gui/GUIScreen";
 import { RuleDefinition } from "@/system/rules/RuleTypes";
 import { LocalRuleAccess, RemoteRuleAccess, RuleAccess } from "@/system/rules/RuleAccess";
 import { ButtonActionWidget, DrawInfoPanel } from "@/system/gui/Widgets";
-import { copyExportCode, promptImportCode } from "@/utils/ExportImport";
-import { BCPNotifyPlayer } from "@/utils/Messaging";
 import { ConditionsScreen } from "@/gui/ConditionsScreen";
 import { describeConditions } from "@/system/conditions/Conditions";
 import type { GUI } from "@/modules/GUI";
@@ -119,29 +117,6 @@ class RulesListPage extends GUIPage {
             DrawText("You do not have permission to change these rules; viewing only.", 600, 920, "Gray");
         }
 
-        // Export/import own rules as shareable codes (local screen only)
-        if ((!this.Character || this.Character.isPlayer()) && access.canEdit()) {
-            const rules = this.screen.Module as Rules;
-            MainCanvas.textAlign = "center";
-            this.addClickHandler(ButtonActionWidget(
-                { Left: 150, Top: 890, Width: 200, Height: 60 },
-                { Name: "Export", HoverText: "Copy your rules as a shareable code" },
-                () => copyExportCode(rules.exportCode()),
-            ));
-            this.addClickHandler(ButtonActionWidget(
-                { Left: 370, Top: 890, Width: 200, Height: 60 },
-                { Name: "Import", HoverText: "Apply a rules code" },
-                () => {
-                    const code = promptImportCode();
-                    if (code !== null) {
-                        const applied = rules.importCode(code);
-                        BCPNotifyPlayer(applied > 0 ? `Imported ${applied} rule${applied === 1 ? "" : "s"}.` : "That code could not be read.");
-                        this.screen.reopen();
-                    }
-                },
-            ));
-            MainCanvas.textAlign = "left";
-        }
     }
 }
 

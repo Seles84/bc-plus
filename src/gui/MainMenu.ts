@@ -1,6 +1,7 @@
 import { GUIPage, GUIScreen, PageOptions } from "@/system/gui/GUIScreen";
 import { ButtonActionWidget, DrawInfoPanel } from "@/system/gui/Widgets";
 import { ModuleSettingsScreen } from "@/gui/ModuleSettings";
+import { ExportImportScreen } from "@/gui/ExportImportScreen";
 import { BCPLUS_REPO, BCPLUS_VERSION } from "@/system/Constants";
 import { ModuleInstance } from "@/system/module/ModuleInstance";
 import type { GUI } from "@/modules/GUI";
@@ -87,7 +88,18 @@ class MainMenuPage extends GUIPage {
             );
         }
 
-        MainCanvas.textAlign = "center";
+        // Own menu only - the hub exports/imports the player's own data
+        if (!this.Character || this.Character.isPlayer()) {
+            this.addClickHandler(ButtonActionWidget(
+                { Top: 700, Left: 1450, Height: 90, Width: 400 },
+                { Name: "Export / Import", HoverText: "Back up or share your rules and curses as codes" },
+                () => {
+                    this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(
+                        new ExportImportScreen(this.Screen.Module, this.Character),
+                    );
+                },
+            ));
+        }
         this.addClickHandler(ButtonActionWidget(
             { Top: 810, Left: 1450, Height: 90, Width: 400 },
             { Name: "View Changelog", HoverText: "Open the BC+ changelog on GitHub" },
@@ -95,6 +107,5 @@ class MainMenuPage extends GUIPage {
                 window.open(`${BCPLUS_REPO}/blob/main/CHANGE-LOG.md`, "_blank");
             },
         ));
-        MainCanvas.textAlign = "left";
     }
 }

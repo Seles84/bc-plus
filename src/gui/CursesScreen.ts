@@ -2,8 +2,6 @@ import { GUIPage, GUIScreen, PageOptions } from "@/system/gui/GUIScreen";
 import { ButtonActionWidget } from "@/system/gui/Widgets";
 import { CurseAccess, LocalCurseAccess, RemoteCurseAccess } from "@/system/curses/CurseAccess";
 import { CurseSlotData } from "@/system/curses/CurseTypes";
-import { copyExportCode, promptImportCode } from "@/utils/ExportImport";
-import { BCPNotifyPlayer } from "@/utils/Messaging";
 import { ConditionsScreen } from "@/gui/ConditionsScreen";
 import { describeConditions } from "@/system/conditions/Conditions";
 import type { GUI } from "@/modules/GUI";
@@ -141,27 +139,6 @@ class CursesListPage extends GUIPage {
                 }
             });
 
-            if (canEdit) {
-                MainCanvas.textAlign = "center";
-                this.addClickHandler(ButtonActionWidget(
-                    { Left: 1150, Top: 878, Width: 170, Height: 64 },
-                    { Name: "Export", HoverText: "Copy your curse loadout as a shareable code" },
-                    () => copyExportCode(this.curses.exportCode()),
-                ));
-                this.addClickHandler(ButtonActionWidget(
-                    { Left: 1335, Top: 878, Width: 170, Height: 64 },
-                    { Name: "Import", HoverText: "Apply a curses code (merges by slot)" },
-                    () => {
-                        const code = promptImportCode();
-                        if (code !== null) {
-                            const applied = this.curses.importCode(code);
-                            BCPNotifyPlayer(applied > 0 ? `Imported ${applied} cursed slot${applied === 1 ? "" : "s"}.` : "That code could not be read.");
-                            this.screen.reopen();
-                        }
-                    },
-                ));
-                MainCanvas.textAlign = "left";
-            }
         }
     }
 }
