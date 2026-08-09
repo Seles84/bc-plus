@@ -22,6 +22,8 @@ export default class Rules extends ModuleInstance {
     private readonly registry = new Map<string, RuleDefinition>();
     private readonly installed = new Set<string>();
     private timerCheck: ReturnType<typeof setInterval> | null = null;
+    /** Intervals owned by installed rules, cleared on uninstall. */
+    private readonly ruleTimers = new Map<string, ReturnType<typeof setInterval>[]>();
 
     protected readonly SystemConfig: ModuleConfig = {
         Name: "Rules",
@@ -302,6 +304,10 @@ export default class Rules extends ModuleInstance {
 
     private uninstallRule(id: string): void {
         this.SDK.removeHooks(this.hookOwner(id));
+        for (const timer of this.ruleTimers.get(id) ?? []) {
+            clearInterval(timer);
+        }
+        this.ruleTimers.delete(id);
         this.installed.delete(id);
         debug(`Rule uninstalled: ${id}`);
     }
@@ -313,6 +319,13 @@ export default class Rules extends ModuleInstance {
                 this.SDK.addHook(this.hookOwner(definition.id), functionName, priority, hook);
             },
             setting: <T>(name: string): T => state().settings[name] as T,
+            interval: (callback: () => void, ms: number) => {
+                const timer = setInterval(callback, ms);
+                const timers = this.ruleTimers.get(definition.id) ?? [];
+                timers.push(timer);
+                this.ruleTimers.set(definition.id, timers);
+            },
+            inEffect: () => this.ruleInEffect(definition.id),
             isEnforced: () => state().enforce && this.ruleInEffect(definition.id),
             isLogged: () => state().log && this.ruleInEffect(definition.id),
             trigger: (target?: number | null) => {

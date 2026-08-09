@@ -14,6 +14,8 @@ import { FalteringSpeech } from "@/rules/FalteringSpeech";
 import { GaggedOOC } from "@/rules/GaggedOOC";
 import { GreetRoom } from "@/rules/GreetRoom";
 import { FarewellOnLeave } from "@/rules/FarewellOnLeave";
+import { ListenToMyVoice } from "@/rules/ListenToMyVoice";
+import { ReadyToBeSummoned } from "@/rules/ReadyToBeSummoned";
 
 /** Every rule BC+ ships, in display order. */
 export const RULE_DEFINITIONS: readonly RuleDefinition[] = [
@@ -32,4 +34,6 @@ export const RULE_DEFINITIONS: readonly RuleDefinition[] = [
     ForbidLeaving,
     GreetRoom,
     FarewellOnLeave,
+    ListenToMyVoice,
+    ReadyToBeSummoned,
 ];
