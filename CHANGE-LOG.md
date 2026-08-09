@@ -6,12 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-09
+
 ### Added
 - Sensory pack (4 rules, 36 total): **Sensory deprivation: Sound** and **Sight** (adjustable Light/Medium/Heavy impairment applied like items, stacking with what's worn), plus **Hearing whitelist** and **Seeing whitelist** — listed members are always understood/seen normally no matter how deprived the player is, with an option to understand whitelisted members even while they're gagged.
 - Locks & keys pack (8 rules, 32 total): forbid using remotes / keys / lockpicks / locks, each in a "on self" and "on others" variant. While enforced, the relevant dialog buttons simply don't appear.
 
 ### Changed
 - Commands screen: descriptions now wrap onto two lines instead of shrinking to fit one; the Set emoticon description is shortened (the full emoticon list was crowding the row).
+
+### Fixed
+- Conditions editor: the timer's "Ends in..." readout no longer runs under the help icon — it moved to the "When it ends" row.
 
 ## [0.2.0] - 2026-08-09
 
