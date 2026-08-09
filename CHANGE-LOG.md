@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Protection pack (7 new rules, 24 total): Forbid club owner changes, Forbid getting new lovers, Forbid breaking up with lovers, Forbid taking new submissives, Forbid disowning submissives, Prevent blacklisting (role-protected), and Prevent whitelisting (minimum role) — guarding relationships and lists against impulsive or coerced changes. The other side of each relationship can always still act.
 - Two rules from the BCX survey (17 total): **Listen to my voice** — configured sentences appear to the player at random intervals as a voice only they can see; **Ready to be summoned** — allowed members can summon the player from anywhere in the club via beep, pulling them to the summoner's room after a delay.
 - Rules can now own timers (cleared automatically on deactivation) — the framework piece behind Listen to my voice.
 - Scoped grants: a custom role's rules or curses grant can be limited to specific rules or specific slots ("Everything / N selected / None" in the grants editor). Members can then use the permission on exactly those items — commands touching anything else are rejected by the target's client.

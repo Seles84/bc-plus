@@ -16,6 +16,15 @@ import { GreetRoom } from "@/rules/GreetRoom";
 import { FarewellOnLeave } from "@/rules/FarewellOnLeave";
 import { ListenToMyVoice } from "@/rules/ListenToMyVoice";
 import { ReadyToBeSummoned } from "@/rules/ReadyToBeSummoned";
+import {
+    ForbidBreakingUp,
+    ForbidDisowning,
+    ForbidNewLovers,
+    ForbidNewSubmissives,
+    ForbidOwnerChanges,
+    PreventBlacklisting,
+    PreventWhitelisting,
+} from "@/rules/ProtectionRules";
 
 /** Every rule BC+ ships, in display order. */
 export const RULE_DEFINITIONS: readonly RuleDefinition[] = [
@@ -36,4 +45,11 @@ export const RULE_DEFINITIONS: readonly RuleDefinition[] = [
     FarewellOnLeave,
     ListenToMyVoice,
     ReadyToBeSummoned,
+    ForbidOwnerChanges,
+    ForbidNewLovers,
+    ForbidBreakingUp,
+    ForbidNewSubmissives,
+    ForbidDisowning,
+    PreventBlacklisting,
+    PreventWhitelisting,
 ];
