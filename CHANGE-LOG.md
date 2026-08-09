@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Changed
+- Authority screen is now a table: one row per permission with its name, a lowest-role selector and the self-access checkbox — all permissions on one page instead of two rows each across two pages. Works identically for remote viewing/editing.
 - Presets lock once chosen: picking a preset (in the welcome flow or General settings) asks for confirmation and then locks the choice — only a factory reset clears it. The General option shows as disabled while locked.
 - All browser popups (alert/confirm/prompt) replaced with BC+-styled in-page dialogs: dark themed, Enter confirms, Escape cancels, and they work everywhere — including during login before any screen exists.
 
