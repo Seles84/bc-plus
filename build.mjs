@@ -1,5 +1,5 @@
 import * as esbuild from "esbuild";
-import { copyFileSync, mkdirSync, readFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
 
@@ -54,6 +54,44 @@ copyFileSync(
     dev ? "static-dev/bcplusLoader.user.js" : "static-stable/bcplusLoader.user.js",
     "dist/bcplusLoader.user.js",
 );
+
+// Landing page for GitHub Pages (the deploy serves dist/ as the site root)
+writeFileSync("dist/index.html", `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BC+ (Bondage Club Plus)</title>
+<style>
+    body { background: #1a1520; color: #e8e2f0; font-family: system-ui, sans-serif;
+           max-width: 720px; margin: 3rem auto; padding: 0 1.5rem; line-height: 1.6; }
+    h1 { color: #b794e6; }
+    a { color: #b794e6; }
+    code { background: #2a2135; padding: 2px 6px; border-radius: 4px; }
+    .card { background: #241c2e; border-left: 4px solid #8469b6; border-radius: 6px;
+            padding: 1rem 1.25rem; margin: 1.5rem 0; }
+    .version { color: #9a8fb0; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<h1>BC+ (Bondage Club Plus)</h1>
+<p class="version">Version ${pkg.version}</p>
+<p>An extension for the web game <em>Bondage Club</em>: rules, curses, custom roles with
+fine-grained permissions, conditions and timers, one-shot commands, presets, and a behavior log.
+Runs standalone or in tandem with BCX.</p>
+<div class="card">
+    <strong>Install</strong>
+    <ol>
+        <li>Install a userscript manager such as <a href="https://www.tampermonkey.net/">Tampermonkey</a>.</li>
+        <li>Open <a href="bcplusLoader.user.js">the BC+ loader</a> and confirm the installation.</li>
+        <li>Open the club &mdash; BC+ loads automatically and updates itself on every visit.</li>
+    </ol>
+</div>
+<p><a href="https://github.com/Seles84/bc-plus">Source on GitHub</a> &middot;
+<a href="https://github.com/Seles84/bc-plus/blob/main/CHANGE-LOG.md">Changelog</a></p>
+</body>
+</html>
+`);
 
 if (serve) {
     const ctx = await esbuild.context(options);
