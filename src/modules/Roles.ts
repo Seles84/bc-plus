@@ -15,6 +15,21 @@ export const MANUAL_ROLE_KEYS = {
 export type ManualRole = keyof typeof MANUAL_ROLE_KEYS;
 
 /**
+ * A custom role: NOT a rank in the hierarchy - a named bundle of permission
+ * grants plus a member list. Grants are purely additive (union with the
+ * hierarchy check); custom roles can never outrank BC Owner because they
+ * do not rank at all, and deny rules deliberately do not exist.
+ */
+export interface CustomRoleData {
+    name: string;
+    members: number[];
+    grants: string[];
+}
+
+const MAX_CUSTOM_ROLES = 12;
+const MAX_ROLE_NAME = 30;
+
+/**
  * Determines which BC+ roles a member holds, combining BC relationships
  * (ownership, lovership, whitelist, friends) with manually assigned lists.
  */
@@ -48,6 +63,7 @@ export default class Roles extends ModuleInstance {
         return {
             owners: [],
             mistresses: [],
+            customRoles: {},
         };
     }
 
@@ -104,5 +120,56 @@ export default class Roles extends ModuleInstance {
     /** The member's highest role (lowest enum value). */
     highestRole(memberNumber: number): Role {
         return this.rolesOf(memberNumber)[0] ?? Role.Public;
+    }
+
+    // --- Custom roles (grant bundles, not ranks) ---
+
+    get CustomRoles(): Record<string, CustomRoleData> {
+        return this.Data.customRoles as Record<string, CustomRoleData>;
+    }
+
+    getCustomRole(id: string): CustomRoleData | undefined {
+        return this.CustomRoles[id];
+    }
+
+    /** Creates a custom role; returns its id, or null when invalid/at cap. */
+    createCustomRole(name: string): string | null {
+        const trimmed = name.trim().slice(0, MAX_ROLE_NAME);
+        if (trimmed.length === 0 || Object.keys(this.CustomRoles).length >= MAX_CUSTOM_ROLES) {
+            return null;
+        }
+        const id = `cr${Date.now().toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`;
+        this.CustomRoles[id] = { name: trimmed, members: [], grants: [] };
+        return id;
+    }
+
+    deleteCustomRole(id: string): void {
+        delete this.CustomRoles[id];
+    }
+
+    setCustomRoleGrant(id: string, permission: string, granted: boolean): void {
+        const role = this.CustomRoles[id];
+        if (!role) {
+            return;
+        }
+        const index = role.grants.indexOf(permission);
+        if (granted && index === -1) {
+            role.grants.push(permission);
+        } else if (!granted && index !== -1) {
+            role.grants.splice(index, 1);
+        }
+    }
+
+    /** Every permission the member holds through custom roles (additive only). */
+    customGrantsOf(memberNumber: number): Set<string> {
+        const grants = new Set<string>();
+        for (const role of Object.values(this.CustomRoles)) {
+            if (Array.isArray(role.members) && role.members.includes(memberNumber)) {
+                for (const grant of role.grants ?? []) {
+                    grants.add(grant);
+                }
+            }
+        }
+        return grants;
     }
 }

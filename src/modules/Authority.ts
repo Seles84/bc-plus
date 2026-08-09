@@ -48,6 +48,11 @@ export default class Authority extends ModuleInstance {
         return "authority.edit";
     }
 
+    /** Every registered permission, for grant checklists and diagnostics. */
+    get PermissionDefs(): PermissionDefinition[] {
+        return [...this.registry.values()];
+    }
+
     /** @internal Called by the ModuleManager with every module's permission definitions. */
     registerPermissions(definitions: PermissionDefinition[]): void {
         for (const def of definitions) {
@@ -103,7 +108,11 @@ export default class Authority extends ModuleInstance {
         }
         const storedRole = RoleNames.indexOf(this.getSetting<string>(`${permissionId}.role`));
         const minRole = storedRole === -1 ? def.defaultRole : (storedRole as Role);
-        return roles.highestRole(memberNumber) <= minRole;
+        if (roles.highestRole(memberNumber) <= minRole) {
+            return true;
+        }
+        // Custom roles grant additively on top of the hierarchy
+        return roles.customGrantsOf(memberNumber).has(permissionId);
     }
 
     /**
@@ -125,7 +134,21 @@ export default class Authority extends ModuleInstance {
         const storedName = authorityData?.[`${permissionId}.role`];
         const stored = typeof storedName === "string" ? RoleNames.indexOf(storedName) : -1;
         const minRole = stored === -1 ? def.defaultRole : (stored as Role);
-        return this.viewerRoleToward(character) <= minRole;
+        if (this.viewerRoleToward(character) <= minRole) {
+            return true;
+        }
+        // Custom-role grants from the target's synced data
+        const me = Player.MemberNumber ?? -1;
+        const customRoles = character.BCPData?.["roles"]?.["customRoles"];
+        if (typeof customRoles === "object" && customRoles !== null) {
+            for (const role of Object.values(customRoles as Record<string, { members?: number[]; grants?: string[] }>)) {
+                if (Array.isArray(role.members) && role.members.includes(me)
+                    && Array.isArray(role.grants) && role.grants.includes(permissionId)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /** The player's highest role toward another character, from their synced data and visible BC relationships. */
