@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Custom roles: create your own roles ("Create role..." on the Roles screen) as flexible permission bundles — each grants exactly the permissions you tick to its members, on top of whatever their rank already allows. Grants are additive only: a custom role can never outrank BC Owner, take permissions away, or drop anyone below Public. Click a custom role's name in the table to configure its grants (requires `authority.edit`); creating/deleting/assigning requires `roles.manage`. Custom-role grants work remotely too — someone granted curse access through a custom role can manage your curses from their client.
 
 ### Changed
+- Export/Import moved to one central hub in the main menu (own menu only): export or import rules, curses, or everything in one combined code. The scattered buttons on the Rules and Curses screens (which crowded the curses footer) are gone.
 - Roles screen: all assignments now show in one paginated table (Role, ID, Name) — BC-derived entries (BC Owner, Lovers) are tagged "from BC", manual entries have a remove button, and adding uses a role selector with member input and Browse on the same screen. Editing now correctly requires the `roles.manage` permission.
 - Main menu: hovering a module button now shows its description in a fixed panel on the right at normal, readable size, instead of BC's one-line tooltip that shrank long text into illegibility.
 
