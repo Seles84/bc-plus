@@ -262,18 +262,18 @@ export default class Curses extends ModuleInstance {
             SendBCPMessage({ message: "CurseCommandResult", ok: false, group: content.group, reason }, senderNumber);
         };
 
+        const { action, group, index, value } = content;
+        if (typeof group !== "string") {
+            reject("invalid command");
+            return;
+        }
         const authority = this.ModuleManager.getModule<Authority>("authority");
-        if (!authority?.hasPermission(senderNumber, "curses.edit")) {
-            reject("no permission");
+        if (!authority?.hasPermission(senderNumber, "curses.edit", group)) {
+            reject("no permission for this slot");
             return;
         }
         if (this.Preset === "Dominant") {
             reject("their Dominant preset does not accept curses");
-            return;
-        }
-        const { action, group, index, value } = content;
-        if (typeof group !== "string") {
-            reject("invalid command");
             return;
         }
 

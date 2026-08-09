@@ -6,9 +6,31 @@ import { ButtonActionWidget } from "@/system/gui/Widgets";
 import { MANUAL_ROLE_KEYS } from "@/modules/Roles";
 import type { GUI } from "@/modules/GUI";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
+import type { BCPlus } from "@/index";
+import type { PermissionDefinition } from "@/system/module/ModuleTypes";
 import type Authority from "@/modules/Authority";
 import type Roles from "@/modules/Roles";
+import type Rules from "@/modules/Rules";
+import type Curses from "@/modules/Curses";
 import type { ManualRole } from "@/modules/Roles";
+
+interface ScopeItem {
+    id: string;
+    label: string;
+}
+
+/** Items a permission can be limited to; null = the permission is not scopable. */
+function scopeItemsFor(core: BCPlus, permissionId: string): ScopeItem[] | null {
+    if (permissionId === "rules.edit") {
+        const rules = core.ModuleManager.getModule<Rules>("rules");
+        return rules?.Definitions.map((d) => ({ id: d.id, label: d.name })) ?? null;
+    }
+    if (permissionId === "curses.edit") {
+        const curses = core.ModuleManager.getModule<Curses>("curses");
+        return curses?.curseableGroups().map((g) => ({ id: g.Name as string, label: g.Description })) ?? null;
+    }
+    return null;
+}
 
 const INPUT_ID = "BCP_roleAddMember";
 const PER_PAGE = 8;
@@ -349,6 +371,25 @@ class CustomRolePage extends GUIPage {
 
         (authority?.PermissionDefs ?? []).forEach((def, i) => {
             const y = 340 + i * 70;
+            const items = scopeItemsFor(this.Core, def.id);
+            if (items) {
+                // Scopable permission: Everything / N selected / None, opens the picker
+                const full = role.grants.includes(def.id);
+                const count = role.grants.filter((g) => g.startsWith(`${def.id}:`)).length;
+                const status = full ? "Everything" : (count > 0 ? `${count} selected` : "None");
+                DrawText(def.label, 150, y + 32, "Black");
+                MainCanvas.textAlign = "center";
+                DrawButton(1200, y, 300, 60, status, canEditGrants ? "White" : "#ddd", "", "Choose what this grant covers", !canEditGrants);
+                MainCanvas.textAlign = "left";
+                this.addClickHandler(() => {
+                    if (canEditGrants && MouseIn(1200, y, 300, 60)) {
+                        this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(
+                            new GrantScopeScreen(this.roles, this.Character, this.screen.RoleId, def, items),
+                        );
+                    }
+                });
+                return;
+            }
             const granted = role.grants.includes(def.id);
             DrawCheckbox(150, y, 64, 64, def.label, granted, !canEditGrants);
             this.addClickHandler(() => {
@@ -370,5 +411,86 @@ class CustomRolePage extends GUIPage {
             ));
             MainCanvas.textAlign = "left";
         }
+    }
+}
+
+/** Picks what a scopable grant covers: everything, or specific items. */
+class GrantScopeScreen extends GUIScreen {
+
+    constructor(
+        module: Roles,
+        character: BCPlusCharacter | null,
+        readonly roleId: string,
+        readonly definition: PermissionDefinition,
+        readonly items: ScopeItem[],
+    ) {
+        super(module, character);
+    }
+
+    get Title(): string {
+        const roles = this.Module as Roles;
+        return `${roles.getCustomRole(this.roleId)?.name ?? "?"} - ${this.definition.label}`;
+    }
+
+    protected buildPages(): GUIPage[] {
+        const pages: GUIPage[] = [];
+        const PER_SCOPE_PAGE = 8;
+        for (let i = 0; i < Math.max(1, Math.ceil(this.items.length / PER_SCOPE_PAGE)); i++) {
+            pages.push(new GrantScopePage(this, this.items.slice(i * PER_SCOPE_PAGE, (i + 1) * PER_SCOPE_PAGE)));
+        }
+        return pages;
+    }
+}
+
+class GrantScopePage extends GUIPage {
+
+    constructor(protected override readonly screen: GrantScopeScreen, private readonly items: ScopeItem[]) {
+        super(screen);
+    }
+
+    private get roles(): Roles {
+        return this.screen.Module as Roles;
+    }
+
+    get Config(): PageOptions {
+        return {
+            title: this.screen.Title,
+            showTitle: true,
+            showBack: true,
+            showHelp: true,
+            helpText: "Choose what this role's grant covers: everything, or only the ticked items. "
+                + "Members can then use the permission exactly on those items and nothing else.",
+        };
+    }
+
+    render(): void {
+        const role = this.roles.getCustomRole(this.screen.roleId);
+        if (!role) {
+            DrawText("This role no longer exists.", 150, 250, "Gray");
+            return;
+        }
+        const authority = this.Core.ModuleManager.getModule<Authority>("authority");
+        const canEdit = authority?.hasPermission(Player.MemberNumber ?? -1, "authority.edit") ?? false;
+        const permissionId = this.screen.definition.id;
+        const full = role.grants.includes(permissionId);
+
+        DrawCheckbox(150, 210, 64, 64, "Grant for everything", full, !canEdit);
+        this.addClickHandler(() => {
+            if (canEdit && MouseIn(150, 210, 64, 64)) {
+                this.roles.setCustomRoleGrant(this.screen.roleId, permissionId, !full);
+            }
+        });
+        DrawEmptyRect(150, 295, 1610, 0, "Gray");
+
+        this.items.forEach((item, i) => {
+            const y = 320 + i * 70;
+            const scoped = role.grants.includes(`${permissionId}:${item.id}`);
+            DrawCheckbox(150, y, 64, 64, item.label, full || scoped, full || !canEdit);
+            this.addClickHandler(() => {
+                if (canEdit && !full && MouseIn(150, y, 64, 64)) {
+                    this.roles.setCustomRoleGrant(this.screen.roleId, `${permissionId}:${item.id}`, !scoped);
+                }
+            });
+        });
     }
 }

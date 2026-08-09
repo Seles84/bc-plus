@@ -371,8 +371,8 @@ export default class Rules extends ModuleInstance {
             return;
         }
         const authority = this.ModuleManager.getModule<Authority>("authority");
-        if (!authority?.hasPermission(senderNumber, "rules.edit")) {
-            reject("no permission");
+        if (!authority?.hasPermission(senderNumber, "rules.edit", rule)) {
+            reject("no permission for this rule");
             return;
         }
         if (this.Preset === "Dominant") {
