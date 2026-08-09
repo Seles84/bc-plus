@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- First-run welcome: new installs get a welcome notification pointing at the profile button, and the first menu open shows a short BC+ tour followed by the preset choice (with honest descriptions of each — including exactly what Slave gives up). Existing installs see it once too. "Decide later" keeps the Switch default.
 - `/bcp reset` — factory reset: wipes all BC+ data (rules, curses, roles, permissions, log) after typing your member number to confirm, then reloads the club into a fresh first-time state.
 
 ## [0.3.0] - 2026-08-09

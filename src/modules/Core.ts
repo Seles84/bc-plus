@@ -34,6 +34,13 @@ export default class Core extends ModuleInstance {
         MenuString: "General",
     };
 
+    override get Defaults(): Record<string, unknown> {
+        return {
+            ...super.Defaults,
+            firstRun: true,
+        };
+    }
+
     override get Settings(): AnySetting[] {
         return [
             {
@@ -60,6 +67,25 @@ export default class Core extends ModuleInstance {
     getPreset(): BCPPreset {
         const value = this.getSetting<string>("preset");
         return (PRESETS as readonly string[]).includes(value) ? value as BCPPreset : "Switch";
+    }
+
+    /** Whether the first-run welcome has not been completed yet. */
+    isFirstRun(): boolean {
+        return this.Data.firstRun === true;
+    }
+
+    completeFirstRun(): void {
+        this.Data.firstRun = false;
+    }
+
+    /** Applies a preset choice with full side effects (used by the welcome screen). */
+    choosePreset(value: BCPPreset): void {
+        const prev = this.getPreset();
+        if (value === prev) {
+            return;
+        }
+        this.setSetting("preset", value);
+        this.onPresetChanged(value, prev);
     }
 
     private onPresetChanged(value: BCPPreset, prev: BCPPreset): void {
@@ -94,7 +120,11 @@ export default class Core extends ModuleInstance {
         const mode = this.BCMode === "tandem"
             ? `tandem with BCX v${window.bcx?.version ?? "?"}`
             : "standalone";
-        InfoBeep(`${BCPLUS_APP_NAME} v${BCPLUS_VERSION} Ready! (${mode})`);
+        if (this.isFirstRun()) {
+            InfoBeep(`Welcome to ${BCPLUS_APP_NAME}! Open your character profile and click the BC+ button to get set up.`, 10_000);
+        } else {
+            InfoBeep(`${BCPLUS_APP_NAME} v${BCPLUS_VERSION} Ready! (${mode})`);
+        }
         log(`Ready! Running ${mode}.`);
 
         // BCX rule triggers are recorded by the Logging module in tandem mode
