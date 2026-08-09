@@ -39,7 +39,7 @@ function scopeItemsFor(core: BCPlus, permissionId: string): ScopeItem[] | null {
 }
 
 const INPUT_ID = "BCP_roleAddMember";
-const PER_PAGE = 8;
+const PER_PAGE = 7;
 const ROW_TOP = 260;
 const ROW_HEIGHT = 70;
 const COL_ROLE = 150;
