@@ -35,6 +35,12 @@ import {
     ForbidRemotesOthers,
     ForbidRemotesSelf,
 } from "@/rules/LocksRules";
+import {
+    HearingWhitelist,
+    SeeingWhitelist,
+    SensoryDepSight,
+    SensoryDepSound,
+} from "@/rules/SensoryRules";
 
 /** Every rule BC+ ships, in display order. */
 export const RULE_DEFINITIONS: readonly RuleDefinition[] = [
@@ -70,4 +76,8 @@ export const RULE_DEFINITIONS: readonly RuleDefinition[] = [
     ForbidPickOthers,
     ForbidLockSelf,
     ForbidLockOthers,
+    SensoryDepSound,
+    HearingWhitelist,
+    SensoryDepSight,
+    SeeingWhitelist,
 ];

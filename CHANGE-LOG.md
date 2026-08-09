@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Sensory pack (4 rules, 36 total): **Sensory deprivation: Sound** and **Sight** (adjustable Light/Medium/Heavy impairment applied like items, stacking with what's worn), plus **Hearing whitelist** and **Seeing whitelist** — listed members are always understood/seen normally no matter how deprived the player is, with an option to understand whitelisted members even while they're gagged.
 - Locks & keys pack (8 rules, 32 total): forbid using remotes / keys / lockpicks / locks, each in a "on self" and "on others" variant. While enforced, the relevant dialog buttons simply don't appear.
 
 ### Changed
