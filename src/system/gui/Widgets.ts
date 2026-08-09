@@ -13,6 +13,34 @@ export interface ButtonWidgetConfig {
 }
 
 /**
+ * Draws a titled description panel with wrapped, normal-sized text.
+ * Use for hover descriptions instead of DrawButton's native tooltip,
+ * which crushes long text into one unreadable line.
+ */
+export function DrawInfoPanel(title: string, text: string, panel: WidgetPosition): void {
+    const prevAlign = MainCanvas.textAlign;
+    MainCanvas.save();
+    DrawRect(panel.Left, panel.Top, panel.Width, panel.Height, "#ffff88");
+    DrawEmptyRect(panel.Left, panel.Top, panel.Width, panel.Height, "Black");
+    MainCanvas.textAlign = "left";
+    if (title) {
+        DrawText(title, panel.Left + 20, panel.Top + 40, "Black");
+        DrawEmptyRect(panel.Left + 15, panel.Top + 60, panel.Width - 30, 0, "Black");
+    }
+    const textTop = panel.Top + (title ? 80 : 20);
+    DrawTextWrap(
+        text,
+        panel.Left + 20 - (panel.Width - 40) / 2,
+        textTop,
+        panel.Width - 40,
+        panel.Height - (textTop - panel.Top) - 20,
+        "Black",
+    );
+    MainCanvas.restore();
+    MainCanvas.textAlign = prevAlign;
+}
+
+/**
  * Draws a wide button with optional icon and returns its click handler
  * (for GUIPage.addClickHandler).
  */

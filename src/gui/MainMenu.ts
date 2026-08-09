@@ -1,5 +1,5 @@
 import { GUIPage, GUIScreen, PageOptions } from "@/system/gui/GUIScreen";
-import { ButtonActionWidget } from "@/system/gui/Widgets";
+import { ButtonActionWidget, DrawInfoPanel } from "@/system/gui/Widgets";
 import { ModuleSettingsScreen } from "@/gui/ModuleSettings";
 import { BCPLUS_REPO, BCPLUS_VERSION } from "@/system/Constants";
 import { ModuleInstance } from "@/system/module/ModuleInstance";
@@ -49,16 +49,17 @@ class MainMenuPage extends GUIPage {
         DrawText(modeText, 1800, 160, "Black", "Gray");
 
         MainCanvas.textAlign = "left";
+        let hovered: { title: string; text: string } | null = null;
         this.menuModules.forEach((module, i) => {
             const col = Math.floor(i / 6);
             const row = i % 6;
+            const rect = { Top: 190 + 120 * row, Left: 150 + 430 * col, Height: 90, Width: 400 };
             this.addClickHandler(ButtonActionWidget(
-                { Top: 190 + 120 * row, Left: 150 + 430 * col, Height: 90, Width: 400 },
+                rect,
                 {
                     Name: module.Config.MenuString || module.Config.Name,
                     Icon: module.Config.Icon || null,
                     Active: module.Config.Active,
-                    HoverText: module.Config.Active ? module.Config.HoverText : "Module is deactivated",
                 },
                 () => {
                     const screen = module.SettingsScreen?.(this.Character)
@@ -66,7 +67,25 @@ class MainMenuPage extends GUIPage {
                     this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(screen);
                 },
             ));
+            if (MouseIn(rect.Left, rect.Top, rect.Width, rect.Height)) {
+                hovered = {
+                    title: module.Config.MenuString || module.Config.Name,
+                    text: module.Config.Active
+                        ? (module.Config.HoverText || module.Config.Description)
+                        : "Module is deactivated.",
+                };
+            }
         });
+
+        // Hover descriptions render in a fixed panel at readable size instead
+        // of BC's one-line tooltip
+        if (hovered !== null) {
+            DrawInfoPanel(
+                (hovered as { title: string; text: string }).title,
+                (hovered as { title: string; text: string }).text,
+                { Left: 1080, Top: 220, Width: 780, Height: 460 },
+            );
+        }
 
         MainCanvas.textAlign = "center";
         this.addClickHandler(ButtonActionWidget(
