@@ -70,7 +70,7 @@ export const COMMAND_DEFINITIONS: readonly CommandDefinition[] = [
     {
         id: "emoticon",
         name: "Set emoticon",
-        description: `Shows an emoticon over the player's head. One of: ${EMOTICONS.join(", ")}.`,
+        description: "Shows an emoticon over the player's head (e.g. Afk, Sleep, Hearts, Confusion, Coffee).",
         argument: { label: "Emoticon:", maxChars: 20 },
         execute(argument) {
             const match = EMOTICONS.find((e) => e.toLocaleLowerCase() === argument.trim().toLocaleLowerCase());
