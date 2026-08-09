@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Praise, scold and notes: when viewing someone's log with the right permissions, you can praise or scold them (with an optional message) or attach a note — the entry lands in their behavior log with your name, they're notified, and your view refreshes. Two new permissions: `log.praise` and `log.note` (both Mistress default).
 - Originator tracking: rules and curses now record who set them — shown on the rule config screen and hover details ("Set by ...") and on the curse slot screen ("Cursed by ..."). Recorded by your own client from the validated command sender; cleared when a rule deactivates; imports are attributed to the importer.
 - Commands can be scoped in custom-role grants: a role can grant exactly the commands you pick (e.g. only Kneel), with anything else rejected per-command by the target's client.
 

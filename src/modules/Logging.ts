@@ -5,7 +5,7 @@ import { Role } from "@/system/Roles";
 import { LOG_MAX_ENTRIES, LOG_REMOTE_LIMIT, LogCategory, LogEntry } from "@/system/logging/LogTypes";
 import { LoggingScreen } from "@/gui/LoggingScreen";
 import { GUIScreen } from "@/system/gui/GUIScreen";
-import { SendBCPMessage } from "@/utils/Messaging";
+import { BCPNotifyPlayer, SendBCPMessage } from "@/utils/Messaging";
 import { jsonClone } from "@/utils/BCUtils";
 import { debug, warn } from "@/system/Console";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
@@ -51,6 +51,18 @@ export default class Logging extends ModuleInstance {
                 label: "Clear my behavior log",
                 defaultRole: Role.Owner,
                 defaultSelf: true,
+            },
+            {
+                id: "log.praise",
+                label: "Praise or scold me in my log",
+                defaultRole: Role.Mistress,
+                defaultSelf: false,
+            },
+            {
+                id: "log.note",
+                label: "Leave notes in my log",
+                defaultRole: Role.Mistress,
+                defaultSelf: false,
             },
         ];
     }
@@ -164,6 +176,60 @@ export default class Logging extends ModuleInstance {
                 message: "LogResponse",
                 entries: jsonClone(this.Entries.slice(-LOG_REMOTE_LIMIT)),
             }, senderNumber);
+        });
+
+        // Praise/scold/notes from others - validated here, entry composed here
+        this.addSyncListener("LogAdd", (sender, content) => {
+            const senderNumber = sender.MemberNumber;
+            if (typeof senderNumber !== "number") {
+                return;
+            }
+            const reject = (reason: string): void => {
+                SendBCPMessage({ message: "LogAddResult", ok: false, reason }, senderNumber);
+            };
+            if (this.Preset === "Dominant") {
+                reject("their Dominant preset keeps no log");
+                return;
+            }
+            const kind = content.kind;
+            const text = typeof content.text === "string" ? content.text.slice(0, 200).trim() : "";
+            const authority = this.ModuleManager.getModule<Authority>("authority");
+
+            if (kind === "praise" || kind === "scold") {
+                if (!authority?.hasPermission(senderNumber, "log.praise")) {
+                    reject("no permission");
+                    return;
+                }
+                const verb = kind === "praise" ? "praised" : "scolded";
+                this.log(kind, `${sender.Name} (#${senderNumber}) ${verb} you${text ? `: ${text}` : ""}`);
+                BCPNotifyPlayer(`${sender.Name} (#${senderNumber}) ${verb} you${text ? `: ${text}` : "."}`);
+            } else if (kind === "note") {
+                if (!authority?.hasPermission(senderNumber, "log.note")) {
+                    reject("no permission");
+                    return;
+                }
+                if (text.length === 0) {
+                    reject("empty note");
+                    return;
+                }
+                this.log("note", `Note from ${sender.Name} (#${senderNumber}): ${text}`);
+                BCPNotifyPlayer(`${sender.Name} (#${senderNumber}) left a note in your log.`);
+            } else {
+                reject("invalid kind");
+                return;
+            }
+            SendBCPMessage({ message: "LogAddResult", ok: true }, senderNumber);
+        });
+
+        this.addSyncListener("LogAddResult", (sender, content) => {
+            const senderNumber = sender.MemberNumber;
+            if (content.ok === false) {
+                BCPNotifyPlayer(`${sender.Name} rejected the log entry${typeof content.reason === "string" ? `: ${content.reason}` : "."}`);
+            } else if (typeof senderNumber === "number") {
+                BCPNotifyPlayer("Delivered.");
+                // Refresh our view of their log
+                this.requestLog(senderNumber);
+            }
         });
 
         this.addSyncListener("LogResponse", (sender, content) => {

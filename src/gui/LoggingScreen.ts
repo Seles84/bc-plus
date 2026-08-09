@@ -1,6 +1,9 @@
 import { GUIPage, GUIScreen, PageOptions } from "@/system/gui/GUIScreen";
 import { LogEntry, formatLogTime } from "@/system/logging/LogTypes";
 import { ButtonActionWidget } from "@/system/gui/Widgets";
+import { modalPrompt } from "@/gui/Modal";
+import { SendBCPMessage } from "@/utils/Messaging";
+import type Authority from "@/modules/Authority";
 import type Logging from "@/modules/Logging";
 
 const PER_PAGE = 10;
@@ -135,6 +138,38 @@ class LogPage extends GUIPage {
                 ));
                 MainCanvas.textAlign = "left";
             }
+            return;
         }
+
+        // Praise / scold / note on someone else's log (their client validates)
+        const authority = this.Core.ModuleManager.getModule<Authority>("authority");
+        const canPraise = authority?.remoteHasPermission(character, "log.praise") ?? false;
+        const canNote = authority?.remoteHasPermission(character, "log.note") ?? false;
+        MainCanvas.textAlign = "center";
+        this.addClickHandler(ButtonActionWidget(
+            { Left: 150, Top: 910, Width: 220, Height: 70 },
+            { Name: "Praise", Active: canPraise, HoverText: "Add a praise entry to their log" },
+            () => this.sendEntry(character.MemberNumber, "praise", "Add a message to the praise (optional):", true),
+        ));
+        this.addClickHandler(ButtonActionWidget(
+            { Left: 390, Top: 910, Width: 220, Height: 70 },
+            { Name: "Scold", Active: canPraise, HoverText: "Add a scold entry to their log" },
+            () => this.sendEntry(character.MemberNumber, "scold", "Add a message to the scolding (optional):", true),
+        ));
+        this.addClickHandler(ButtonActionWidget(
+            { Left: 630, Top: 910, Width: 260, Height: 70 },
+            { Name: "Leave note", Active: canNote, HoverText: "Attach a note to their log" },
+            () => this.sendEntry(character.MemberNumber, "note", "Note text:", false),
+        ));
+        MainCanvas.textAlign = "left";
+    }
+
+    private sendEntry(memberNumber: number, kind: string, promptText: string, optional: boolean): void {
+        void modalPrompt(promptText, "", 200).then((text) => {
+            if (text === null || (!optional && text.trim().length === 0)) {
+                return;
+            }
+            SendBCPMessage({ message: "LogAdd", kind, text: text.trim() }, memberNumber);
+        });
     }
 }
