@@ -62,7 +62,7 @@ class WelcomePage extends GUIPage {
 
         MainCanvas.textAlign = "center";
         this.addClickHandler(ButtonActionWidget(
-            { Left: 150, Top: 880, Width: 400, Height: 80 },
+            { Left: 150, Top: 870, Width: 400, Height: 80 },
             { Name: "Choose a preset..." },
             () => this.screen.nextPage(),
         ));

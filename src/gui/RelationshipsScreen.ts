@@ -159,12 +159,12 @@ class RelationshipsPage extends GUIPage {
 
         MainCanvas.textAlign = "center";
         this.addClickHandler(ButtonActionWidget(
-            { Left: 150, Top: 910, Width: 340, Height: 70 },
+            { Left: 150, Top: 880, Width: 340, Height: 70 },
             { Name: "Add name...", Active: canEdit, HoverText: "Set a custom name by member number" },
             () => this.addEntry(),
         ));
         this.addClickHandler(ButtonActionWidget(
-            { Left: 510, Top: 910, Width: 280, Height: 70 },
+            { Left: 510, Top: 880, Width: 280, Height: 70 },
             { Name: "Browse...", Active: canEdit, HoverText: "Pick from room, friends and relationships" },
             () => this.openBrowser(),
         ));

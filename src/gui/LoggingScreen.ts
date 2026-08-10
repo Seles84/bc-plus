@@ -129,7 +129,7 @@ class LogPage extends GUIPage {
             if (this.logging.canClear() && this.logging.Entries.length > 0) {
                 MainCanvas.textAlign = "center";
                 this.addClickHandler(ButtonActionWidget(
-                    { Left: 150, Top: 910, Width: 300, Height: 70 },
+                    { Left: 150, Top: 880, Width: 300, Height: 70 },
                     { Name: "Clear log", HoverText: "Removes all entries" },
                     () => {
                         this.logging.clear();
@@ -147,23 +147,23 @@ class LogPage extends GUIPage {
         const canNote = authority?.remoteHasPermission(character, "log.note") ?? false;
         MainCanvas.textAlign = "center";
         this.addClickHandler(ButtonActionWidget(
-            { Left: 150, Top: 910, Width: 220, Height: 70 },
+            { Left: 150, Top: 880, Width: 220, Height: 70 },
             { Name: "Praise", Active: canPraise, HoverText: "Add a praise entry to their log" },
             () => this.sendEntry(character.MemberNumber, "praise", "Add a message to the praise (optional):", true),
         ));
         this.addClickHandler(ButtonActionWidget(
-            { Left: 390, Top: 910, Width: 220, Height: 70 },
+            { Left: 390, Top: 880, Width: 220, Height: 70 },
             { Name: "Scold", Active: canPraise, HoverText: "Add a scold entry to their log" },
             () => this.sendEntry(character.MemberNumber, "scold", "Add a message to the scolding (optional):", true),
         ));
         this.addClickHandler(ButtonActionWidget(
-            { Left: 630, Top: 910, Width: 260, Height: 70 },
+            { Left: 630, Top: 880, Width: 260, Height: 70 },
             { Name: "Leave note", Active: canNote, HoverText: "Attach a note to their log" },
             () => this.sendEntry(character.MemberNumber, "note", "Note text:", false),
         ));
         const canClear = authority?.remoteHasPermission(character, "log.delete") ?? false;
         this.addClickHandler(ButtonActionWidget(
-            { Left: 1450, Top: 910, Width: 300, Height: 70 },
+            { Left: 1450, Top: 880, Width: 300, Height: 70 },
             { Name: "Clear log", Active: canClear, HoverText: "Removes all entries from their log (their client validates)" },
             () => {
                 void modalConfirm(`Clear ${character.Nickname}'s entire behavior log?`, true).then((confirmed) => {

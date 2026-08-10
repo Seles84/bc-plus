@@ -511,7 +511,7 @@ class CustomRolePage extends GUIPage {
         if (canManage) {
             MainCanvas.textAlign = "center";
             this.addClickHandler(ButtonActionWidget(
-                { Left: 150, Top: 900, Width: 320, Height: 64 },
+                { Left: 150, Top: 880, Width: 320, Height: 64 },
                 { Name: "Delete this role", HoverText: "Removes the role and all its assignments" },
                 () => {
                     this.roles.deleteCustomRole(this.screen.RoleId);
