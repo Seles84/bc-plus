@@ -89,8 +89,8 @@ const PRESET_CHOICES: { preset: BCPPreset; blurb: string }[] = [
     {
         preset: "Slave",
         blurb: "Hands off the wheel: after a confirmation, you lose self-access to your rules, curses, "
-            + "permissions, roles and log clearing. Only those you empower can change them - and only "
-            + "they can give control back.",
+            + "permissions, roles, relationships and log clearing. Only those you empower can change "
+            + "them - and only they can give control back.",
     },
 ];
 

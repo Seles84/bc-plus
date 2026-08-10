@@ -1,4 +1,4 @@
-export type LogCategory = "rule" | "curse" | "authority" | "role" | "praise" | "scold" | "note" | "other";
+export type LogCategory = "rule" | "curse" | "authority" | "role" | "relationship" | "praise" | "scold" | "note" | "other";
 
 export interface LogEntry {
     /** Unix ms timestamp */
