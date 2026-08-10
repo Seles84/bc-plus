@@ -4,6 +4,12 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- Ghosted members are now always denied every BC+ permission, exactly like blacklisted members — regardless of their roles or custom-role grants. (Their client may still show buttons, but every command they send is rejected.)
+- The manual "Owner" role is renamed to "Co-Owner" to distinguish it from your actual BC Owner. Existing saves migrate automatically, and settings synced from older BC+ clients are still understood.
+
 ## [0.4.0] - 2026-08-10
 
 ### Added

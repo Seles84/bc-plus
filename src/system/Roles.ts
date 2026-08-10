@@ -12,7 +12,7 @@ export enum Role {
 
 export const RoleNames: readonly string[] = [
     "BC Owner",
-    "Owner",
+    "Co-Owner",
     "Lover",
     "Mistress",
     "Whitelist",
@@ -22,4 +22,16 @@ export const RoleNames: readonly string[] = [
 
 export function roleName(role: Role): string {
     return RoleNames[role] ?? "Unknown";
+}
+
+/**
+ * Parses a stored/synced role name; accepts names written by older clients
+ * ("Owner" was renamed to "Co-Owner" after 0.4.0). Null when unknown.
+ */
+export function roleFromName(name: string): Role | null {
+    const index = RoleNames.indexOf(name);
+    if (index !== -1) {
+        return index as Role;
+    }
+    return name === "Owner" ? Role.Owner : null;
 }

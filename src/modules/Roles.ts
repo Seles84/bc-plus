@@ -47,7 +47,7 @@ export default class Roles extends ModuleInstance {
         Active: true,
         Icon: "Icons/Security.png",
         HoverText: "Manage who holds BC+ roles: BC Owner and Lover always follow your actual in-game "
-            + "relationships and cannot be assigned. Owner and Mistress are assigned on this screen. "
+            + "relationships and cannot be assigned. Co-Owner and Mistress are assigned on this screen. "
             + "Whitelist and Friend follow your BC lists directly.",
         PublicData: true,
         Reference: "roles",
