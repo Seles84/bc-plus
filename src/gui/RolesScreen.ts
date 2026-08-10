@@ -438,13 +438,24 @@ export class CustomRoleScreen extends GUIScreen {
     }
 
     protected buildPages(): GUIPage[] {
-        return [new CustomRolePage(this)];
+        const authority = this.Module.ModuleManager.getModule<Authority>("authority");
+        const defs = authority?.PermissionDefs ?? [];
+        const pages: GUIPage[] = [];
+        for (let i = 0; i < Math.max(1, Math.ceil(defs.length / GRANTS_PER_PAGE)); i++) {
+            pages.push(new CustomRolePage(this, defs.slice(i * GRANTS_PER_PAGE, (i + 1) * GRANTS_PER_PAGE)));
+        }
+        return pages;
     }
 }
 
+const GRANTS_PER_PAGE = 7;
+
 class CustomRolePage extends GUIPage {
 
-    constructor(protected override readonly screen: CustomRoleScreen) {
+    constructor(
+        protected override readonly screen: CustomRoleScreen,
+        private readonly defs: PermissionDefinition[],
+    ) {
         super(screen);
     }
 
@@ -478,7 +489,7 @@ class CustomRolePage extends GUIPage {
         DrawText(`Members: ${role.members.length} (assign on the Roles table)`, 150, 230, "Gray");
         DrawText("This role grants:", 150, 300, "Black");
 
-        (authority?.PermissionDefs ?? []).forEach((def, i) => {
+        this.defs.forEach((def, i) => {
             const y = 340 + i * 70;
             const items = scopeItemsFor(this.Core, def.id);
             if (items) {

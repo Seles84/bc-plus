@@ -26,6 +26,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Fixed
 - Bottom-row buttons no longer hang off the background: every footer button (Relationships, Log praise/scold/note/clear, custom-role delete, welcome screen) now ends at the same edge as the page selector, matching the Rules screen.
+- Custom role grants editor now paginates (7 permissions per page) instead of running off the bottom of the screen as the permission list grew.
 - Factory reset ("Reset BC+" button and `/bcp reset`) no longer crashes with "Invalid key 'BCP' attempting to save 'undefined'" — the server-side save is now removed the way BC expects, so the wipe completes and the club reloads cleanly.
 - **Forbid breaking up with lovers** now actually blocks breakups: BC's chat-room relationship menu offers a direct "Tell X you want to break up" option (any stage, no waiting period) that bypassed the Management-mistress checks the rule relied on — the same gap currently making the equivalent BCX rule ineffective. The breakup request itself is now blocked, with a local explanation and a logged attempt.
 - All five relationship protection rules (owner changes, new lovers, breaking up, new submissives, disowning) now also enforce at the point where the request is sent to the server, not just by hiding menu options — so a dialog that was already open (or any other UI path) can no longer slip a forbidden relationship change through.
