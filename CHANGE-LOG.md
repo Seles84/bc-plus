@@ -4,7 +4,7 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.4.0] - 2026-08-10
 
 ### Added
 - Relationships module: give people custom names — the player sees that name instead of the real one in the chat room (name tags, chat messages, whispers), and entries marked "must use it" also block the player from saying the person's real name in chat or whispers (OOC is exempt; compound names like "Mistress Lana" still allow "Lana"). Add by member number or browse the room/friends/relationships picker. Works remotely with two new permissions: `relationships.view` (Mistress default) to see someone's list and `relationships.edit` (Owner default) to manage it — every change is validated by their client, notifies them, and lands in their log. The Slave preset now also locks self-access to relationship editing.
