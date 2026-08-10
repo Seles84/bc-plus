@@ -3,8 +3,10 @@ import { ButtonActionWidget } from "@/system/gui/Widgets";
 import { modalConfirm, modalInfo, modalPrompt } from "@/gui/Modal";
 import { MemberNumberToName } from "@/utils/Messaging";
 import { NICKNAME_MAX, RelationshipEntry, isValidCustomName } from "@/modules/Relationships";
+import { UserSelectScreen } from "@/gui/UserSelectScreen";
 import type Relationships from "@/modules/Relationships";
 import type Authority from "@/modules/Authority";
+import type { GUI } from "@/modules/GUI";
 
 const PER_PAGE = 8;
 
@@ -158,10 +160,27 @@ class RelationshipsPage extends GUIPage {
         MainCanvas.textAlign = "center";
         this.addClickHandler(ButtonActionWidget(
             { Left: 150, Top: 910, Width: 340, Height: 70 },
-            { Name: "Add name...", Active: canEdit, HoverText: "Set a custom name for a member" },
+            { Name: "Add name...", Active: canEdit, HoverText: "Set a custom name by member number" },
             () => this.addEntry(),
         ));
+        this.addClickHandler(ButtonActionWidget(
+            { Left: 510, Top: 910, Width: 280, Height: 70 },
+            { Name: "Browse...", Active: canEdit, HoverText: "Pick from room, friends and relationships" },
+            () => this.openBrowser(),
+        ));
         MainCanvas.textAlign = "left";
+    }
+
+    private openBrowser(): void {
+        const excluded = Object.keys(this.screen.entries() ?? {})
+            .map((key) => parseInt(key, 10))
+            .filter((member) => Number.isInteger(member));
+        this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(new UserSelectScreen(
+            this.relationships,
+            this.Character,
+            (memberNumber) => void this.promptNickname(memberNumber, "", false),
+            excluded,
+        ));
     }
 
     private addEntry(): void {
