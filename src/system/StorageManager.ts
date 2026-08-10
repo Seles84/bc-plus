@@ -236,8 +236,10 @@ export default class StorageManager {
     private clear(): void {
         localStorage.removeItem(this.getLocalStorageName(false));
         localStorage.removeItem(this.getLocalStorageName(true));
-        if (Player.ExtensionSettings[BCPLUS_STORAGE] !== undefined) {
-            delete Player.ExtensionSettings[BCPLUS_STORAGE];
+        // BC's sync only accepts a string or null here - null is the deletion
+        // sentinel; a deleted (undefined) key makes ServerPlayerExtensionSettingsSync throw
+        if (Player.ExtensionSettings[BCPLUS_STORAGE] != null) {
+            Player.ExtensionSettings[BCPLUS_STORAGE] = null;
             ServerPlayerExtensionSettingsSync(BCPLUS_STORAGE, true);
         }
     }

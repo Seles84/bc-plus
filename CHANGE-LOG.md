@@ -23,6 +23,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Authority screen is now a table: one row per permission with its name, a lowest-role selector and the self-access checkbox — all permissions on one page instead of two rows each across two pages. Works identically for remote viewing/editing.
 - All browser popups (alert/confirm/prompt) replaced with BC+-styled in-page dialogs: dark themed, Enter confirms, Escape cancels, and they work everywhere — including during login before any screen exists.
 
+### Fixed
+- Factory reset ("Reset BC+" button and `/bcp reset`) no longer crashes with "Invalid key 'BCP' attempting to save 'undefined'" — the server-side save is now removed the way BC expects, so the wipe completes and the club reloads cleanly.
+
 ## [0.3.0] - 2026-08-09
 
 ### Added
