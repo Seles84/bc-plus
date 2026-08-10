@@ -1,7 +1,7 @@
 import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { ModuleConfig, PermissionDefinition } from "@/system/module/ModuleTypes";
 import { BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
-import { Role, RoleNames } from "@/system/Roles";
+import { Role, RoleNames, roleFromName } from "@/system/Roles";
 import { AnySetting } from "@/system/gui/Settings";
 import { warn } from "@/system/Console";
 import { AuthorityScreen } from "@/gui/AuthorityScreen";
@@ -47,8 +47,8 @@ export default class Authority extends ModuleInstance {
         Active: true,
         Icon: "Icons/Preference.png",
         HoverText: "Each entry controls one BC+ permission: the lowest role allowed to use it on you, "
-            + "and whether you may use it on yourself. Roles are ordered BC Owner > Owner > Lover > "
-            + "Mistress > Whitelist > Friend > Public.",
+            + "and whether you may use it on yourself. Roles are ordered BC Owner > Co-Owner > Lover > "
+            + "Mistress > Whitelist > Friend > Public. Ghosted and blacklisted members are always denied.",
         PublicData: true,
         Reference: "authority",
         MenuString: "Authority",
@@ -78,6 +78,15 @@ export default class Authority extends ModuleInstance {
     /** Every registered permission, for grant checklists and diagnostics. */
     get PermissionDefs(): PermissionDefinition[] {
         return [...this.registry.values()];
+    }
+
+    override Load(): void {
+        // "Owner" was renamed to "Co-Owner" after 0.4.0 - rewrite stored values
+        for (const [key, value] of Object.entries(this.Data)) {
+            if (key.endsWith(".role") && value === "Owner") {
+                this.Data[key] = "Co-Owner";
+            }
+        }
     }
 
     /** @internal Called by the ModuleManager with every module's permission definitions. */
@@ -115,7 +124,7 @@ export default class Authority extends ModuleInstance {
 
     /**
      * Whether the given member may use the given permission on the player.
-     * Unknown permissions and blacklisted members are always denied.
+     * Unknown permissions and ghosted/blacklisted members are always denied.
      * @param scope - The specific object being touched (rule id, curse slot);
      *   scoped custom-role grants (`perm:scope`) only pass for their scope.
      *   Without a scope, any grant for the permission counts as access.
@@ -129,15 +138,15 @@ export default class Authority extends ModuleInstance {
         if (memberNumber === Player.MemberNumber) {
             return this.getSetting<boolean>(`${permissionId}.self`);
         }
-        if (Player.BlackList.includes(memberNumber)) {
+        if (Player.BlackList.includes(memberNumber) || Player.GhostList.includes(memberNumber)) {
             return false;
         }
         const roles = this.ModuleManager.getModule<Roles>("roles");
         if (!roles) {
             return false;
         }
-        const storedRole = RoleNames.indexOf(this.getSetting<string>(`${permissionId}.role`));
-        const minRole = storedRole === -1 ? def.defaultRole : (storedRole as Role);
+        const storedRole = roleFromName(this.getSetting<string>(`${permissionId}.role`));
+        const minRole = storedRole ?? def.defaultRole;
         if (roles.highestRole(memberNumber) <= minRole) {
             return true;
         }
@@ -162,8 +171,8 @@ export default class Authority extends ModuleInstance {
         }
         const authorityData = character.BCPData?.["authority"];
         const storedName = authorityData?.[`${permissionId}.role`];
-        const stored = typeof storedName === "string" ? RoleNames.indexOf(storedName) : -1;
-        const minRole = stored === -1 ? def.defaultRole : (stored as Role);
+        const stored = typeof storedName === "string" ? roleFromName(storedName) : null;
+        const minRole = stored ?? def.defaultRole;
         if (this.viewerRoleToward(character) <= minRole) {
             return true;
         }

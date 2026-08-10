@@ -202,7 +202,7 @@ class RolesTablePage extends GUIPage {
             showBack: true,
             showHelp: true,
             helpText: "All BC+ role assignments in one table. BC Owner and Lover follow the in-game "
-                + "relationships; Owner and Mistress are ranks in the hierarchy; custom roles (create "
+                + "relationships; Co-Owner and Mistress are ranks in the hierarchy; custom roles (create "
                 + "them top right) are permission bundles that grant exactly what you configure - "
                 + "click a custom role's name to set its grants. Whitelist and Friend follow the BC "
                 + "lists and are not listed. Adding assignments requires roles.assign; removing them "

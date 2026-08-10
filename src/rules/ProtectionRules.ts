@@ -1,5 +1,5 @@
 import { RuleDefinition } from "@/system/rules/RuleTypes";
-import { Role, RoleNames } from "@/system/Roles";
+import { RoleNames, roleFromName } from "@/system/Roles";
 
 /**
  * Protection rules guard relationship and list state against impulsive or
@@ -162,13 +162,13 @@ export const PreventBlacklisting: RuleDefinition = {
     load(ctx) {
         ctx.hook("ChatRoomListUpdate", 6, (args, next) => {
             const [list, adding, memberNumber] = args;
-            const protectedRole = RoleNames.indexOf(ctx.setting<string>("minRole"));
+            const protectedRole = roleFromName(ctx.setting<string>("minRole"));
             if (ctx.isEnforced()
                 && adding
                 && (list === Player.BlackList || list === Player.GhostList)
                 && typeof memberNumber === "number"
-                && protectedRole >= 0
-                && ctx.highestRoleOf(memberNumber) <= (protectedRole as Role)) {
+                && protectedRole !== null
+                && ctx.highestRoleOf(memberNumber) <= protectedRole) {
                 ctx.triggerAttempt(memberNumber);
                 ctx.notify("A rule protects this person from being blacklisted.");
                 return;
@@ -195,13 +195,13 @@ export const PreventWhitelisting: RuleDefinition = {
     load(ctx) {
         ctx.hook("ChatRoomListUpdate", 6, (args, next) => {
             const [list, adding, memberNumber] = args;
-            const minRole = RoleNames.indexOf(ctx.setting<string>("minRole"));
+            const minRole = roleFromName(ctx.setting<string>("minRole"));
             if (ctx.isEnforced()
                 && adding
                 && list === Player.WhiteList
                 && typeof memberNumber === "number"
-                && minRole >= 0
-                && ctx.highestRoleOf(memberNumber) > (minRole as Role)) {
+                && minRole !== null
+                && ctx.highestRoleOf(memberNumber) > minRole) {
                 ctx.triggerAttempt(memberNumber);
                 ctx.notify("A rule does not allow whitelisting this person.");
                 return;

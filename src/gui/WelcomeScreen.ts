@@ -79,11 +79,11 @@ const PRESET_CHOICES: { preset: BCPPreset; blurb: string }[] = [
     {
         preset: "Switch",
         blurb: "The balanced middle: everything available, permissions at sensible defaults "
-            + "(your Owner and Mistresses can manage you; you keep full self-access).",
+            + "(your Owners and Mistresses can manage you; you keep full self-access).",
     },
     {
         preset: "Submissive",
-        blurb: "Ready for the receiving end: anyone may view your BC+, your Owner and Mistresses can "
+        blurb: "Ready for the receiving end: anyone may view your BC+, your Owners and Mistresses can "
             + "manage you - and you keep control of your own settings.",
     },
     {
