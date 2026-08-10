@@ -14,7 +14,7 @@ export type BCPPreset = "Dominant" | "Switch" | "Submissive" | "Slave";
 export const PRESETS: readonly BCPPreset[] = ["Dominant", "Switch", "Submissive", "Slave"];
 
 /** Permissions the Slave preset removes self-access to. */
-const SLAVE_SELF_LOCKED = ["rules.edit", "curses.edit", "authority.edit", "roles.assign", "roles.revoke", "log.delete"];
+const SLAVE_SELF_LOCKED = ["rules.edit", "curses.edit", "authority.edit", "roles.assign", "roles.revoke", "relationships.edit", "log.delete"];
 
 /**
  * Core housekeeping module: run preset, update notifications and, in tandem
@@ -56,7 +56,7 @@ export default class Core extends ModuleInstance {
                 label: "Play preset",
                 hoverText: "Dominant: BC+ rules, curses and logging never apply to you and permissions start closed. "
                     + "Switch/Submissive: everything available with sensible permission defaults. "
-                    + "Slave: locks you out of changing your own rules, curses, permissions and roles. "
+                    + "Slave: locks you out of changing your own rules, curses, permissions, roles and relationships. "
                     + "Once chosen, the preset is locked - only a factory reset clears it.",
                 options: [...PRESETS],
                 default: "Switch",
@@ -146,8 +146,8 @@ export default class Core extends ModuleInstance {
             return false;
         }
         const warning = value === "Slave"
-            ? "\n\nSlave removes your OWN access to change your rules, curses, permissions and roles, "
-            + "and to clear your log - only people your permissions allow (e.g. your Owner) can."
+            ? "\n\nSlave removes your OWN access to change your rules, curses, permissions, roles and "
+            + "relationships, and to clear your log - only people your permissions allow (e.g. your Owner) can."
             : "";
         const confirmed = await modalConfirm(
             `Set your preset to ${value}?\nThis configures your permissions to match and locks the preset - `
@@ -160,7 +160,7 @@ export default class Core extends ModuleInstance {
         }
         this.applyPresetProfile(value);
         if (value === "Slave") {
-            BCPNotifyPlayer("Slave preset applied: your rules, curses, permissions, roles and log are in others' hands.");
+            BCPNotifyPlayer("Slave preset applied: your rules, curses, permissions, roles, relationships and log are in others' hands.");
         } else if (value === "Dominant") {
             BCPNotifyPlayer("Dominant preset: BC+ rules, curses and logging will not apply to you, and others get no access by default.");
         } else {

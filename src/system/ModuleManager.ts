@@ -7,6 +7,7 @@ import Core from "@/modules/Core";
 import Curses from "@/modules/Curses";
 import DataSync from "@/modules/DataSync";
 import Logging from "@/modules/Logging";
+import Relationships from "@/modules/Relationships";
 import Roles from "@/modules/Roles";
 import Rules from "@/modules/Rules";
 import TextCommands from "@/modules/TextCommands";
@@ -25,6 +26,7 @@ export default class ModuleManager {
             new Rules(parent),
             new Curses(parent),
             new Commands(parent),
+            new Relationships(parent),
             new Logging(parent),
             new TextCommands(parent),
             new GUI(parent),

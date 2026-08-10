@@ -19,6 +19,8 @@ export interface BCPlusEvents {
     curseChanged: { group: string; active: boolean };
     /** Fired when a requested remote log (or denial) arrives. */
     logReceived: { memberNumber: number };
+    /** Fired when a requested remote relationship list (or denial) arrives. */
+    relationshipsReceived: { memberNumber: number };
     /** Fired after the save file has been persisted (any data change). */
     saveSynced: undefined;
 }

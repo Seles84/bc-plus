@@ -62,7 +62,7 @@ class WelcomePage extends GUIPage {
 
         MainCanvas.textAlign = "center";
         this.addClickHandler(ButtonActionWidget(
-            { Left: 150, Top: 880, Width: 400, Height: 80 },
+            { Left: 150, Top: 870, Width: 400, Height: 80 },
             { Name: "Choose a preset..." },
             () => this.screen.nextPage(),
         ));
@@ -89,8 +89,8 @@ const PRESET_CHOICES: { preset: BCPPreset; blurb: string }[] = [
     {
         preset: "Slave",
         blurb: "Hands off the wheel: after a confirmation, you lose self-access to your rules, curses, "
-            + "permissions, roles and log clearing. Only those you empower can change them - and only "
-            + "they can give control back.",
+            + "permissions, roles, relationships and log clearing. Only those you empower can change "
+            + "them - and only they can give control back.",
     },
 ];
 
