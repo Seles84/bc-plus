@@ -5,7 +5,10 @@ import { Role, RoleNames } from "@/system/Roles";
  * Protection rules guard relationship and list state against impulsive or
  * coerced changes. The relationship rules hook BC's capability checks, which
  * run every dialog frame - so they block silently (the option simply never
- * appears) and cannot trigger/announce without spamming.
+ * appears) and cannot trigger/announce without spamming. Each rule also
+ * guards the request sender itself (ChatRoomSendOwnership/LovershipRequest),
+ * which runs once per click - catching dialogs that were already open and
+ * any UI path the capability checks miss.
  */
 
 export const ForbidOwnerChanges: RuleDefinition = {
@@ -31,6 +34,15 @@ export const ForbidOwnerChanges: RuleDefinition = {
             ctx.hook(fn, 5, (args, next) => !ctx.isEnforced() && next(args));
         }
         ctx.hook("ManagementCannotBeReleasedExtreme", 5, (args, next) => ctx.isEnforced() || next(args));
+        ctx.hook("ChatRoomSendOwnershipRequest", 5, (args, next) => {
+            if (ctx.isEnforced()
+                && ((args[0] === "Accept" && ChatRoomOwnershipOption === "CanStartTrial") || args[0] === "Break")) {
+                ctx.triggerAttempt(CurrentCharacter?.MemberNumber);
+                ctx.notify("A rule forbids changing your club owner.");
+                return;
+            }
+            return next(args);
+        });
     },
 };
 
@@ -47,13 +59,24 @@ export const ForbidNewLovers: RuleDefinition = {
             }
             return next(args);
         });
+        ctx.hook("ChatRoomSendLovershipRequest", 5, (args, next) => {
+            if (ctx.isEnforced()
+                && ((args[0] === "Propose" && ChatRoomLovershipOption === "CanOfferBeginDating")
+                    || (args[0] === "Accept" && ChatRoomLovershipOption === "CanBeginDating"))) {
+                ctx.triggerAttempt(CurrentCharacter?.MemberNumber);
+                ctx.notify("A rule forbids starting to date anyone new.");
+                return;
+            }
+            return next(args);
+        });
     },
 };
 
 export const ForbidBreakingUp: RuleDefinition = {
     id: "protect.breakup",
     name: "Forbid breaking up with lovers",
-    description: "The player cannot leave any of their lovers, at any lovership stage. "
+    description: "The player cannot leave any of their lovers, at any lovership stage - neither "
+        + "through the Management mistress nor directly in a chat room. "
         + "Their lovers can still break up with them.",
     category: "Protection",
     load(ctx) {
@@ -63,6 +86,17 @@ export const ForbidBreakingUp: RuleDefinition = {
         ] as const) {
             ctx.hook(fn, 5, (args, next) => !ctx.isEnforced() && next(args));
         }
+        // BC's chat-room breakup option ("Tell X you want to break up")
+        // bypasses Management entirely; its IsLoverOfPlayer prerequisite
+        // also gates the lover-rules menu, so block the send, not the menu
+        ctx.hook("ChatRoomSendLovershipRequest", 5, (args, next) => {
+            if (ctx.isEnforced() && args[0] === "Break") {
+                ctx.triggerAttempt(CurrentCharacter?.MemberNumber);
+                ctx.notify("A rule forbids breaking up with your lovers.");
+                return;
+            }
+            return next(args);
+        });
     },
 };
 
@@ -79,6 +113,14 @@ export const ForbidNewSubmissives: RuleDefinition = {
             }
             return next(args);
         });
+        ctx.hook("ChatRoomSendOwnershipRequest", 5, (args, next) => {
+            if (ctx.isEnforced() && args[0] === "Propose" && ChatRoomOwnershipOption === "CanOfferStartTrial") {
+                ctx.triggerAttempt(CurrentCharacter?.MemberNumber);
+                ctx.notify("A rule forbids taking new submissives.");
+                return;
+            }
+            return next(args);
+        });
     },
 };
 
@@ -90,6 +132,14 @@ export const ForbidDisowning: RuleDefinition = {
     category: "Protection",
     load(ctx) {
         ctx.hook("ChatRoomIsOwnedByPlayer", 5, (args, next) => !ctx.isEnforced() && next(args));
+        ctx.hook("ChatRoomSendOwnershipRequest", 5, (args, next) => {
+            if (ctx.isEnforced() && args[0] === "Release") {
+                ctx.triggerAttempt(CurrentCharacter?.MemberNumber);
+                ctx.notify("A rule forbids letting go of your submissives.");
+                return;
+            }
+            return next(args);
+        });
     },
 };
 
