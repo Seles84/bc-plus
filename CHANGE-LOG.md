@@ -4,7 +4,7 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.4.3] - 2026-08-11
 
 ### Added
 - Update notification: when a newer BC+ release is available, you now get a one-time beep per session ("v x.y.z is available — reload the club to update"), controlled by the same "Notify me in-club about BC+ updates" setting as the after-update beep.
