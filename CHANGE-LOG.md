@@ -4,7 +4,7 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.4.4] - 2026-08-11
 
 ### Added
 - Whisper commands: anyone your `commands.use` permission allows can whisper `!bcp <command>` to you to give orders without opening any menu — and without needing BC+ themselves. `!bcp help` lists exactly the commands that person may use; commands with text take it after the name (e.g. `!bcp say I am a good girl`). Replies arrive as targeted action messages (never garbled, not affected by whisper rules), gagged senders can wrap the command in OOC parentheses, and a checkbox on your Commands screen turns the whisper interface off entirely.
