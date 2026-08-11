@@ -7,6 +7,9 @@ import { BCPVersionCompare, parseBCPVersion } from "@/utils/Version";
 import { AnySetting } from "@/system/gui/Settings";
 import { modalConfirm } from "@/gui/Modal";
 import { BCPNotifyPlayer } from "@/utils/Messaging";
+import { getChatroomCharacter } from "@/utils/BCPlusCharacter";
+import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
+import appLogo from "@/images/icon90.png";
 import { Role, RoleNames } from "@/system/Roles";
 import type Authority from "@/modules/Authority";
 
@@ -78,6 +81,15 @@ export default class Core extends ModuleInstance {
                 label: "Notify me in-club about BC+ updates",
                 hoverText: "Beeps once after BC+ updated, and once per session when a newer "
                     + "version is available (reload the club to get it).",
+                default: true,
+            },
+            {
+                type: "checkbox",
+                name: "roomIcons",
+                label: "Show the BC+ icon above BC+ users in the room",
+                hoverText: "Draws the BC+ logo next to BC's status icons above every character "
+                    + "running BC+ (including you). Hovering it shows their BC+ version; a grayed "
+                    + "icon means their permissions give you no access.",
                 default: true,
             },
             ...this.moduleToggleSettings(),
@@ -305,6 +317,7 @@ export default class Core extends ModuleInstance {
     override Load(): void {
         this.checkForUpdate();
         void this.fetchLatestVersion();
+        this.installRoomIcon();
         const mode = this.BCMode === "tandem"
             ? `tandem with BCX v${window.bcx?.version ?? "?"}`
             : "standalone";
@@ -316,6 +329,82 @@ export default class Core extends ModuleInstance {
         log(`Ready! Running ${mode}.`);
 
         // BCX rule triggers are recorded by the Logging module in tandem mode
+    }
+
+    /** Per-member access preview for the room icon, refreshed at most once a second. */
+    private readonly roomIconAccess = new Map<number, { access: boolean; until: number }>();
+
+    /**
+     * BC+ logo above every BC+ user's head, next to BC's own status icons.
+     * BC calls the hooked function per character per frame (character view,
+     * and the map view for the character under the cursor). X slot 430 sits
+     * right of BC's last slot (admin, 390) and of WCE/BCX's icon cluster.
+     */
+    private installRoomIcon(): void {
+        this.addHook("ChatRoomDrawCharacterStatusIcons", 1, (args, next) => {
+            const result = next(args);
+            try {
+                this.drawRoomIcon(...args);
+            } catch {
+                // Drawing extras must never break BC's frame
+            }
+            return result;
+        });
+    }
+
+    private drawRoomIcon(C: Character, CharX: number, CharY: number, Zoom: number): void {
+        if (this.getSetting<boolean>("roomIcons") === false || typeof C.MemberNumber !== "number") {
+            return;
+        }
+        const character = getChatroomCharacter(C.MemberNumber);
+        if (!character?.BCPVersion) {
+            return;
+        }
+        const hasAccess = this.roomIconHasAccess(character);
+        // Head of the icon row: left of WCE's version text (centered at 290
+        // per its source, with a companion icon down to ~228) and of BC's own
+        // conditional slots (30-190). Slot 0 goes first and collides with
+        // nothing but the rare focus-mode warning's edge.
+        const x = CharX;
+        const y = CharY;
+        const size = 40 * Zoom;
+        MainCanvas.save();
+        if (!hasAccess) {
+            // Grayed out: this person's permissions give you no access
+            MainCanvas.globalAlpha = 0.35;
+        }
+        // Soft white halo instead of a backplate: keeps the flat icon look
+        // while staying visible on dark backgrounds
+        MainCanvas.shadowColor = "rgba(255, 255, 255, 0.9)";
+        MainCanvas.shadowBlur = 6 * Zoom;
+        DrawImageResize(appLogo, x, y, size, size);
+        DrawImageResize(appLogo, x, y, size, size);
+        MainCanvas.restore();
+        if (MouseIn(x, y, size, size)) {
+            const label = `BC+ ${character.BCPVersion}${hasAccess ? "" : " - no access"}`;
+            const prevAlign = MainCanvas.textAlign;
+            MainCanvas.textAlign = "center";
+            DrawRect(x + size / 2 - 150, y + size + 6, 300, 44, "rgba(0, 0, 0, 0.75)");
+            DrawTextFit(label, x + size / 2, y + size + 28, 290, "White");
+            MainCanvas.textAlign = prevAlign;
+        }
+    }
+
+    /** Same best-effort preview the remote menu uses (gui.view), cached per second. */
+    private roomIconHasAccess(character: BCPlusCharacter): boolean {
+        if (character.isPlayer()) {
+            return true;
+        }
+        const member = character.MemberNumber;
+        const cached = this.roomIconAccess.get(member);
+        const now = Date.now();
+        if (cached && cached.until > now) {
+            return cached.access;
+        }
+        const authority = this.ModuleManager.getModule<Authority>("authority");
+        const access = authority?.remoteHasPermission(character, "gui.view") ?? false;
+        this.roomIconAccess.set(member, { access, until: now + 1000 });
+        return access;
     }
 
     /** Notifies once after an update and stamps the save with the new version. */

@@ -4,6 +4,11 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- The BC+ logo now shows above the head of every character running BC+ (including your own) — on the second icon row's right side, clear of BC's status icons and the BCX/WCE cluster, with a soft white halo so it reads on dark backgrounds. Hovering it shows that player's BC+ version, and the icon is grayed out when their permissions give you no access (same preview the remote menu uses). Works in the room view and the map view; toggleable on the General page ("Show the BC+ icon above BC+ users in the room", on by default).
+
 ## [0.4.4] - 2026-08-11
 
 ### Added
