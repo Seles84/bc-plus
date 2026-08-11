@@ -7,10 +7,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Whisper commands: anyone your `commands.use` permission allows can whisper `!bcp <command>` to you to give orders without opening any menu — and without needing BC+ themselves. `!bcp help` lists exactly the commands that person may use; commands with text take it after the name (e.g. `!bcp say I am a good girl`). Replies arrive as targeted action messages (never garbled, not affected by whisper rules), gagged senders can wrap the command in OOC parentheses, and a checkbox on your Commands screen turns the whisper interface off entirely.
+- New commands (menu and whisper): **Go to room** (sends the player to the named room, leaving their current one — full/missing rooms leave them in the room search), **Write lines** (e.g. `10 I will behave`, max 50 — the player's client tracks each typed line, announces completion in the room, logs it, and keeps the task across reloads; `stop` cancels), **Edge** (arousal to the brink), **Force orgasm** (resistible), and **Calm down** (arousal to zero). The arousal commands require the player's arousal meter to be enabled.
 - Module on/off switches: the General page now has an enable checkbox for each feature module (Rules, Curses, Commands, Relationships, Log). Switching one off unloads it immediately — its hooks, timers and remote listeners stop, its main-menu button grays out — and it stays off across reloads until re-enabled. Toggling requires the new `core.modules` permission (Owner default, includes yourself; the Slave preset locks self-access). The main-menu help text now describes this instead of promising it.
 - Log recording configuration: a "Configure..." button on your log screen chooses which categories get recorded (rules, curses, permissions, roles, relationships, commands/other — praise, scolds and notes are always recorded since they're gated by their own permissions). Changing the configuration requires the new `log.configure` permission (Owner default, includes yourself).
 - Relationships in the Export/Import hub: custom-name lists can now be exported as a shareable code and imported (merged by member, every entry re-validated). The "Everything" code now bundles rules + curses + relationships.
 - Module settings pages now render text settings, completing the settings framework — previously only rule configuration screens could show free-text fields.
+
+### Fixed
+- "Ready to be summoned" now announces the summon with a corner beep that is visible anywhere in the club — previously the announcement was a chat message, which is invisible when the summoned player is not sitting in a chat room (the move itself happened, but with no feedback it looked broken). The rule description now also spells out that the summoning beep must carry the sender's room ("attach room" left on when writing it), and dev builds log exactly why a beep did not summon.
 
 ## [0.4.3] - 2026-08-11
 

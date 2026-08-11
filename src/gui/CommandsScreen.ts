@@ -54,7 +54,9 @@ class CommandsPage extends GUIPage {
             showBack: true,
             showHelp: true,
             helpText: this.commands.Config.HoverText
-                + " Commands that take an argument use the text field at the bottom of the screen.",
+                + " Commands that take an argument use the text field at the bottom of the screen. "
+                + "On your own screen, the checkbox in the top right turns the whisper interface "
+                + "(\"!bcp <command>\", \"!bcp help\" for the list) on or off.",
         };
     }
 
@@ -70,6 +72,17 @@ class CommandsPage extends GUIPage {
         const canUse = this.screen.canUse();
         if (!canUse) {
             DrawText("You do not have permission to use commands here.", 150, 190, "Gray");
+        }
+
+        // Own view only: toggle for the "!bcp ..." whisper interface
+        if (!this.Character || this.Character.isPlayer()) {
+            const whisperOn = this.commands.getSetting<boolean>("whisperCommands") === true;
+            DrawCheckbox(1350, 190, 64, 64, "Whisper commands", whisperOn);
+            this.addClickHandler(() => {
+                if (MouseIn(1350, 190, 64, 64)) {
+                    this.commands.setSetting("whisperCommands", !whisperOn);
+                }
+            });
         }
 
         this.definitions.forEach((definition, i) => {
