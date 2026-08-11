@@ -4,6 +4,15 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- "Ready to be summoned" now announces the summon with a corner beep that is visible anywhere in the club — previously the announcement was a chat message, which is invisible when the summoned player is not sitting in a chat room (the move itself happened, but with no feedback it looked broken). The rule description now also spells out that the summoning beep must carry the sender's room ("attach room" left on when writing it), and dev builds log exactly why a beep did not summon.
+
+### Added
+- Whisper commands: anyone your `commands.use` permission allows can whisper `!bcp <command>` to you to give orders without opening any menu — and without needing BC+ themselves. `!bcp help` lists exactly the commands that person may use; commands with text take it after the name (e.g. `!bcp say I am a good girl`). Replies arrive as targeted action messages (never garbled, not affected by whisper rules), gagged senders can wrap the command in OOC parentheses, and a checkbox on your Commands screen turns the whisper interface off entirely.
+- New commands (menu and whisper): **Go to room** (sends the player to the named room, leaving their current one — full/missing rooms leave them in the room search), **Write lines** (e.g. `10 I will behave`, max 50 — the player's client tracks each typed line, announces completion in the room, logs it, and keeps the task across reloads; `stop` cancels), **Edge** (arousal to the brink), **Force orgasm** (resistible), and **Calm down** (arousal to zero). The arousal commands require the player's arousal meter to be enabled.
+
 ## [0.4.3] - 2026-08-11
 
 ### Added
