@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Module on/off switches: the General page now has an enable checkbox for each feature module (Rules, Curses, Commands, Relationships, Log). Switching one off unloads it immediately — its hooks, timers and remote listeners stop, its main-menu button grays out — and it stays off across reloads until re-enabled. Toggling requires the new `core.modules` permission (Owner default, includes yourself; the Slave preset locks self-access). The main-menu help text now describes this instead of promising it.
 - Log recording configuration: a "Configure..." button on your log screen chooses which categories get recorded (rules, curses, permissions, roles, relationships, commands/other — praise, scolds and notes are always recorded since they're gated by their own permissions). Changing the configuration requires the new `log.configure` permission (Owner default, includes yourself).
 - Relationships in the Export/Import hub: custom-name lists can now be exported as a shareable code and imported (merged by member, every entry re-validated). The "Everything" code now bundles rules + curses + relationships.
 - Module settings pages now render text settings, completing the settings framework — previously only rule configuration screens could show free-text fields.

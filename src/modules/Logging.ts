@@ -24,6 +24,12 @@ export default class Logging extends ModuleInstance {
     /** Fetched logs of other characters: entries, "denied", "pending", or "timeout". */
     private readonly remoteLogs = new Map<number, LogEntry[] | "denied" | "pending" | "timeout">();
 
+    /** EventBus unsubscribers, cleared on Unload so re-enabling never double-logs. */
+    private readonly eventUnsubs: (() => void)[] = [];
+
+    /** The BCX API survives module toggling; subscribe to it only once. */
+    private bcxSubscribed = false;
+
     protected readonly SystemConfig: ModuleConfig = {
         Name: "Logging",
         Version: BCPLUS_VERSION,
@@ -106,6 +112,10 @@ export default class Logging extends ModuleInstance {
         return true;
     }
 
+    override get CanDisable(): boolean {
+        return true;
+    }
+
     override get SettingsScreen(): ((character: BCPlusCharacter | null) => GUIScreen) | null {
         return (character) => new LoggingScreen(this, character);
     }
@@ -116,7 +126,7 @@ export default class Logging extends ModuleInstance {
 
     /** Appends an entry, pruning the oldest beyond the cap. */
     log(category: LogCategory, message: string): void {
-        if (this.Preset === "Dominant") {
+        if (this.Preset === "Dominant" || !this.Config.Active) {
             return;
         }
         // Categories without a toggle (praise/scold/note) are always recorded
@@ -168,32 +178,44 @@ export default class Logging extends ModuleInstance {
         SendBCPMessage({ message: "LogClear" }, memberNumber);
     }
 
+    override Unload(): void {
+        for (const unsubscribe of this.eventUnsubs.splice(0)) {
+            unsubscribe();
+        }
+        super.Unload();
+    }
+
     override Load(): void {
-        this.Events.on("ruleTriggered", ({ rule, type, target }) => {
+        this.eventUnsubs.push(this.Events.on("ruleTriggered", ({ rule, type, target }) => {
             const name = this.ModuleManager.getModule<Rules>("rules")?.getDefinition(rule)?.name ?? rule;
             const suffix = target === null ? "" : ` (target #${target})`;
             this.log("rule", type === "triggerAttempt"
                 ? `Blocked by rule "${name}"${suffix}`
                 : `Violated rule "${name}"${suffix}`);
-        });
+        }));
 
-        this.Events.on("curseTriggered", ({ group, action }) => {
+        this.eventUnsubs.push(this.Events.on("curseTriggered", ({ group, action }) => {
             const label = this.ModuleManager.getModule<Curses>("curses")
                 ?.curseableGroups().find((g) => g.Name === group)?.Description ?? group;
             const verbs = { add: "re-applied the item to", remove: "stripped", swap: "swapped the item on", update: "reset the item on" } as const;
             this.log("curse", `The curse ${verbs[action]} ${label}`);
-        });
+        }));
 
         // In tandem mode, BCX rule triggers land in the BC+ log too. Guarded:
         // a BCX API failure must never take down the rest of this module
         // (its absence once silently disabled all remote log listeners).
-        try {
-            const bcxAPI = this.SDK.bcxAPI();
-            bcxAPI?.on("ruleTrigger", (data) => {
-                this.log("rule", `BCX rule "${data.rule}" ${data.triggerType === "triggerAttempt" ? "blocked an action" : "was violated"}`);
-            });
-        } catch (e) {
-            warn("Could not subscribe to BCX rule triggers:", e);
+        // The BCX subscription cannot be removed, so it is made once and its
+        // handler goes through log(), which checks Config.Active.
+        if (!this.bcxSubscribed) {
+            try {
+                const bcxAPI = this.SDK.bcxAPI();
+                bcxAPI?.on("ruleTrigger", (data) => {
+                    this.log("rule", `BCX rule "${data.rule}" ${data.triggerType === "triggerAttempt" ? "blocked an action" : "was violated"}`);
+                });
+                this.bcxSubscribed = bcxAPI !== undefined && bcxAPI !== null;
+            } catch (e) {
+                warn("Could not subscribe to BCX rule triggers:", e);
+            }
         }
 
         // Remote log viewing: request/response, gated by log.view on OUR side

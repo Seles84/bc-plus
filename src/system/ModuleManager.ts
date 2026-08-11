@@ -60,7 +60,15 @@ export default class ModuleManager {
             }
         }
 
+        // Feature modules the player switched off stay initialized (their
+        // permissions remain configurable) but never load their hooks
+        const core = this.getModule<Core>("core");
         for (const module of active) {
+            if (module.CanDisable && core && !core.isModuleEnabled(module.Slug)) {
+                module.Config.Active = false;
+                debug(`Module disabled by player config: ${module.Config.Name}`);
+                continue;
+            }
             try {
                 module.Load();
                 this.parent.Events.emit("moduleLoaded", { slug: module.Slug });

@@ -1,5 +1,5 @@
 import { ModuleInstance } from "@/system/module/ModuleInstance";
-import { ModuleConfig, SettingsFooterRenderer } from "@/system/module/ModuleTypes";
+import { ModuleConfig, PermissionDefinition, SettingsFooterRenderer } from "@/system/module/ModuleTypes";
 import { BCPLUS_APP_NAME, BCPLUS_AUTHOR, BCPLUS_REPO, BCPLUS_VERSION, BCPLUS_WEBSITE } from "@/system/Constants";
 import { log, warn } from "@/system/Console";
 import { InfoBeep } from "@/utils/BCUtils";
@@ -14,7 +14,7 @@ export type BCPPreset = "Dominant" | "Switch" | "Submissive" | "Slave";
 export const PRESETS: readonly BCPPreset[] = ["Dominant", "Switch", "Submissive", "Slave"];
 
 /** Permissions the Slave preset removes self-access to. */
-const SLAVE_SELF_LOCKED = ["rules.edit", "curses.edit", "authority.edit", "roles.assign", "roles.revoke", "relationships.edit", "log.delete"];
+const SLAVE_SELF_LOCKED = ["rules.edit", "curses.edit", "authority.edit", "roles.assign", "roles.revoke", "relationships.edit", "log.delete", "core.modules"];
 
 /**
  * Core housekeeping module: run preset, update notifications and, in tandem
@@ -41,6 +41,15 @@ export default class Core extends ModuleInstance {
             firstRun: true,
             presetLocked: false,
         };
+    }
+
+    override get Permissions(): PermissionDefinition[] {
+        return [{
+            id: "core.modules",
+            label: "Switch BC+ modules on or off",
+            defaultRole: Role.Owner,
+            defaultSelf: true,
+        }];
     }
 
     /** Once a preset has been explicitly chosen, it is locked until a factory reset. */
@@ -71,7 +80,48 @@ export default class Core extends ModuleInstance {
                     + "version is available (reload the club to get it).",
                 default: true,
             },
+            ...this.moduleToggleSettings(),
         ];
+    }
+
+    /** One on/off checkbox per disableable feature module. */
+    private moduleToggleSettings(): AnySetting[] {
+        return this.ModuleManager.Modules.filter((m) => m.CanDisable).map((m) => ({
+            type: "checkbox" as const,
+            name: `module.${m.Slug}`,
+            label: `${m.Config.MenuString || m.Config.Name} module enabled`,
+            default: true,
+            active: () => this.canManageModules(),
+            onSet: (value: boolean) => this.applyModuleEnabled(m.Slug, value),
+        }));
+    }
+
+    /** Whether the local player may switch modules (core.modules permission). */
+    canManageModules(): boolean {
+        const authority = this.ModuleManager.getModule<Authority>("authority");
+        return authority?.hasPermission(Player.MemberNumber ?? -1, "core.modules") ?? false;
+    }
+
+    /** Whether the player has this feature module switched on. */
+    isModuleEnabled(slug: string): boolean {
+        return this.getSetting<boolean>(`module.${slug}`) !== false;
+    }
+
+    /** Live-applies a toggle: unload stops the module's hooks/listeners immediately. */
+    private applyModuleEnabled(slug: string, enabled: boolean): void {
+        const module = this.ModuleManager.getModule(slug);
+        if (!module?.CanDisable) {
+            return;
+        }
+        module.Config.Active = enabled;
+        if (enabled) {
+            module.Load();
+            this.Events.emit("moduleLoaded", { slug });
+        } else {
+            module.Unload();
+            this.Events.emit("moduleUnloaded", { slug });
+        }
+        BCPNotifyPlayer(`The ${module.Config.MenuString || module.Config.Name} module is now ${enabled ? "enabled" : "disabled"}.`);
     }
 
     /** The player's current preset. */
