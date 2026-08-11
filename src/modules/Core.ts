@@ -364,13 +364,25 @@ export default class Core extends ModuleInstance {
         const x = CharX + 430 * Zoom;
         const y = CharY;
         const size = 40 * Zoom;
-        if (hasAccess) {
+        const drawBadge = (): void => {
+            // Light backplate: the purple logo is invisible on dark rooms
+            const pad = 3 * Zoom;
+            MainCanvas.beginPath();
+            MainCanvas.roundRect(x - pad, y - pad, size + 2 * pad, size + 2 * pad, 8 * Zoom);
+            MainCanvas.fillStyle = "#efe9f7";
+            MainCanvas.fill();
+            MainCanvas.strokeStyle = "#3d2e57";
+            MainCanvas.lineWidth = Math.max(1, Zoom);
+            MainCanvas.stroke();
             DrawImageResize(appLogo, x, y, size, size);
+        };
+        if (hasAccess) {
+            drawBadge();
         } else {
             // Grayed out: this person's permissions give you no access
             MainCanvas.save();
             MainCanvas.globalAlpha = 0.35;
-            DrawImageResize(appLogo, x, y, size, size);
+            drawBadge();
             MainCanvas.restore();
         }
         if (MouseIn(x, y, size, size)) {
