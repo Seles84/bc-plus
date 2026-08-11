@@ -2,9 +2,11 @@ import { GUIPage, GUIScreen, PageOptions } from "@/system/gui/GUIScreen";
 import { LogEntry, formatLogTime } from "@/system/logging/LogTypes";
 import { ButtonActionWidget } from "@/system/gui/Widgets";
 import { modalConfirm, modalPrompt } from "@/gui/Modal";
+import { ModuleSettingsScreen } from "@/gui/ModuleSettings";
 import { SendBCPMessage } from "@/utils/Messaging";
 import type Authority from "@/modules/Authority";
 import type Logging from "@/modules/Logging";
+import type { GUI } from "@/modules/GUI";
 
 const PER_PAGE = 10;
 
@@ -111,6 +113,21 @@ class LogPage extends GUIPage {
                 DrawText("No response - they may be busy, disconnected, or running an older BC+.", 150, 250, "Gray");
                 return;
             }
+        }
+
+        // Own view: recording configuration (visible even when the log is empty)
+        if (!character || character.isPlayer()) {
+            MainCanvas.textAlign = "center";
+            this.addClickHandler(ButtonActionWidget(
+                { Left: 490, Top: 880, Width: 300, Height: 70 },
+                { Name: "Configure...", HoverText: "Choose which categories your log records (needs log.configure)" },
+                () => {
+                    this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(
+                        new ModuleSettingsScreen(this.logging, this.Character),
+                    );
+                },
+            ));
+            MainCanvas.textAlign = "left";
         }
 
         if (this.entries.length === 0) {

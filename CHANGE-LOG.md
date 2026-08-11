@@ -4,6 +4,13 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Log recording configuration: a "Configure..." button on your log screen chooses which categories get recorded (rules, curses, permissions, roles, relationships, commands/other — praise, scolds and notes are always recorded since they're gated by their own permissions). Changing the configuration requires the new `log.configure` permission (Owner default, includes yourself).
+- Relationships in the Export/Import hub: custom-name lists can now be exported as a shareable code and imported (merged by member, every entry re-validated). The "Everything" code now bundles rules + curses + relationships.
+- Module settings pages now render text settings, completing the settings framework — previously only rule configuration screens could show free-text fields.
+
 ## [0.4.3] - 2026-08-11
 
 ### Added

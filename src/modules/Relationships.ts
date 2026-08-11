@@ -6,6 +6,7 @@ import { GUIScreen } from "@/system/gui/GUIScreen";
 import { RelationshipsScreen } from "@/gui/RelationshipsScreen";
 import { BCPNotifyPlayer, MemberNumberToName, SendBCPMessage } from "@/utils/Messaging";
 import { containsWord, spokenPayload, spokenText } from "@/rules/speechUtils";
+import { decodeExport, encodeExport } from "@/utils/ExportImport";
 import { jsonClone } from "@/utils/BCUtils";
 import { debug } from "@/system/Console";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
@@ -117,6 +118,34 @@ export default class Relationships extends ModuleInstance {
     canEdit(): boolean {
         const authority = this.ModuleManager.getModule<Authority>("authority");
         return authority?.hasPermission(Player.MemberNumber ?? -1, "relationships.edit") ?? false;
+    }
+
+    /** Shareable code containing every custom name entry. */
+    exportCode(): string {
+        return encodeExport("relationships", jsonClone(this.Data.entries));
+    }
+
+    /** Applies a relationships code (merged by member); returns how many entries were imported. */
+    importCode(code: string): number {
+        const payload = decodeExport(code, "relationships");
+        if (typeof payload !== "object" || payload === null) {
+            return 0;
+        }
+        let applied = 0;
+        for (const [key, raw] of Object.entries(payload as Record<string, unknown>)) {
+            const member = Number.parseInt(key, 10);
+            const entry = raw as Partial<RelationshipEntry> | null;
+            if (!Number.isInteger(member) || member < 0
+                || typeof entry !== "object" || entry === null
+                || typeof entry.nickname !== "string") {
+                continue;
+            }
+            // setEntry re-validates the nickname like any other write
+            if (this.setEntry(member, entry.nickname, entry.enforce === true)) {
+                applied++;
+            }
+        }
+        return applied;
     }
 
     // --- Remote access (their client validates everything) ---

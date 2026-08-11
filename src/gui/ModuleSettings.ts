@@ -1,6 +1,7 @@
 import { GUIPage, GUIScreen, PageOptions } from "@/system/gui/GUIScreen";
-import { AnySetting } from "@/system/gui/Settings";
+import { AnySetting, TextSetting } from "@/system/gui/Settings";
 import { SendBCPMessage } from "@/utils/Messaging";
+import { ElementSetVisible } from "@/utils/BCUtils";
 import type Authority from "@/modules/Authority";
 
 const ROW_HEIGHT = 80;
@@ -91,6 +92,49 @@ class SettingsPage extends GUIPage {
         };
     }
 
+    private inputId(name: string): string {
+        return `BCP_modset_${name.replace(/[^A-Za-z0-9]/g, "_")}`;
+    }
+
+    /** Same lifecycle as rule config text settings: create, position, commit on change + destroy. */
+    override async create(): Promise<void> {
+        for (const setting of this.settings) {
+            if (setting.type !== "text") {
+                continue;
+            }
+            const element = ElementCreateInput(
+                this.inputId(setting.name), "text",
+                String(this.screen.getValue(setting) ?? ""), String(setting.maxChars ?? 256),
+            );
+            element.addEventListener("change", () => this.commitText(setting, element.value));
+        }
+    }
+
+    override async destroy(): Promise<void> {
+        for (const setting of this.settings) {
+            if (setting.type !== "text") {
+                continue;
+            }
+            const id = this.inputId(setting.name);
+            const element = document.getElementById(id) as HTMLInputElement | null;
+            if (element && element.value !== String(this.screen.getValue(setting) ?? "")) {
+                this.commitText(setting, element.value);
+            }
+            ElementRemove(id);
+        }
+    }
+
+    private commitText(setting: TextSetting, value: string): void {
+        const prev = String(this.screen.getValue(setting) ?? "");
+        if (value === prev) {
+            return;
+        }
+        this.screen.setValue(setting, value);
+        if (!this.screen.Remote) {
+            setting.onSet?.(value, prev);
+        }
+    }
+
     render(): void {
         const screen = this.screen;
         const canEdit = screen.canEdit();
@@ -138,9 +182,15 @@ class SettingsPage extends GUIPage {
                     break;
                 }
                 case "text": {
-                    // Text settings are not yet rendered on module settings
-                    // pages (only rule config pages support them so far)
-                    DrawText(`${setting.label} (not editable here yet)`, LEFT, y + 32, "Gray");
+                    DrawText(setting.label, LEFT, y + 32, "Black");
+                    const id = this.inputId(setting.name);
+                    const element = document.getElementById(id) as HTMLInputElement | null;
+                    if (element) {
+                        element.disabled = !active;
+                    }
+                    // DOM inputs float above the canvas-drawn help box
+                    ElementSetVisible(id, !this.screen.HelpVisible);
+                    ElementPosition(id, 1250, y + 27, 750, 60);
                     break;
                 }
             }
