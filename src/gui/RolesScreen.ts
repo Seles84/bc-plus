@@ -144,14 +144,21 @@ export class RolesScreen extends GUIScreen {
         const bc = this.Remote ? this.Character!.Character : Player;
         const rows: RoleRow[] = [];
 
-        if (bc.Ownership && typeof bc.Ownership.MemberNumber === "number") {
-            rows.push({ role: Role.BCOwner, member: bc.Ownership.MemberNumber, name: bc.Ownership.Name, derived: true });
+        const bcOwner = bc.Ownership && typeof bc.Ownership.MemberNumber === "number"
+            ? bc.Ownership.MemberNumber
+            : null;
+        if (bcOwner !== null) {
+            rows.push({ role: Role.BCOwner, member: bcOwner, name: bc.Ownership!.Name, derived: true });
         }
         for (const member of view.owners) {
             rows.push({ role: Role.Owner, member, name: MemberNumberToName(member), derived: false });
         }
         for (const lover of bc.Lovership ?? []) {
-            if (typeof lover.MemberNumber === "number") {
+            // Derived rows are informational - skip a lover already listed at
+            // a higher rank (permissions only use the highest role anyway)
+            if (typeof lover.MemberNumber === "number"
+                && lover.MemberNumber !== bcOwner
+                && !view.owners.includes(lover.MemberNumber)) {
                 rows.push({ role: Role.Lover, member: lover.MemberNumber, name: lover.Name, derived: true });
             }
         }
@@ -202,7 +209,8 @@ class RolesTablePage extends GUIPage {
             showBack: true,
             showHelp: true,
             helpText: "All BC+ role assignments in one table. BC Owner and Lover follow the in-game "
-                + "relationships; Co-Owner and Mistress are ranks in the hierarchy; custom roles (create "
+                + "relationships (a lover already listed as BC Owner or Co-Owner is not repeated); "
+                + "Co-Owner and Mistress are ranks in the hierarchy; custom roles (create "
                 + "them top right) are permission bundles that grant exactly what you configure - "
                 + "click a custom role's name to set its grants. Whitelist and Friend follow the BC "
                 + "lists and are not listed. Adding assignments requires roles.assign; removing them "
