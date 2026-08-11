@@ -1,6 +1,7 @@
 import { RuleDefinition } from "@/system/rules/RuleTypes";
 import { SendAction } from "@/utils/Messaging";
 import { BCPNotifyPlayer } from "@/utils/Messaging";
+import { MovePlayerToRoom } from "@/utils/BCUtils";
 
 function parseMembers(raw: string): number[] {
     return raw
@@ -85,18 +86,8 @@ export const ReadyToBeSummoned: RuleDefinition = {
                     }
                     if (ServerPlayerIsInChatRoom()) {
                         SendAction(`The summons for ${Player.Nickname || Player.Name} is now enforced.`);
-                        ChatRoomLeave(true);
                     }
-                    await ChatSearchStart(space, ["Room", "MainHall"], { Background: "Introduction" });
-                    // Wait for the search screen before joining
-                    for (let i = 0; i < 20; i++) {
-                        const screen = CommonGetScreen();
-                        if (screen[0] === "Online" && screen[1] === "ChatSearch") {
-                            break;
-                        }
-                        await new Promise((resolve) => setTimeout(resolve, 500));
-                    }
-                    ServerSend("ChatRoomJoin", { Name: roomName });
+                    await MovePlayerToRoom(roomName, space);
                 })();
             }, delaySeconds * 1000);
             return result;
