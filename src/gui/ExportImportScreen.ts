@@ -5,6 +5,7 @@ import { BCPNotifyPlayer } from "@/utils/Messaging";
 import { jsonClone } from "@/utils/BCUtils";
 import type Rules from "@/modules/Rules";
 import type Curses from "@/modules/Curses";
+import type Relationships from "@/modules/Relationships";
 
 /** Central hub for exporting and importing BC+ configuration codes. */
 export class ExportImportScreen extends GUIScreen {
@@ -28,7 +29,8 @@ class ExportImportPage extends GUIPage {
             showHelp: true,
             helpText: "Export copies a shareable BCP1 code to your clipboard; Import applies a pasted "
                 + "code. Rules codes carry every rule's state and settings, curses codes carry the "
-                + "full loadout (merged by slot), and Everything combines both. Importing requires "
+                + "full loadout (merged by slot), relationships codes carry your custom names "
+                + "(merged by member), and Everything combines all three. Importing requires "
                 + "the matching edit permission.",
         };
     }
@@ -41,9 +43,14 @@ class ExportImportPage extends GUIPage {
         return this.Core.ModuleManager.getModule<Curses>("curses");
     }
 
+    private get relationships(): Relationships | undefined {
+        return this.Core.ModuleManager.getModule<Relationships>("relationships");
+    }
+
     render(): void {
         const rules = this.rules;
         const curses = this.curses;
+        const relationships = this.relationships;
 
         this.section(250, "Rules",
             `${rules?.Definitions.length ?? 0} rules`,
@@ -61,13 +68,22 @@ class ExportImportPage extends GUIPage {
             (code) => curses!.importCode(code),
             "cursed slot");
 
-        this.section(530, "Everything",
-            "rules + curses in one code",
-            rules !== undefined && curses !== undefined,
-            (rules?.canEdit() ?? false) && (curses?.canEdit() ?? false),
+        this.section(530, "Relationships",
+            `${Object.keys(relationships?.Entries ?? {}).length} custom names`,
+            relationships !== undefined,
+            relationships?.canEdit() ?? false,
+            () => copyExportCode(relationships!.exportCode()),
+            (code) => relationships!.importCode(code),
+            "custom name");
+
+        this.section(670, "Everything",
+            "rules + curses + relationships in one code",
+            rules !== undefined && curses !== undefined && relationships !== undefined,
+            (rules?.canEdit() ?? false) && (curses?.canEdit() ?? false) && (relationships?.canEdit() ?? false),
             () => copyExportCode(encodeExport("all", {
                 rules: jsonClone(rules!.Data.rules),
                 curses: jsonClone(curses!.Data.slots),
+                relationships: jsonClone(relationships!.Data.entries),
             })),
             (code) => this.importAll(code),
             "item");
@@ -113,13 +129,16 @@ class ExportImportPage extends GUIPage {
         if (typeof payload !== "object" || payload === null) {
             return 0;
         }
-        const parts = payload as { rules?: unknown; curses?: unknown };
+        const parts = payload as { rules?: unknown; curses?: unknown; relationships?: unknown };
         let applied = 0;
         if (parts.rules !== undefined && this.rules) {
             applied += this.rules.importCode(encodeExport("rules", parts.rules));
         }
         if (parts.curses !== undefined && this.curses) {
             applied += this.curses.importCode(encodeExport("curses", parts.curses));
+        }
+        if (parts.relationships !== undefined && this.relationships) {
+            applied += this.relationships.importCode(encodeExport("relationships", parts.relationships));
         }
         return applied;
     }

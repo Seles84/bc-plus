@@ -7,6 +7,7 @@ import { LoggingScreen } from "@/gui/LoggingScreen";
 import { GUIScreen } from "@/system/gui/GUIScreen";
 import { BCPNotifyPlayer, SendBCPMessage } from "@/utils/Messaging";
 import { jsonClone } from "@/utils/BCUtils";
+import { AnySetting } from "@/system/gui/Settings";
 import { debug, warn } from "@/system/Console";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Authority from "@/modules/Authority";
@@ -64,11 +65,37 @@ export default class Logging extends ModuleInstance {
                 defaultRole: Role.Mistress,
                 defaultSelf: false,
             },
+            {
+                id: "log.configure",
+                label: "Configure what my log records",
+                defaultRole: Role.Owner,
+                defaultSelf: true,
+            },
         ];
     }
 
+    /**
+     * Per-category recording toggles. Praise, scolds and notes have no toggle:
+     * they are deliberate additions gated by their own permissions.
+     */
+    override get Settings(): AnySetting[] {
+        return [
+            { type: "checkbox", name: "record.rule", label: "Record rule violations and blocked attempts", default: true },
+            { type: "checkbox", name: "record.curse", label: "Record curse events", default: true },
+            { type: "checkbox", name: "record.authority", label: "Record permission changes", default: true },
+            { type: "checkbox", name: "record.role", label: "Record role changes", default: true },
+            { type: "checkbox", name: "record.relationship", label: "Record relationship changes", default: true },
+            { type: "checkbox", name: "record.other", label: "Record commands and other events", default: true },
+        ];
+    }
+
+    /** Changing the recording config requires log.configure - locally too. */
+    override get EditPermission(): string | null {
+        return "log.configure";
+    }
+
     override get Defaults(): Record<string, unknown> {
-        return { entries: [] };
+        return { ...super.Defaults, entries: [] };
     }
 
     override get HasGUI(): boolean {
@@ -90,6 +117,11 @@ export default class Logging extends ModuleInstance {
     /** Appends an entry, pruning the oldest beyond the cap. */
     log(category: LogCategory, message: string): void {
         if (this.Preset === "Dominant") {
+            return;
+        }
+        // Categories without a toggle (praise/scold/note) are always recorded
+        if (this.getSetting<boolean>(`record.${category}`) === false) {
+            debug(`Log [${category}] suppressed by recording config: ${message}`);
             return;
         }
         const entries = this.Entries;
