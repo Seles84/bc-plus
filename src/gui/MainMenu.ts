@@ -3,8 +3,10 @@ import { ButtonActionWidget, DrawInfoPanel } from "@/system/gui/Widgets";
 import { ModuleSettingsScreen } from "@/gui/ModuleSettings";
 import { ExportImportScreen } from "@/gui/ExportImportScreen";
 import { BCPLUS_REPO, BCPLUS_VERSION } from "@/system/Constants";
+import { BCPVersionCompare, parseBCPVersion } from "@/utils/Version";
 import { ModuleInstance } from "@/system/module/ModuleInstance";
 import type { GUI } from "@/modules/GUI";
+import type Core from "@/modules/Core";
 
 export class MainMenu extends GUIScreen {
 
@@ -42,12 +44,13 @@ class MainMenuPage extends GUIPage {
         MainCanvas.textAlign = "end";
         const character = this.Character;
         if (character) {
-            DrawText(`Player: ${character.Name} (#${character.MemberNumber}) | BC+ v${BCPLUS_VERSION}`, 1800, 125, "Black", "Gray");
+            DrawText(`Player: ${character.Name} (#${character.MemberNumber})`, 1800, 125, "Black", "Gray");
         }
         const modeText = this.Core.Mode === "tandem"
             ? `BCX v${window.bcx?.version ?? "?"} found. Tandem Mode Enabled`
             : "BCX not found. Control Mode Enabled";
         DrawText(modeText, 1800, 160, "Black", "Gray");
+        this.renderVersionInfo();
 
         MainCanvas.textAlign = "left";
         let hovered: { title: string; text: string } | null = null;
@@ -107,5 +110,38 @@ class MainMenuPage extends GUIPage {
                 window.open(`${BCPLUS_REPO}/blob/main/CHANGE-LOG.md`, "_blank");
             },
         ));
+    }
+
+    /**
+     * Version block under the header: own version, the viewed character's
+     * version on remote menus, and how the viewed one compares to the latest
+     * release (omitted while the manifest has not been fetched).
+     */
+    private renderVersionInfo(): void {
+        const character = this.Character;
+        const remote = character !== null && !character.isPlayer();
+        let y = 195;
+        DrawText(`Your BC+ Version: ${BCPLUS_VERSION}`, 1800, y, "Black", "Gray");
+        y += 35;
+        let viewedVersion = BCPLUS_VERSION;
+        if (remote) {
+            viewedVersion = character.BCPVersion ?? "unknown";
+            DrawText(`${character.Name}'s BC+ Version: ${viewedVersion}`, 1800, y, "Black", "Gray");
+            y += 35;
+        }
+        const latest = this.Core.ModuleManager.getModule<Core>("core")?.getLatestVersion();
+        const viewed = parseBCPVersion(viewedVersion);
+        if (!latest || viewed === null) {
+            return;
+        }
+        const parsedLatest = parseBCPVersion(latest);
+        if (parsedLatest === null) {
+            return;
+        }
+        if (BCPVersionCompare(viewed, parsedLatest) >= 0) {
+            DrawText("This is the latest version", 1800, y, "#207020", "Gray");
+        } else {
+            DrawText(`${latest} is the latest version`, 1800, y, "#A00000", "Gray");
+        }
     }
 }

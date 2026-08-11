@@ -4,6 +4,14 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Version info on the main menu: "Your BC+ Version" always shows, remote menus add the viewed player's BC+ version below it, and a status line reports whether that version is the latest release (checked once per session against the BC+ website).
+
+### Fixed
+- The members and room-names text fields on the conditions screen (rules and curses) no longer float on top of the help text while help is open; the same applied to text fields on rule config screens (e.g. Forbidden words).
+
 ## [0.4.1] - 2026-08-10
 
 ### Changed

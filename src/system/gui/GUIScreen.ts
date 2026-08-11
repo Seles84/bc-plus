@@ -110,6 +110,14 @@ export abstract class GUIScreen {
         return this.character;
     }
 
+    /**
+     * Whether the help overlay is open. Pages with DOM inputs must hide them
+     * while this is true - DOM elements float above the canvas-drawn help box.
+     */
+    get HelpVisible(): boolean {
+        return this.helpVisible;
+    }
+
     /** @internal Called by the GUI module when the screen becomes active. */
     open(): void {
         void this.setPage(0);

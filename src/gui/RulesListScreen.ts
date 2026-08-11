@@ -4,6 +4,7 @@ import { LocalRuleAccess, RemoteRuleAccess, RuleAccess } from "@/system/rules/Ru
 import { ButtonActionWidget, DrawInfoPanel } from "@/system/gui/Widgets";
 import { ConditionsScreen } from "@/gui/ConditionsScreen";
 import { describeConditions } from "@/system/conditions/Conditions";
+import { ElementSetVisible } from "@/utils/BCUtils";
 import type { GUI } from "@/modules/GUI";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Authority from "@/modules/Authority";
@@ -306,6 +307,8 @@ class RuleConfigPage extends GUIPage {
                         if (element) {
                             element.disabled = !active;
                         }
+                        // DOM inputs float above the canvas-drawn help box
+                        ElementSetVisible(id, !this.screen.HelpVisible);
                         ElementPosition(id, 1250, y + 27, 750, 60);
                     }
                     break;
