@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- Update notification: when a newer BC+ release is available, you now get a one-time beep per session ("v x.y.z is available — reload the club to update"), controlled by the same "Notify me in-club about BC+ updates" setting as the after-update beep.
+
 ### Fixed
 - The Roles table no longer lists the same person twice: a lover who is also your BC Owner (or a manually assigned Co-Owner) only shows under the higher role. Permissions were never affected — only the highest role counts.
 
