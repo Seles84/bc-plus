@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
-- The BC+ logo now shows above the head of every character running BC+ (including your own), next to BC's status icons — in the room view and the map view. An instant look at who you can interact with. Toggleable on the General page ("Show the BC+ icon above BC+ users in the room", on by default).
+- The BC+ logo now shows above the head of every character running BC+ (including your own), to the right of BC's status icons and other mods' overlays — in the room view and the map view. Hovering it shows that player's BC+ version, and the icon is grayed out when their permissions give you no access (same preview the remote menu uses). Toggleable on the General page ("Show the BC+ icon above BC+ users in the room", on by default).
 
 ## [0.4.4] - 2026-08-11
 
