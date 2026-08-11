@@ -1,7 +1,8 @@
 import { RuleDefinition } from "@/system/rules/RuleTypes";
 import { SendAction } from "@/utils/Messaging";
 import { BCPNotifyPlayer } from "@/utils/Messaging";
-import { MovePlayerToRoom } from "@/utils/BCUtils";
+import { InfoBeep, MovePlayerToRoom } from "@/utils/BCUtils";
+import { debug } from "@/system/Console";
 
 function parseMembers(raw: string): number[] {
     return raw
@@ -21,7 +22,8 @@ export const ReadyToBeSummoned: RuleDefinition = {
     description: "Configured members can summon the player from anywhere in the club with a beep "
         + "whose message starts with the summon text (or just \"summon\"). After the delay, the "
         + "player is pulled to the summoner's room - ignoring leashes and locked doors. If the "
-        + "target room is full, they end up in the lobby.",
+        + "target room is full, they end up in the lobby. The summoner must be in a room and leave "
+        + "\"attach room\" enabled when writing the beep, or it carries no room to move to.",
     category: "Other",
     settings: [
         {
@@ -50,17 +52,35 @@ export const ReadyToBeSummoned: RuleDefinition = {
         ctx.hook("ServerAccountBeep", 7, (args, next) => {
             const data = args[0] as Partial<ServerAccountBeepResponse> | undefined;
             const summonText = ctx.setting<string>("summonText").trim().toLocaleLowerCase();
-            const qualifies = data
-                && !data.BeepType
-                && typeof data.MemberNumber === "number"
-                && ctx.isEnforced()
-                && parseMembers(ctx.setting<string>("allowedMembers")).includes(data.MemberNumber)
-                && typeof data.Message === "string"
-                && (data.Message.trim().toLocaleLowerCase() === "summon"
-                    || (summonText.length > 0 && data.Message.toLocaleLowerCase().startsWith(summonText)))
-                && typeof data.ChatRoomName === "string"
-                && data.ChatRoomSpace !== undefined
-                && ChatSelectGendersAllowed(data.ChatRoomSpace, Player.GetGenders());
+            // Dev builds trace exactly why a message beep did not summon
+            const disqualified = (reason: string): false => {
+                debug(`Summon beep from #${data?.MemberNumber} ignored: ${reason}`);
+                return false;
+            };
+            const qualifies = ((): boolean => {
+                if (!data || data.BeepType || typeof data.MemberNumber !== "number" || typeof data.Message !== "string") {
+                    return false; // not a plain message beep - stay quiet
+                }
+                if (!ctx.isEnforced()) {
+                    return disqualified("rule is not enforced (or paused by its conditions)");
+                }
+                if (!parseMembers(ctx.setting<string>("allowedMembers")).includes(data.MemberNumber)) {
+                    return disqualified("sender is not on the allowed members list");
+                }
+                if (data.Message.trim().toLocaleLowerCase() !== "summon"
+                    && !(summonText.length > 0 && data.Message.toLocaleLowerCase().startsWith(summonText))) {
+                    return disqualified("message does not match the summon text");
+                }
+                // The server strips room info when the sender turned off
+                // "attach room" on the beep, or is not in a room
+                if (typeof data.ChatRoomName !== "string" || data.ChatRoomSpace == null) {
+                    return disqualified("beep carries no room info (sender must be in a room with \"attach room\" on)");
+                }
+                if (!ChatSelectGendersAllowed(data.ChatRoomSpace, Player.GetGenders())) {
+                    return disqualified("that room space does not allow the player's gender");
+                }
+                return true;
+            })();
 
             const result = next(args);
             if (!qualifies) {
@@ -75,6 +95,8 @@ export const ReadyToBeSummoned: RuleDefinition = {
             if (ServerPlayerIsInChatRoom()) {
                 SendAction(`${Player.Nickname || Player.Name} has received a summons and must obey.`);
             }
+            // The chat notification is invisible outside rooms - the beep is not
+            InfoBeep(`You are summoned by ${data!.MemberName ?? `#${summoner}`}! Moving to "${roomName}" in ${delaySeconds} seconds...`, 8000);
             BCPNotifyPlayer(`You are summoned by #${summoner}! Moving in ${delaySeconds} seconds...`);
             ctx.triggerAttempt(summoner);
 
