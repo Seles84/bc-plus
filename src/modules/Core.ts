@@ -361,9 +361,11 @@ export default class Core extends ModuleInstance {
             return;
         }
         const hasAccess = this.roomIconHasAccess(character);
-        // Top row, right end: after BC's slots (up to 390), BCX (375) and
-        // the WCE cluster - aligned with the other status icons
-        const x = CharX + 440 * Zoom;
+        // Head of the icon row: left of WCE's version text (centered at 290
+        // per its source, with a companion icon down to ~228) and of BC's own
+        // conditional slots (30-190). Slot 0 goes first and collides with
+        // nothing but the rare focus-mode warning's edge.
+        const x = CharX;
         const y = CharY;
         const size = 40 * Zoom;
         MainCanvas.save();
