@@ -7,6 +7,8 @@ import { BCPVersionCompare, parseBCPVersion } from "@/utils/Version";
 import { AnySetting } from "@/system/gui/Settings";
 import { modalConfirm } from "@/gui/Modal";
 import { BCPNotifyPlayer } from "@/utils/Messaging";
+import { getChatroomCharacter } from "@/utils/BCPlusCharacter";
+import appLogo from "@/images/icon90.png";
 import { Role, RoleNames } from "@/system/Roles";
 import type Authority from "@/modules/Authority";
 
@@ -78,6 +80,14 @@ export default class Core extends ModuleInstance {
                 label: "Notify me in-club about BC+ updates",
                 hoverText: "Beeps once after BC+ updated, and once per session when a newer "
                     + "version is available (reload the club to get it).",
+                default: true,
+            },
+            {
+                type: "checkbox",
+                name: "roomIcons",
+                label: "Show the BC+ icon above BC+ users in the room",
+                hoverText: "Draws the BC+ logo next to BC's status icons above every character "
+                    + "running BC+ (including you) - an instant view of who you can interact with.",
                 default: true,
             },
             ...this.moduleToggleSettings(),
@@ -305,6 +315,7 @@ export default class Core extends ModuleInstance {
     override Load(): void {
         this.checkForUpdate();
         void this.fetchLatestVersion();
+        this.installRoomIcon();
         const mode = this.BCMode === "tandem"
             ? `tandem with BCX v${window.bcx?.version ?? "?"}`
             : "standalone";
@@ -316,6 +327,29 @@ export default class Core extends ModuleInstance {
         log(`Ready! Running ${mode}.`);
 
         // BCX rule triggers are recorded by the Logging module in tandem mode
+    }
+
+    /**
+     * BC+ logo above every BC+ user's head, next to BC's own status icons.
+     * BC calls the hooked function per character per frame (character view,
+     * and the map view for the character under the cursor). X slot 230 sits
+     * in the free gap between BC's relationship icons (150) and bounty (310).
+     */
+    private installRoomIcon(): void {
+        this.addHook("ChatRoomDrawCharacterStatusIcons", 1, (args, next) => {
+            const result = next(args);
+            try {
+                const [C, CharX, CharY, Zoom] = args;
+                if (this.getSetting<boolean>("roomIcons") !== false
+                    && typeof C.MemberNumber === "number"
+                    && getChatroomCharacter(C.MemberNumber)?.BCPVersion) {
+                    DrawImageResize(appLogo, CharX + 230 * Zoom, CharY, 40 * Zoom, 40 * Zoom);
+                }
+            } catch {
+                // Drawing extras must never break BC's frame
+            }
+            return result;
+        });
     }
 
     /** Notifies once after an update and stamps the save with the new version. */
