@@ -1,6 +1,6 @@
 import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { ModuleConfig, SettingsFooterRenderer } from "@/system/module/ModuleTypes";
-import { BCPLUS_APP_NAME, BCPLUS_AUTHOR, BCPLUS_REPO, BCPLUS_VERSION } from "@/system/Constants";
+import { BCPLUS_APP_NAME, BCPLUS_AUTHOR, BCPLUS_REPO, BCPLUS_VERSION, BCPLUS_WEBSITE } from "@/system/Constants";
 import { log, warn } from "@/system/Console";
 import { InfoBeep } from "@/utils/BCUtils";
 import { BCPVersionCompare, parseBCPVersion } from "@/utils/Version";
@@ -201,8 +201,32 @@ export default class Core extends ModuleInstance {
         }
     }
 
+    /** Latest released version per the website's version manifest; null until fetched. */
+    private latestVersion: string | null = null;
+
+    getLatestVersion(): string | null {
+        return this.latestVersion;
+    }
+
+    private async fetchLatestVersion(): Promise<void> {
+        try {
+            const response = await fetch(`${BCPLUS_WEBSITE}/version.json`, { cache: "no-store" });
+            if (!response.ok) {
+                return;
+            }
+            const data = await response.json() as { version?: unknown };
+            if (typeof data.version === "string" && parseBCPVersion(data.version) !== null) {
+                this.latestVersion = data.version;
+            }
+        } catch {
+            // Offline or the manifest is not deployed yet - the menu just
+            // omits the latest-version line
+        }
+    }
+
     override Load(): void {
         this.checkForUpdate();
+        void this.fetchLatestVersion();
         const mode = this.BCMode === "tandem"
             ? `tandem with BCX v${window.bcx?.version ?? "?"}`
             : "standalone";

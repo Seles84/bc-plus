@@ -55,6 +55,10 @@ copyFileSync(
     "dist/bcplusLoader.user.js",
 );
 
+// Version manifest - clients fetch this from the Pages deploy to learn the
+// latest released version (always pkg.version; displayVersion is dev-only)
+writeFileSync("dist/version.json", JSON.stringify({ version: pkg.version }) + "\n");
+
 // Landing page for GitHub Pages (the deploy serves dist/ as the site root)
 writeFileSync("dist/index.html", `<!DOCTYPE html>
 <html lang="en">

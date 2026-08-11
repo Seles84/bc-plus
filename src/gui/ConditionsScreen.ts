@@ -2,7 +2,7 @@ import { GUIPage, GUIScreen, PageOptions } from "@/system/gui/GUIScreen";
 import { ButtonActionWidget } from "@/system/gui/Widgets";
 import { ConditionData, formatDuration } from "@/system/conditions/Conditions";
 import { Role, RoleNames } from "@/system/Roles";
-import { jsonClone } from "@/utils/BCUtils";
+import { ElementSetVisible, jsonClone } from "@/utils/BCUtils";
 import type { ModuleInstance } from "@/system/module/ModuleInstance";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 
@@ -84,6 +84,11 @@ class ConditionsPage extends GUIPage {
     render(): void {
         const conditions = this.target.get();
         const canEdit = this.target.canEdit();
+
+        // The text inputs are DOM elements and would float above the help box
+        const inputsVisible = !this.screen.HelpVisible;
+        ElementSetVisible(MEMBERS_INPUT, inputsVisible);
+        ElementSetVisible(ROOMS_INPUT, inputsVisible);
 
         // Layout grid: labels at LABEL_X, controls from CONTROL_X, mode buttons in one right column
         const LABEL_X = 150;
