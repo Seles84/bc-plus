@@ -361,30 +361,24 @@ export default class Core extends ModuleInstance {
             return;
         }
         const hasAccess = this.roomIconHasAccess(character);
-        const x = CharX + 430 * Zoom;
-        const y = CharY;
+        // Second row, right side: the top icon row is full once BC (up to
+        // 390), BCX (375) and WCE have drawn; BCX's typing bubble ends by
+        // ~425 on row two, leaving this corner free
+        const x = CharX + 440 * Zoom;
+        const y = CharY + 50 * Zoom;
         const size = 40 * Zoom;
-        const drawBadge = (): void => {
-            // Light backplate: the purple logo is invisible on dark rooms
-            const pad = 3 * Zoom;
-            MainCanvas.beginPath();
-            MainCanvas.roundRect(x - pad, y - pad, size + 2 * pad, size + 2 * pad, 8 * Zoom);
-            MainCanvas.fillStyle = "#efe9f7";
-            MainCanvas.fill();
-            MainCanvas.strokeStyle = "#3d2e57";
-            MainCanvas.lineWidth = Math.max(1, Zoom);
-            MainCanvas.stroke();
-            DrawImageResize(appLogo, x, y, size, size);
-        };
-        if (hasAccess) {
-            drawBadge();
-        } else {
+        MainCanvas.save();
+        if (!hasAccess) {
             // Grayed out: this person's permissions give you no access
-            MainCanvas.save();
             MainCanvas.globalAlpha = 0.35;
-            drawBadge();
-            MainCanvas.restore();
         }
+        // Soft white halo instead of a backplate: keeps the flat icon look
+        // while staying visible on dark backgrounds
+        MainCanvas.shadowColor = "rgba(255, 255, 255, 0.9)";
+        MainCanvas.shadowBlur = 6 * Zoom;
+        DrawImageResize(appLogo, x, y, size, size);
+        DrawImageResize(appLogo, x, y, size, size);
+        MainCanvas.restore();
         if (MouseIn(x, y, size, size)) {
             const label = `BC+ ${character.BCPVersion}${hasAccess ? "" : " - no access"}`;
             const prevAlign = MainCanvas.textAlign;
