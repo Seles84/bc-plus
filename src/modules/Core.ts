@@ -361,11 +361,10 @@ export default class Core extends ModuleInstance {
             return;
         }
         const hasAccess = this.roomIconHasAccess(character);
-        // Second row, right side: the top icon row is full once BC (up to
-        // 390), BCX (375) and WCE have drawn; BCX's typing bubble ends by
-        // ~425 on row two, leaving this corner free
+        // Top row, right end: after BC's slots (up to 390), BCX (375) and
+        // the WCE cluster - aligned with the other status icons
         const x = CharX + 440 * Zoom;
-        const y = CharY + 50 * Zoom;
+        const y = CharY;
         const size = 40 * Zoom;
         MainCanvas.save();
         if (!hasAccess) {
