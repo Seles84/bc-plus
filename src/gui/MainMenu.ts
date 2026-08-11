@@ -29,7 +29,9 @@ class MainMenuPage extends GUIPage {
             showBack: true,
             showHelp: true,
             helpText: "This is the BC+ main menu. Each button opens the settings for one BC+ module. "
-                + "Modules marked as inactive are disabled and cannot be configured.",
+                + "Feature modules (Rules, Curses, Commands, Relationships, Log) can be switched on "
+                + "or off on the General page - a module that is off shows grayed out here and stops "
+                + "doing anything until re-enabled.",
         };
     }
 
@@ -50,7 +52,10 @@ class MainMenuPage extends GUIPage {
             ? `BCX v${window.bcx?.version ?? "?"} found. Tandem Mode Enabled`
             : "BCX not found. Control Mode Enabled";
         DrawText(modeText, 1800, 160, "Black", "Gray");
-        this.renderVersionInfo();
+        // The help box covers this area; skip the lines instead of clipping them
+        if (!this.Screen.HelpVisible) {
+            this.renderVersionInfo();
+        }
 
         MainCanvas.textAlign = "left";
         let hovered: { title: string; text: string } | null = null;

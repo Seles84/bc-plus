@@ -87,6 +87,10 @@ export default class Relationships extends ModuleInstance {
         return true;
     }
 
+    override get CanDisable(): boolean {
+        return true;
+    }
+
     override get SettingsScreen(): ((character: BCPlusCharacter | null) => GUIScreen) | null {
         return (character) => new RelationshipsScreen(this, character);
     }

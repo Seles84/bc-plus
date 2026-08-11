@@ -65,6 +65,14 @@ export abstract class ModuleInstance {
     }
 
     /**
+     * Whether the player may switch this module off (feature modules only).
+     * Disableable modules must fully revert in Unload and cleanly re-Load.
+     */
+    get CanDisable(): boolean {
+        return false;
+    }
+
+    /**
      * Permission gating remote edits of this module's plain settings via
      * SettingCommand; null means the settings are never editable remotely.
      */

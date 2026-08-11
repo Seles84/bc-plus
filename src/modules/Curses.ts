@@ -245,6 +245,10 @@ export default class Curses extends ModuleInstance {
         this.Slots[group]?.items.splice(index, 1);
     }
 
+    override get CanDisable(): boolean {
+        return true;
+    }
+
     override Load(): void {
         this.tickTimer = setInterval(() => this.check(), TICK_MS);
 

@@ -236,6 +236,10 @@ export default class Rules extends ModuleInstance {
         return Promise.resolve();
     }
 
+    override get CanDisable(): boolean {
+        return true;
+    }
+
     override Load(): void {
         if (this.Preset !== "Dominant") {
             for (const id of this.registry.keys()) {
