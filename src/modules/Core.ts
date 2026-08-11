@@ -66,7 +66,9 @@ export default class Core extends ModuleInstance {
             {
                 type: "checkbox",
                 name: "updateNotify",
-                label: "Notify me in-club after BC+ updates",
+                label: "Notify me in-club about BC+ updates",
+                hoverText: "Beeps once after BC+ updated, and once per session when a newer "
+                    + "version is available (reload the club to get it).",
                 default: true,
             },
         ];
@@ -217,10 +219,36 @@ export default class Core extends ModuleInstance {
             const data = await response.json() as { version?: unknown };
             if (typeof data.version === "string" && parseBCPVersion(data.version) !== null) {
                 this.latestVersion = data.version;
+                this.notifyIfOutdated();
             }
         } catch {
             // Offline or the manifest is not deployed yet - the menu just
             // omits the latest-version line
+        }
+    }
+
+    /** Beeps once when a newer release than the running build is available. */
+    private notifyIfOutdated(): void {
+        const latest = this.latestVersion !== null ? parseBCPVersion(this.latestVersion) : null;
+        const current = parseBCPVersion(BCPLUS_VERSION);
+        if (latest === null || current === null) {
+            return;
+        }
+        if (BCPVersionCompare(latest, current) > 0 && this.getSetting<boolean>("updateNotify")) {
+            InfoBeep(`${BCPLUS_APP_NAME} v${this.latestVersion} is available - reload the club to update!`, 8000);
+        }
+    }
+
+    /** DEV builds only: fakes the latest-version manifest; null re-fetches the real one. */
+    devSetLatestVersion(version: string | null): void {
+        if (!BCP_DEV_ENV) {
+            return;
+        }
+        this.latestVersion = version;
+        if (version === null) {
+            void this.fetchLatestVersion();
+        } else {
+            this.notifyIfOutdated();
         }
     }
 

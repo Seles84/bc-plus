@@ -4,10 +4,12 @@ import { BCPLUS_APP_NAME, BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constan
 import { LOG_MAX_ENTRIES, formatLogTime } from "@/system/logging/LogTypes";
 import { ListSyncListeners, NotifyPlayer } from "@/utils/Messaging";
 import { getAllCharactersInRoom } from "@/utils/BCPlusCharacter";
+import { parseBCPVersion } from "@/utils/Version";
 import type Rules from "@/modules/Rules";
 import type Curses from "@/modules/Curses";
 import type Logging from "@/modules/Logging";
 import type DataSync from "@/modules/DataSync";
+import type Core from "@/modules/Core";
 
 const COMMAND_TAG = "bcp";
 
@@ -158,6 +160,12 @@ export default class TextCommands extends ModuleInstance {
                 }, 100);
             },
         },
+        // Dev-build-only helpers to exercise things that normally need a deploy
+        ...(BCP_DEV_ENV ? [{
+            name: "test",
+            description: "DEV: test helpers (test version [x.y.z|clear])",
+            handler: (args: string[]) => this.handleTest(args),
+        }] : []),
         {
             name: "debug",
             description: "Show BC+ diagnostic state",
@@ -209,6 +217,40 @@ export default class TextCommands extends ModuleInstance {
             return;
         }
         command.handler(args.slice(1));
+    }
+
+    /** DEV: /bcp test version [x.y.z|clear] - fake the latest release to test update UI. */
+    private handleTest(args: string[]): void {
+        const what = (args[0] ?? "").toLocaleLowerCase();
+        if (what !== "version") {
+            this.reply("Test helpers: /bcp test version [x.y.z|clear]");
+            return;
+        }
+        const core = this.ModuleManager.getModule<Core>("core");
+        if (!core) {
+            return;
+        }
+        const value = (args[1] ?? "").toLocaleLowerCase();
+        if (value === "clear") {
+            core.devSetLatestVersion(null);
+            this.reply("Latest-version override cleared - re-fetching the real manifest.");
+            return;
+        }
+        let fake = value;
+        if (fake === "") {
+            // Default: one patch above the running build, so it always triggers
+            const current = parseBCPVersion(BCPLUS_VERSION);
+            if (!current) {
+                return;
+            }
+            fake = `${current.major}.${current.minor}.${current.patch + 1}`;
+        } else if (parseBCPVersion(fake) === null) {
+            this.reply(`"${escapeHtml(fake)}" is not a valid version - use x.y.z or clear.`);
+            return;
+        }
+        core.devSetLatestVersion(fake);
+        this.reply(`Pretending v${escapeHtml(fake)} is the latest release - check the beep and the main menu. `
+            + "Undo with /bcp test version clear.");
     }
 
     private showHelp(): void {
