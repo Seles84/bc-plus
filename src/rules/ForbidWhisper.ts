@@ -10,6 +10,7 @@ export const ForbidWhisper: RuleDefinition = {
     name: "Forbid whispering",
     description: "The player cannot send whispers to other people in the room.",
     category: "Speech",
+    bcxEquivalent: "speech_restrict_whisper_send",
     announceAttempt: "{Name} tried to whisper, which a rule forbids.",
     announceViolation: "{Name} whispered, which a rule forbids.",
     settings: [{

@@ -20,6 +20,7 @@ export const SensoryDepSound: RuleDefinition = {
     description: "Impacts the player's natural hearing the same way items do, independent of them. "
         + "Strength is adjustable; stacks with worn items.",
     category: "Sensory",
+    bcxEquivalent: "alt_restrict_hearing",
     settings: [{
         type: "option",
         name: "strength",
@@ -45,6 +46,7 @@ export const HearingWhitelist: RuleDefinition = {
     description: "The listed members are always understood clearly, no matter how deafened the "
         + "player is (by items or rules). Optionally even when those members are gagged.",
     category: "Sensory",
+    bcxEquivalent: "alt_hearing_whitelist",
     settings: [
         {
             type: "text",
@@ -93,6 +95,7 @@ export const SensoryDepSight: RuleDefinition = {
     description: "Impacts the player's natural eyesight the same way items do, independent of them. "
         + "Strength is adjustable; stacks with worn items.",
     category: "Sensory",
+    bcxEquivalent: "alt_restrict_sight",
     settings: [{
         type: "option",
         name: "strength",
@@ -119,6 +122,7 @@ export const SeeingWhitelist: RuleDefinition = {
     description: "The listed members are always seen normally, no matter how blinded the player "
         + "is (by items or rules).",
     category: "Sensory",
+    bcxEquivalent: "alt_seeing_whitelist",
     settings: [{
         type: "text",
         name: "members",

@@ -27,6 +27,7 @@ export const FalteringSpeech: RuleDefinition = {
     description: "The player's spoken messages come out st-st-stuttering. "
         + "Out-of-character text is not affected.",
     category: "Speech",
+    bcxEquivalent: "speech_alter_faltering",
     load(ctx) {
         ctx.hook("ServerSend", 4, (args, next) => {
             const data = spokenPayload(args as unknown[]);

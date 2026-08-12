@@ -17,6 +17,7 @@ export const ForbidOwnerChanges: RuleDefinition = {
     description: "The player cannot leave their current club owner or submit to a new one. "
         + "Advancing a trial to full ownership is unaffected, and their owner can still release them.",
     category: "Protection",
+    bcxEquivalent: "rc_club_owner",
     load(ctx) {
         ctx.hook("ChatRoomOwnershipOptionIs", 5, (args, next) => {
             if (ctx.isEnforced() && args[0] === "CanStartTrial") {
@@ -52,6 +53,7 @@ export const ForbidNewLovers: RuleDefinition = {
     description: "The player cannot start dating anyone new. Advancing an existing lovership "
         + "(dating to engagement to marriage) is unaffected.",
     category: "Protection",
+    bcxEquivalent: "rc_lover_new",
     load(ctx) {
         ctx.hook("ChatRoomLovershipOptionIs", 5, (args, next) => {
             if (ctx.isEnforced() && (args[0] === "CanOfferBeginDating" || args[0] === "CanBeginDating")) {
@@ -79,6 +81,7 @@ export const ForbidBreakingUp: RuleDefinition = {
         + "through the Management mistress nor directly in a chat room. "
         + "Their lovers can still break up with them.",
     category: "Protection",
+    bcxEquivalent: "rc_lover_leave",
     load(ctx) {
         for (const fn of [
             "ManagementCanBreakDatingLoverOnline",
@@ -106,6 +109,7 @@ export const ForbidNewSubmissives: RuleDefinition = {
     description: "The player cannot offer an ownership trial to a new submissive. "
         + "Advancing an existing trial to full ownership is unaffected.",
     category: "Protection",
+    bcxEquivalent: "rc_sub_new",
     load(ctx) {
         ctx.hook("ChatRoomOwnershipOptionIs", 5, (args, next) => {
             if (ctx.isEnforced() && args[0] === "CanOfferStartTrial") {
@@ -130,6 +134,7 @@ export const ForbidDisowning: RuleDefinition = {
     description: "The player cannot let go of any of their submissives (trial or full ownership). "
         + "Their submissives can still break the bond themselves.",
     category: "Protection",
+    bcxEquivalent: "rc_sub_leave",
     load(ctx) {
         ctx.hook("ChatRoomIsOwnedByPlayer", 5, (args, next) => !ctx.isEnforced() && next(args));
         ctx.hook("ChatRoomSendOwnershipRequest", 5, (args, next) => {
@@ -151,6 +156,7 @@ export const PreventBlacklisting: RuleDefinition = {
     description: "The player cannot add people holding the configured role (or higher) to their "
         + "BC blacklist or ghostlist.",
     category: "Protection",
+    bcxEquivalent: "block_blacklisting",
     announceAttempt: "{Name} tried to blacklist someone a rule protects.",
     settings: [{
         type: "option",
@@ -184,6 +190,7 @@ export const PreventWhitelisting: RuleDefinition = {
     description: "The player can only add people holding the configured role (or higher) to their "
         + "BC whitelist.",
     category: "Protection",
+    bcxEquivalent: "block_whitelisting",
     announceAttempt: "{Name} tried to whitelist someone a rule does not allow.",
     settings: [{
         type: "option",

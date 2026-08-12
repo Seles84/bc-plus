@@ -13,6 +13,7 @@ export const RestrainedSpeech: RuleDefinition = {
         + "(comma-separated; case and end punctuation are ignored). "
         + "Purely out-of-character messages are exempt.",
     category: "Speech",
+    bcxEquivalent: "speech_restrained_speech",
     announceAttempt: "{Name} tried to say something they are not allowed to.",
     settings: [{
         type: "text",

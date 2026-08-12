@@ -11,6 +11,7 @@ export const ListenToMyVoice: RuleDefinition = {
         + "interval, while they are in a chat room. Only they can see it. "
         + "Separate sentences with | (vertical bar).",
     category: "Other",
+    bcxEquivalent: "other_constant_reminder",
     settings: [
         {
             type: "text",

@@ -8,6 +8,7 @@ export const DollTalk: RuleDefinition = {
     description: "The player can only speak in short, simple phrases: limited words per message "
         + "and letters per word. Out-of-character text is not affected.",
     category: "Speech",
+    bcxEquivalent: "speech_doll_talk",
     announceAttempt: "{Name} tried to say something too complex for a doll.",
     settings: [
         {

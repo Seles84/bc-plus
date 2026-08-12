@@ -6,6 +6,7 @@ export const ForbidEmotes: RuleDefinition = {
     name: "Forbid emotes",
     description: "The player cannot send emote messages to the room.",
     category: "Speech",
+    bcxEquivalent: "speech_forbid_emotes",
     announceAttempt: "{Name} tried to emote, which a rule forbids.",
     announceViolation: "{Name} emoted, which a rule forbids.",
     load(ctx) {

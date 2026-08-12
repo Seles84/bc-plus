@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Tandem mode now actually defers to BCX instead of doubling up. Almost every BC+ rule is mapped to its BCX equivalent; while BCX's version of a rule is in effect on your client, the BC+ rule pauses automatically — the rules list shows an amber "BCX" chip and the config page explains the pause. The check is live: toggling the rule in BCX immediately hands control back and forth. BC+ curses similarly yield when a BCX curse acts on the same item slot (notified once, logged, retried after five minutes so a lifted BCX curse hands the slot back). A "Defer to BCX in tandem mode" checkbox on the General page (only shown when BCX is present, on by default) turns all of this off if you truly want both mods enforcing.
 - Bondage rules batch (6 new rules in the Items category, 41 total): **Forbid tying up self** and **Forbid tying up others** disable using items in the item dialog — the item buttons gray out with the rule named as the reason. The others-variant can be limited to characters more dominant than the player (on by default). **Forbid freeing self** and **Forbid freeing others** hide the Remove/Struggle/Dismount/Escape buttons, with an option to still allow removing low-difficulty items (hand-held toys, plushies...). **Forbid wardrobe use on self** and **Forbid wardrobe use on others** block changing clothes entirely (others can still dress the player).
 
 ### Fixed

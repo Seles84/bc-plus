@@ -17,6 +17,7 @@ export const WordReplace: RuleDefinition = {
         + "Format: word:replacement, separated by commas (e.g. \"i:this doll, my:this doll's\"). "
         + "Out-of-character text is not affected.",
     category: "Speech",
+    bcxEquivalent: "speech_replace_spoken_words",
     settings: [{
         type: "text",
         name: "replacements",

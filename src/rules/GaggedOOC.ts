@@ -8,6 +8,7 @@ export const GaggedOOC: RuleDefinition = {
     description: "The player cannot use out-of-character (parenthesized) text while gagged - "
         + "a gag should not be so easy to talk around.",
     category: "Speech",
+    bcxEquivalent: "speech_block_gagged_ooc",
     announceAttempt: "{Name} mumbles into the gag, unable to slip out of character.",
     load(ctx) {
         ctx.hook("ServerSend", 5, (args, next) => {
