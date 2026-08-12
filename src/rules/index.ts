@@ -44,6 +44,11 @@ import {
     ForbidRemotesSelf,
 } from "@/rules/LocksRules";
 import {
+    ForbidCreatingRooms,
+    ForbidRoomAdminUI,
+    RestrictRoomEntry,
+} from "@/rules/RoomRules";
+import {
     HearingWhitelist,
     SeeingWhitelist,
     SensoryDepSight,
@@ -65,6 +70,9 @@ export const RULE_DEFINITIONS: readonly RuleDefinition[] = [
     ForbidEmotes,
     ForbidBeepMessages,
     ForbidLeaving,
+    ForbidCreatingRooms,
+    RestrictRoomEntry,
+    ForbidRoomAdminUI,
     GreetRoom,
     FarewellOnLeave,
     ListenToMyVoice,
