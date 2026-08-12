@@ -92,6 +92,15 @@ export default class Core extends ModuleInstance {
                     + "icon means their permissions give you no access.",
                 default: true,
             },
+            ...(this.bcxInstalled() ? [{
+                type: "checkbox" as const,
+                name: "tandemDefer",
+                label: "Defer to BCX in tandem mode",
+                hoverText: "When BCX's version of a BC+ rule is in effect, the BC+ rule pauses "
+                    + "so both mods never police the same thing twice. BC+ curses also yield "
+                    + "when a BCX curse acts on the same item slot.",
+                default: true,
+            }] : []),
             ...this.moduleToggleSettings(),
         ];
     }

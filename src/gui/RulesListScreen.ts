@@ -72,6 +72,10 @@ class RulesListPage extends GUIPage {
 
     render(): void {
         const access = this.screen.access;
+        // BCX deferral is a fact about THIS client's tandem state - it is
+        // unknowable for a remote character's rules, so never shown there
+        const local = this.Character === null || this.Character.isPlayer();
+        const rules = this.screen.Module as Rules;
         let hovered: { definition: RuleDefinition; column: number } | null = null;
 
         this.definitions.forEach((definition, i) => {
@@ -89,8 +93,9 @@ class RulesListPage extends GUIPage {
                     );
                 },
             ));
-            const chip = state.active ? (state.enforce ? "Enforced" : "Active") : "Off";
-            DrawText(chip, x + NAME_W + 20, y + 40, state.active ? "Green" : "Gray");
+            const deferred = local && state.active && rules.ruleDeferredToBCX(definition.id);
+            const chip = state.active ? (deferred ? "BCX" : (state.enforce ? "Enforced" : "Active")) : "Off";
+            DrawText(chip, x + NAME_W + 20, y + 40, state.active ? (deferred ? "#DAA520" : "Green") : "Gray");
             if (state.conditions && Object.keys(state.conditions).length > 0) {
                 DrawText("◈", x + NAME_W + CHIP_W, y + 40, "Gray");
             }
@@ -105,7 +110,9 @@ class RulesListPage extends GUIPage {
             const { definition, column } = hovered as { definition: RuleDefinition; column: number };
             const state = access.state(definition.id);
             const status = state.active
-                ? `Active${state.enforce ? ", enforced" : ""}${state.log ? ", logged" : ""}${state.announce ? ", announced" : ""}`
+                ? (local && rules.ruleDeferredToBCX(definition.id)
+                    ? "Paused - BCX's matching rule is in effect, BC+ defers to it"
+                    : `Active${state.enforce ? ", enforced" : ""}${state.log ? ", logged" : ""}${state.announce ? ", announced" : ""}`)
                 : "Not active";
             const origin = state.active && state.addedBy ? ` Set by ${state.addedBy.name} (#${state.addedBy.member}).` : "";
             DrawInfoPanel(
@@ -207,6 +214,11 @@ class RuleConfigPage extends GUIPage {
         const canEdit = access.canEdit();
 
         MainCanvas.textAlign = "left";
+        if ((this.Character === null || this.Character.isPlayer())
+            && state.active
+            && (this.screen.Module as Rules).ruleDeferredToBCX(definition.id)) {
+            DrawText("Paused - BCX's matching rule is in effect, so BC+ defers to it.", 150, 200, "#DAA520");
+        }
 
         const toggles: { label: string; value: boolean; set: (v: boolean) => void }[] = [
             {

@@ -38,6 +38,7 @@ function tyingRule(
         name,
         description,
         category: "Items",
+        bcxEquivalent: onSelf ? "block_tying_self" : "block_tying_others",
         settings,
         announceAttempt: `{Name} tried to use an item on ${noun}, which a rule forbids.`,
         announceViolation: `{Name} used an item on ${noun}, which a rule forbids.`,
@@ -113,6 +114,7 @@ function freeingRule(id: string, name: string, description: string, onSelf: bool
         name,
         description,
         category: "Items",
+        bcxEquivalent: onSelf ? "block_freeing_self" : "block_freeing_others",
         settings: [{
             type: "checkbox",
             name: "allowEasy",
@@ -163,6 +165,7 @@ function wardrobeRule(id: string, name: string, description: string, onSelf: boo
         name,
         description,
         category: "Items",
+        bcxEquivalent: onSelf ? "block_wardrobe_access_self" : "block_wardrobe_access_others",
         announceViolation: onSelf
             ? "{Name} used their wardrobe, which a rule forbids."
             : "{Name} used someone's wardrobe, which a rule forbids.",

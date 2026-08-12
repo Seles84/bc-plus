@@ -7,6 +7,7 @@ export const ForbidOOC: RuleDefinition = {
     description: "The player cannot send messages containing out-of-character (parenthesized) text. "
         + "Whispers are not affected.",
     category: "Speech",
+    bcxEquivalent: "speech_block_ooc",
     announceAttempt: "{Name} tried to use OOC in a message, which a rule forbids.",
     announceViolation: "{Name} used OOC in a message, which a rule forbids.",
     load(ctx) {

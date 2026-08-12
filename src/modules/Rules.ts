@@ -14,6 +14,7 @@ import { debug, warn } from "@/system/Console";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type { Originator } from "@/system/module/ModuleTypes";
 import type Roles from "@/modules/Roles";
+import type Core from "@/modules/Core";
 import type Authority from "@/modules/Authority";
 import type DataSync from "@/modules/DataSync";
 import type Logging from "@/modules/Logging";
@@ -27,6 +28,8 @@ export default class Rules extends ModuleInstance {
     private readonly ruleTimers = new Map<string, ReturnType<typeof setInterval>[]>();
     /** Cleanup callbacks registered by installed rules, run on uninstall. */
     private readonly ruleCleanups = new Map<string, (() => void)[]>();
+    /** Cached BCX rule state handles (stable objects; their fields are live). */
+    private readonly bcxRuleStates = new Map<string, BCX_RuleStateAPI | null>();
 
     protected readonly SystemConfig: ModuleConfig = {
         Name: "Rules",
@@ -207,7 +210,39 @@ export default class Rules extends ModuleInstance {
     /** Whether the rule currently applies (active + conditions met). */
     ruleInEffect(id: string): boolean {
         const state = this.ruleState(id);
-        return state.active && conditionsMet(state.conditions, this.ModuleManager.getModule<Roles>("roles"));
+        return state.active
+            && !this.ruleDeferredToBCX(id)
+            && conditionsMet(state.conditions, this.ModuleManager.getModule<Roles>("roles"));
+    }
+
+    /**
+     * True when tandem mode hands this rule over to BCX: the rule maps to a
+     * BCX equivalent that is currently in effect, and deferring is enabled.
+     * BCX toggling its rule immediately un-pauses ours - the query is live.
+     */
+    ruleDeferredToBCX(id: string): boolean {
+        const definition = this.registry.get(id);
+        if (!definition?.bcxEquivalent || !this.SDK.bcxInstalled()) {
+            return false;
+        }
+        const core = this.ModuleManager.getModule<Core>("core");
+        if (core?.getSetting<boolean>("tandemDefer") === false) {
+            return false;
+        }
+        let state = this.bcxRuleStates.get(definition.bcxEquivalent);
+        if (state === undefined) {
+            try {
+                state = this.SDK.bcxAPI()?.getRuleState(definition.bcxEquivalent) ?? null;
+            } catch {
+                state = null;
+            }
+            this.bcxRuleStates.set(definition.bcxEquivalent, state);
+        }
+        try {
+            return state?.inEffect === true;
+        } catch {
+            return false;
+        }
     }
 
     /** Sets a rule's custom setting; the value must match the setting's declared type. */

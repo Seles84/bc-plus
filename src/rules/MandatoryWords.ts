@@ -8,6 +8,7 @@ export const MandatoryWords: RuleDefinition = {
     description: "Every chat message must contain at least one of the configured words "
         + "(e.g. \"Miss, please, humbly\"). Purely out-of-character messages are exempt.",
     category: "Speech",
+    bcxEquivalent: "speech_mandatory_words",
     announceAttempt: "{Name} forgot to speak properly.",
     settings: [
         {

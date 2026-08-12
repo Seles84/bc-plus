@@ -25,6 +25,7 @@ export const ForbiddenWords: RuleDefinition = {
     description: "The player cannot use the configured words in chat or whispers. "
         + "Separate words with commas.",
     category: "Speech",
+    bcxEquivalent: "speech_ban_words",
     announceAttempt: "{Name} tried to say a forbidden word.",
     announceViolation: "{Name} said a forbidden word.",
     settings: [{

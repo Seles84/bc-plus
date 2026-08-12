@@ -15,6 +15,7 @@ import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type { Originator } from "@/system/module/ModuleTypes";
 import type Authority from "@/modules/Authority";
 import type Logging from "@/modules/Logging";
+import type Core from "@/modules/Core";
 
 const TICK_MS = 1500;
 /** Minimum time between restorations of the same slot, to avoid fighting loops. */
@@ -25,6 +26,12 @@ const NOTIFY_COOLDOWN_MS = 10_000;
 const MAX_CONSECUTIVE_RESTORES = 4;
 /** How long a non-converging slot's enforcement stays paused. */
 const SUSPEND_MS = 60_000;
+/**
+ * How long a slot yields after a BCX curse acted on the same group. Re-arms
+ * afterwards: if BCX still curses the slot, its next trigger re-yields; if
+ * BCX's curse was lifted, the BC+ curse quietly resumes enforcing.
+ */
+const BCX_YIELD_MS = 5 * 60_000;
 
 export default class Curses extends ModuleInstance {
 
@@ -39,6 +46,10 @@ export default class Curses extends ModuleInstance {
     /** Restores since the slot last checked compliant; guards against fight loops. */
     private readonly consecutiveRestores = new Map<string, number>();
     private readonly suspendedUntil = new Map<string, number>();
+    /** The BCX API survives module toggling; subscribe to it only once. */
+    private bcxSubscribed = false;
+    /** Groups already notified about yielding to BCX (once per session). */
+    private readonly bcxYieldNotified = new Set<string>();
 
     protected readonly SystemConfig: ModuleConfig = {
         Name: "Curses",
@@ -252,6 +263,19 @@ export default class Curses extends ModuleInstance {
     override Load(): void {
         this.tickTimer = setInterval(() => this.check(), TICK_MS);
 
+        // Tandem mode: a BCX curse acting on a group we also curse means both
+        // mods would fight over the slot every tick - yield ours and let BCX
+        // own it. Guarded: a BCX API failure must never break the module.
+        if (!this.bcxSubscribed) {
+            try {
+                const bcxAPI = this.SDK.bcxAPI();
+                bcxAPI?.on("curseTrigger", (data) => this.onBCXCurseTrigger(data.group));
+                this.bcxSubscribed = bcxAPI !== undefined && bcxAPI !== null;
+            } catch (e) {
+                debug("Could not subscribe to BCX curse triggers:", e);
+            }
+        }
+
         // Remote curse management - validated here, never trusting the requester
         this.addSyncListener("CurseCommand", (sender, content) => this.onCurseCommand(sender, content));
         this.addSyncListener("CurseCommandResult", (sender, content) => {
@@ -334,6 +358,26 @@ export default class Curses extends ModuleInstance {
             this.tickTimer = null;
         }
         super.Unload();
+    }
+
+    /** A BCX curse acted on a group; if we curse it too, our curse yields. */
+    private onBCXCurseTrigger(group: string): void {
+        if (!this.Config.Active || !this.getSlot(group)) {
+            return;
+        }
+        const core = this.ModuleManager.getModule<Core>("core");
+        if (core?.getSetting<boolean>("tandemDefer") === false) {
+            return;
+        }
+        this.suspendedUntil.set(group, Date.now() + BCX_YIELD_MS);
+        this.consecutiveRestores.delete(group);
+        if (!this.bcxYieldNotified.has(group)) {
+            this.bcxYieldNotified.add(group);
+            const label = this.curseableGroups().find((g) => g.Name === group)?.Description ?? group;
+            BCPNotifyPlayer(`BCX also curses your ${label} - the BC+ curse yields to it.`);
+            this.ModuleManager.getModule<Logging>("logging")
+                ?.log("curse", `BC+ curse on ${label} yields to a BCX curse on the same slot`);
+        }
     }
 
     /** Enforcement pass: restore any cursed slot whose contents violate its specs. */

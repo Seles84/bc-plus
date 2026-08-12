@@ -60,6 +60,11 @@ export interface RuleDefinition {
     /** Custom configuration rendered on the rule's config page */
     settings?: AnySetting[];
     /**
+     * Id of BCX's equivalent rule. In tandem mode the BC+ rule pauses while
+     * that BCX rule is in effect, so both mods never police the same thing.
+     */
+    bcxEquivalent?: string;
+    /**
      * Room announcement when a breach attempt is blocked; `{Name}` is replaced
      * with the player's name. Omit for rules that should never announce.
      */

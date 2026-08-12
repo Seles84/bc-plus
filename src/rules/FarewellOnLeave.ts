@@ -6,6 +6,7 @@ export const FarewellOnLeave: RuleDefinition = {
     name: "Farewell on leave",
     description: "When leaving a chat room, the player automatically says the configured farewell first.",
     category: "Social",
+    bcxEquivalent: "farewell_on_slow_leave",
     settings: [{
         type: "text",
         name: "farewell",

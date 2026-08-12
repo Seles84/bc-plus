@@ -6,6 +6,7 @@ export const GreetRoom: RuleDefinition = {
     name: "Order to greet the room",
     description: "On entering a chat room, the player automatically says the configured greeting.",
     category: "Social",
+    bcxEquivalent: "greet_room_order",
     settings: [{
         type: "text",
         name: "greeting",

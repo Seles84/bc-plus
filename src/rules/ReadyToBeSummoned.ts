@@ -25,6 +25,7 @@ export const ReadyToBeSummoned: RuleDefinition = {
         + "target room is full, they end up in the lobby. The summoner must be in a room and leave "
         + "\"attach room\" enabled when writing the beep, or it carries no room to move to.",
     category: "Other",
+    bcxEquivalent: "alt_forced_summoning",
     settings: [
         {
             type: "text",
