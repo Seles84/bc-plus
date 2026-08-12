@@ -4,6 +4,14 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- "Forbid leaving the room" now also hooks BC's official leave-permission check, so the exit button properly disables and leave commands added by other mods (e.g. /leave) are blocked too. Forced moves — leashes, kicks, cell/GGTS transfers and BC's safeword release — intentionally still work.
+
+### Added
+- Room control rules (new "Rooms" category, 44 rules total): **Forbid creating new rooms** (blocks the room creation screen; editing rooms the player already administrates still works), **Restrict entering rooms** (only rooms on a configurable name list can be joined — inactive while the list is empty as a safety measure; BC+ summons and go-to-room commands are exempt), and **Forbid room admin UI while blind** (the admin button grays out while the player cannot see, keeping the background and admin numbers hidden; admin chat commands still work). All three defer to their BCX equivalents in tandem mode.
+
 ## [0.5.0] - 2026-08-12
 
 ### Added
