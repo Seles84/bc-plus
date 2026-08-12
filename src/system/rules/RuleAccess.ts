@@ -12,6 +12,10 @@ import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 export interface RuleAccess {
     definitions(): RuleDefinition[];
     state(id: string): RuleStateData;
+    /** The owner's custom display order (rule ids); read-only for remote viewers. */
+    order(): string[];
+    /** The owner's list sort preference. */
+    sortMode(): "custom" | "category";
     canEdit(): boolean;
     setActive(id: string, value: boolean): void;
     setEnforce(id: string, value: boolean): void;
@@ -32,6 +36,14 @@ export class LocalRuleAccess implements RuleAccess {
 
     state(id: string): RuleStateData {
         return this.rules.ruleState(id);
+    }
+
+    order(): string[] {
+        return this.rules.RuleOrder;
+    }
+
+    sortMode(): "custom" | "category" {
+        return this.rules.SortMode;
     }
 
     canEdit(): boolean {
@@ -88,6 +100,15 @@ export class RemoteRuleAccess implements RuleAccess {
         }
         const definition = this.rules.getDefinition(id);
         return definition ? defaultRuleState(definition) : { active: false, enforce: false, log: false, announce: false, settings: {} };
+    }
+
+    order(): string[] {
+        const raw = this.character.BCPData?.["rules"]?.["ruleOrder"];
+        return Array.isArray(raw) ? raw.filter((id): id is string => typeof id === "string") : [];
+    }
+
+    sortMode(): "custom" | "category" {
+        return this.character.BCPData?.["rules"]?.["ruleSort"] === "custom" ? "custom" : "category";
     }
 
     /** Best-effort preview using the target's synced authority/roles data; the target enforces for real. */

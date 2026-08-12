@@ -55,7 +55,38 @@ export default class Rules extends ModuleInstance {
     }
 
     override get Defaults(): Record<string, unknown> {
-        return { rules: {} };
+        return { rules: {}, ruleOrder: [], ruleSort: "category" };
+    }
+
+    /** Custom display order for the rules list (rule ids; may include inactive ones). */
+    get RuleOrder(): string[] {
+        const raw = this.Data.ruleOrder;
+        return Array.isArray(raw) ? raw.filter((id): id is string => typeof id === "string") : [];
+    }
+
+    get SortMode(): "custom" | "category" {
+        return this.Data.ruleSort === "custom" ? "custom" : "category";
+    }
+
+    setSortMode(mode: "custom" | "category"): void {
+        this.Data.ruleSort = mode;
+    }
+
+    /**
+     * Moves a rule one step in the custom display order. `displayed` is the
+     * id list as currently shown - it becomes the stored order, so the first
+     * move behaves exactly as seen on screen.
+     */
+    moveRuleInOrder(id: string, delta: -1 | 1, displayed: string[]): void {
+        const order = [...displayed];
+        const from = order.indexOf(id);
+        const to = from + delta;
+        if (from < 0 || to < 0 || to >= order.length) {
+            return;
+        }
+        order[from] = order[to]!;
+        order[to] = id;
+        this.Data.ruleOrder = order;
     }
 
     override get HasGUI(): boolean {
@@ -155,6 +186,9 @@ export default class Rules extends ModuleInstance {
         state.active = active;
         if (active) {
             state.addedBy = by ?? { member: Player.MemberNumber ?? -1, name: Player.Nickname || Player.Name };
+            if (!this.RuleOrder.includes(id)) {
+                this.Data.ruleOrder = [...this.RuleOrder, id];
+            }
             this.installRule(id);
         } else {
             delete state.addedBy;
