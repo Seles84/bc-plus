@@ -9,7 +9,7 @@ import { GUIScreen } from "@/system/gui/GUIScreen";
 import { BCPMessageContent, BCPNotifyPlayer, SendAction, SendBCPMessage } from "@/utils/Messaging";
 import { decodeExport, encodeExport } from "@/utils/ExportImport";
 import { jsonClone } from "@/utils/BCUtils";
-import { conditionsExpired, conditionsMet, sanitizeConditions } from "@/system/conditions/Conditions";
+import { ConditionData, conditionsExpired, conditionsMet, sanitizeConditions } from "@/system/conditions/Conditions";
 import { debug, warn } from "@/system/Console";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type { Originator } from "@/system/module/ModuleTypes";
@@ -55,7 +55,35 @@ export default class Rules extends ModuleInstance {
     }
 
     override get Defaults(): Record<string, unknown> {
-        return { rules: {}, ruleOrder: [], ruleSort: "category" };
+        return { rules: {}, ruleOrder: [], ruleSort: "category", globalConditions: {} };
+    }
+
+    /** The shared conditions set that rules with `useGlobal` follow. Never has a timer. */
+    get GlobalConditions(): ConditionData {
+        const raw = this.Data.globalConditions;
+        return (typeof raw === "object" && raw !== null ? raw : {}) as ConditionData;
+    }
+
+    /** Sets the global conditions (sanitized; timers are stripped - a shared timer expiring everything at once would surprise). */
+    setGlobalConditions(raw: unknown): boolean {
+        const sanitized = sanitizeConditions(raw);
+        if (sanitized === null) {
+            return false;
+        }
+        delete sanitized.timerEnd;
+        delete sanitized.timerAction;
+        this.Data.globalConditions = sanitized;
+        return true;
+    }
+
+    setRuleUseGlobal(id: string, value: boolean): void {
+        this.ruleState(id).useGlobal = value;
+    }
+
+    /** The conditions that actually gate this rule: its own, or the shared global set. */
+    effectiveConditions(id: string): ConditionData | undefined {
+        const state = this.ruleState(id);
+        return state.useGlobal === true ? this.GlobalConditions : state.conditions;
     }
 
     /** Custom display order for the rules list (rule ids; may include inactive ones). */
@@ -163,6 +191,9 @@ export default class Rules extends ModuleInstance {
             if (typeof state.announce === "boolean") {
                 this.setRuleAnnounce(id, state.announce);
             }
+            if (typeof state.useGlobal === "boolean") {
+                this.setRuleUseGlobal(id, state.useGlobal);
+            }
             if (typeof state.settings === "object" && state.settings !== null) {
                 for (const [name, value] of Object.entries(state.settings)) {
                     this.setRuleSetting(id, name, value);
@@ -246,7 +277,7 @@ export default class Rules extends ModuleInstance {
         const state = this.ruleState(id);
         return state.active
             && !this.ruleDeferredToBCX(id)
-            && conditionsMet(state.conditions, this.ModuleManager.getModule<Roles>("roles"));
+            && conditionsMet(this.effectiveConditions(id), this.ModuleManager.getModule<Roles>("roles"));
     }
 
     /**
@@ -324,6 +355,12 @@ export default class Rules extends ModuleInstance {
         this.timerCheck = setInterval(() => {
             for (const id of this.registry.keys()) {
                 const state = this.ruleState(id);
+                // Rules following the global set have no live timer (it is
+                // stripped from global conditions); a stale timer in their
+                // dormant custom conditions must not expire them
+                if (state.useGlobal === true) {
+                    continue;
+                }
                 if (state.active && conditionsExpired(state.conditions)) {
                     const name = this.registry.get(id)!.name;
                     if (state.conditions?.timerAction === "remove") {
@@ -470,11 +507,35 @@ export default class Rules extends ModuleInstance {
         };
 
         const { action, rule, name, value } = content;
+        const authority = this.ModuleManager.getModule<Authority>("authority");
+
+        // Global conditions affect every following rule, so a rule-scoped
+        // grant is not enough - the scope below only matches full grants
+        if (action === "setGlobalConditions") {
+            if (!authority?.hasPermission(senderNumber, "rules.edit", "_global_")) {
+                reject("no permission for the global conditions");
+                return;
+            }
+            if (this.Preset === "Dominant") {
+                reject("their Dominant preset does not accept rules");
+                return;
+            }
+            if (!this.setGlobalConditions(value ?? {})) {
+                reject("invalid command");
+                return;
+            }
+            BCPNotifyPlayer(`${sender.Name} (#${senderNumber}) changed your global rule conditions.`);
+            this.ModuleManager.getModule<Logging>("logging")
+                ?.log("rule", `${sender.Name} (#${senderNumber}) changed the global rule conditions`);
+            SendBCPMessage({ message: "RuleCommandResult", ok: true, rule }, senderNumber);
+            this.ModuleManager.getModule<DataSync>("data-sync")?.categorySync(this, senderNumber);
+            return;
+        }
+
         if (typeof rule !== "string" || !this.registry.has(rule)) {
             reject("unknown rule");
             return;
         }
-        const authority = this.ModuleManager.getModule<Authority>("authority");
         if (!authority?.hasPermission(senderNumber, "rules.edit", rule)) {
             reject("no permission for this rule");
             return;
@@ -508,6 +569,10 @@ export default class Rules extends ModuleInstance {
         } else if (action === "setConditions") {
             applied = this.setRuleConditions(rule, value ?? {});
             verb = "changed the conditions of";
+        } else if (action === "setUseGlobal" && typeof value === "boolean") {
+            this.setRuleUseGlobal(rule, value);
+            verb = value ? "set to the global conditions" : "gave own conditions to";
+            applied = true;
         }
 
         if (!applied) {

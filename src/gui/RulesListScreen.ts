@@ -106,7 +106,8 @@ class RulesListPage extends GUIPage {
                 + "'Disable all' flip enforcement on every active rule at once (the rules stay "
                 + "configured). The Sort button switches between grouping by category and your own "
                 + "order - in Custom mode, use a row's arrows to move it. Click a rule to configure "
-                + "or deactivate it.",
+                + "or deactivate it. 'Global conditions' edits the shared conditions set that rules "
+                + "with 'Follow global conditions' obey (new rules follow it by default).",
         };
     }
 
@@ -140,6 +141,29 @@ class RulesListPage extends GUIPage {
             { Name: "Disable all", Active: canEdit && activeIds.length > 0, HoverText: "Pause enforcement of every active rule (they stay configured)" },
             () => activeIds.forEach((id) => access.setEnforce(id, false)),
         ));
+        this.addClickHandler(ButtonActionWidget(
+            { Left: 125, Top: 845, Width: 380, Height: 64 },
+            {
+                Name: "Global conditions...",
+                Active: canEdit,
+                HoverText: "The shared conditions set that rules with 'Follow global conditions' obey",
+            },
+            () => {
+                this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(new ConditionsScreen(
+                    this.screen.Module,
+                    this.Character,
+                    {
+                        label: "Global",
+                        removeLabel: "Deactivate",
+                        hideTimer: true,
+                        get: () => access.globalConditions(),
+                        set: (c) => access.setGlobalConditions(c),
+                        canEdit: () => access.canEdit(),
+                    },
+                ));
+            },
+        ));
+
         // Sorting is the list owner's preference; there is no remote command
         // for it, so the toggle only shows on the own view
         if (local) {
@@ -199,7 +223,8 @@ class RulesListPage extends GUIPage {
             const chip = deferred ? "BCX" : (state.enforce ? "Enforced" : "Paused");
             MainCanvas.textAlign = "left";
             DrawText(chip, x + NAME_W + 20, y + 40, deferred ? "#DAA520" : (state.enforce ? "Green" : "Gray"));
-            if (state.conditions && Object.keys(state.conditions).length > 0) {
+            const conditions = state.useGlobal === true ? access.globalConditions() : state.conditions;
+            if (conditions && Object.keys(conditions).length > 0) {
                 DrawText("◈", x + NAME_W + CHIP_W - 24, y + 40, "Gray");
             }
 
@@ -231,9 +256,12 @@ class RulesListPage extends GUIPage {
                 ? "Paused - BCX's matching rule is in effect, BC+ defers to it"
                 : `Active${state.enforce ? ", enforced" : ""}${state.log ? ", logged" : ""}${state.announce ? ", announced" : ""}`;
             const origin = state.addedBy ? ` Set by ${state.addedBy.name} (#${state.addedBy.member}).` : "";
+            const conditionsText = state.useGlobal === true
+                ? `Follows the global conditions (${describeConditions(access.globalConditions())})`
+                : describeConditions(state.conditions);
             DrawInfoPanel(
                 `${definition.name}  ·  ${definition.category}`,
-                `${definition.description} — ${status}. ${describeConditions(state.conditions)}.${origin}`,
+                `${definition.description} — ${status}. ${conditionsText}.${origin}`,
                 { Left: COL_X[1 - column]!, Top: LIST_TOP, Width: NAME_W + CHIP_W + 60, Height: ROWS_PER_COL * ROW_H - 16 },
             );
         }
@@ -370,27 +398,53 @@ class RuleConfigPage extends GUIPage {
             });
         });
 
-        // Conditions
+        // Conditions: a rule either follows the shared global set or has its own
+        const usesGlobal = state.useGlobal === true;
+        DrawCheckbox(1400, 200, 64, 64, "Follow global conditions", usesGlobal, !canEdit);
+        this.addClickHandler(() => {
+            if (canEdit && MouseIn(1400, 200, 64, 64)) {
+                access.setUseGlobal(definition.id, !usesGlobal);
+            }
+        });
         MainCanvas.textAlign = "center";
         this.addClickHandler(ButtonActionWidget(
             { Left: 1400, Top: 300, Width: 400, Height: 64 },
-            { Name: "Conditions...", HoverText: "When this rule is in effect" },
+            {
+                Name: usesGlobal ? "Global conditions..." : "Conditions...",
+                HoverText: usesGlobal
+                    ? "When rules following the global set are in effect - editing affects all of them"
+                    : "When this rule is in effect",
+            },
             () => {
                 this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(new ConditionsScreen(
                     this.screen.Module,
                     this.Character,
-                    {
-                        label: definition.name,
-                        removeLabel: "Deactivate & clear",
-                        get: () => access.state(definition.id).conditions ?? {},
-                        set: (c) => access.setConditions(definition.id, c),
-                        canEdit: () => access.canEdit(),
-                    },
+                    usesGlobal
+                        ? {
+                            label: "Global",
+                            removeLabel: "Deactivate",
+                            hideTimer: true,
+                            get: () => access.globalConditions(),
+                            set: (c) => access.setGlobalConditions(c),
+                            canEdit: () => access.canEdit(),
+                        }
+                        : {
+                            label: definition.name,
+                            removeLabel: "Deactivate & clear",
+                            get: () => access.state(definition.id).conditions ?? {},
+                            set: (c) => access.setConditions(definition.id, c),
+                            canEdit: () => access.canEdit(),
+                        },
                 ));
             },
         ));
         MainCanvas.textAlign = "left";
-        DrawTextFit(describeConditions(state.conditions), 1400, 420, 460, "Gray");
+        DrawTextFit(
+            usesGlobal
+                ? `Global: ${describeConditions(access.globalConditions())}`
+                : describeConditions(state.conditions),
+            1400, 420, 460, "Gray",
+        );
         if (state.active && state.addedBy) {
             DrawTextFit(`Set by ${state.addedBy.name} (#${state.addedBy.member})`, 1400, 470, 460, "Gray");
         }

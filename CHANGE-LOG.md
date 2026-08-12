@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- Global rule conditions: a shared conditions set (room type, room names, roles, members — no timer) edited via the "Global conditions" button on the Rules screen. Every rule has a "Follow global conditions" checkbox on its config page — newly added rules follow the global set by default, existing rules keep their own conditions. Editing the global set immediately affects every rule following it, locally and remotely (changing it remotely requires unscoped rule-edit permission, since it touches all following rules).
+
 ### Changed
 - The Rules screen has been redesigned around active rules only, instead of paging through the whole catalog. A new "Add rule" button opens the full catalog with a search field and per-category filter buttons — picking a rule activates it and opens its configuration. The active list can be grouped by category (with headers) or arranged in your own order (Sort button toggles; in Custom mode every row gets up/down arrows). "Enable all" / "Disable all" buttons flip enforcement on every active rule at once without touching their configuration. Status chips now read Enforced/Paused (or BCX when deferred), and your sort preference and order sync so remote viewers see your rules the way you arranged them.
 
