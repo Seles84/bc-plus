@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Fixed
+- Rule configuration pages no longer print the rule description across the top of the page, where long descriptions (e.g. "Ready to be summoned") overflowed onto the title and checkboxes. The description is available via the help (?) button, which already showed the same text.
 - The room BC+ badge no longer sits on the character-cell boundary, where it appeared to belong to the neighboring character's icon cluster. It now fills the free in-row gap between BC's relationship icons and the WCE-side cluster (drawn slightly slimmer to fit), with a tighter halo.
 
 ## [0.4.5] - 2026-08-12
