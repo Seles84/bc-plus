@@ -87,6 +87,27 @@ export function BCPNotifyPlayer(content: string, timeout?: number): void {
 }
 
 /**
+ * Multi-line local notice in the boxed style update messages use: every line
+ * is its own chat row with a bold [BC+] prefix and italic text, in BC+'s
+ * purple scheme. Lines may contain HTML (links). Room-only - ChatRoomSendLocal
+ * no-ops elsewhere, so callers must handle the out-of-room case themselves.
+ */
+export function BCPNotifyLines(lines: string[], timeout?: number): void {
+    const darkTheme = Player.ChatSettings?.ColorTheme === "Dark" || Player.ChatSettings?.ColorTheme === "Dark2";
+    const background = darkTheme ? "#2a2038" : "#efe9f8";
+    const color = darkTheme ? "#e8e2f0" : "#2c2140";
+    for (const line of lines) {
+        ChatRoomSendLocal(
+            `<p style='background-color:${background};color:${color};`
+            + "border:1px solid #8469b6;border-left:4px solid #8469b6;"
+            + "padding:3px 8px;margin-top:0.15em;margin-bottom:0.15em;font-style:italic'>"
+            + `<span style='color:#b794e6;font-weight:bold;font-style:normal'>[BC+]</span> ${line}</p>`,
+            timeout,
+        );
+    }
+}
+
+/**
  * Finds a character in the chat room by member number, name, or nickname
  * (case-insensitive; member number wins on ambiguity).
  */

@@ -143,6 +143,26 @@ export default class TextCommands extends ModuleInstance {
             },
         },
         {
+            name: "updates",
+            description: "Turn update notifications on or off (updates on|off)",
+            handler: (args) => {
+                const core = this.ModuleManager.getModule<Core>("core");
+                if (!core) {
+                    return;
+                }
+                const value = (args[0] ?? "").toLowerCase();
+                if (value !== "on" && value !== "off") {
+                    this.reply(`Update notifications are ${core.getSetting<boolean>("updateNotify") !== false ? "on" : "off"}. Usage: /bcp updates on|off`);
+                    return;
+                }
+                core.setSetting("updateNotify", value === "on");
+                this.reply(value === "on"
+                    ? "Update notifications are on."
+                    : "Update notifications are off. Turn them back on with /bcp updates on "
+                        + "or the checkbox on the BC+ General page.");
+            },
+        },
+        {
             name: "reset",
             description: "Factory reset: wipe ALL BC+ data (rules, curses, roles, permissions, log)",
             handler: () => {
