@@ -6,7 +6,7 @@ import { InfoBeep } from "@/utils/BCUtils";
 import { BCPVersionCompare, parseBCPVersion } from "@/utils/Version";
 import { AnySetting } from "@/system/gui/Settings";
 import { modalConfirm } from "@/gui/Modal";
-import { BCPNotifyPlayer } from "@/utils/Messaging";
+import { BCPNotifyLines, BCPNotifyPlayer } from "@/utils/Messaging";
 import { getChatroomCharacter } from "@/utils/BCPlusCharacter";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import appLogo from "@/images/icon90.png";
@@ -79,8 +79,9 @@ export default class Core extends ModuleInstance {
                 type: "checkbox",
                 name: "updateNotify",
                 label: "Notify me in-club about BC+ updates",
-                hoverText: "Beeps once after BC+ updated, and once per session when a newer "
-                    + "version is available (reload the club to get it).",
+                hoverText: "Shows [BC+] chat messages once after BC+ updated and once per session "
+                    + "when a newer version is available (a corner beep when you are not in a "
+                    + "room). /bcp updates on|off toggles this too.",
                 default: true,
             },
             {
@@ -298,7 +299,22 @@ export default class Core extends ModuleInstance {
         }
     }
 
-    /** Beeps once when a newer release than the running build is available. */
+    /** Chat notices waiting for the player to be in a room (where local chat works). */
+    private readonly pendingChatNotices: string[][] = [];
+
+    /**
+     * Shows boxed [BC+] chat lines now, or on the next room join when outside
+     * a room (ChatRoomSendLocal no-ops there - the summon-rule lesson).
+     */
+    private queueChatNotice(lines: string[]): void {
+        if (ServerPlayerIsInChatRoom()) {
+            BCPNotifyLines(lines);
+        } else {
+            this.pendingChatNotices.push(lines);
+        }
+    }
+
+    /** Notifies when a newer release than the running build is available. */
     private notifyIfOutdated(): void {
         const latest = this.latestVersion !== null ? parseBCPVersion(this.latestVersion) : null;
         const current = parseBCPVersion(BCPLUS_VERSION);
@@ -306,7 +322,14 @@ export default class Core extends ModuleInstance {
             return;
         }
         if (BCPVersionCompare(latest, current) > 0 && this.getSetting<boolean>("updateNotify")) {
-            InfoBeep(`${BCPLUS_APP_NAME} v${this.latestVersion} is available - reload the club to update!`, 8000);
+            this.queueChatNotice([
+                `&#128276; Update available - v${this.latestVersion} is out (you have v${BCPLUS_VERSION}).`,
+                "Reload the page to get the latest version.",
+                "To silence these: /bcp updates off",
+            ]);
+            if (!ServerPlayerIsInChatRoom()) {
+                InfoBeep(`${BCPLUS_APP_NAME} v${this.latestVersion} is available - reload the club to update!`, 8000);
+            }
         }
     }
 
@@ -327,6 +350,17 @@ export default class Core extends ModuleInstance {
         this.checkForUpdate();
         void this.fetchLatestVersion();
         this.installRoomIcon();
+
+        // Flush queued chat notices once the player lands in a room; small
+        // delay so BC finishes building the chat log first
+        this.addHook("ChatRoomSync", 0, (args, next) => {
+            const result = next(args);
+            if (this.pendingChatNotices.length > 0) {
+                const notices = this.pendingChatNotices.splice(0);
+                setTimeout(() => notices.forEach((lines) => BCPNotifyLines(lines)), 500);
+            }
+            return result;
+        });
         const mode = this.BCMode === "tandem"
             ? `tandem with BCX v${window.bcx?.version ?? "?"}`
             : "standalone";
@@ -426,7 +460,14 @@ export default class Core extends ModuleInstance {
             return;
         }
         if (BCPVersionCompare(current, savedVersion) > 0 && this.getSetting<boolean>("updateNotify")) {
-            InfoBeep(`${BCPLUS_APP_NAME} updated to v${BCPLUS_VERSION}! Changelog: ${BCPLUS_REPO}/blob/main/CHANGE-LOG.md`, 8000);
+            this.queueChatNotice([
+                `&#128276; ${BCPLUS_APP_NAME} updated to v${BCPLUS_VERSION}.`,
+                `See what changed: <a href="${BCPLUS_REPO}/blob/main/CHANGE-LOG.md" target="_blank" `
+                    + "style='color:#b794e6'>change log</a>",
+            ]);
+            if (!ServerPlayerIsInChatRoom()) {
+                InfoBeep(`${BCPLUS_APP_NAME} updated to v${BCPLUS_VERSION}!`, 8000);
+            }
         }
         if (save.version !== BCPLUS_VERSION) {
             save.version = BCPLUS_VERSION;
