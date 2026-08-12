@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- Bondage rules batch (6 new rules in the Items category, 41 total): **Forbid tying up self** and **Forbid tying up others** disable using items in the item dialog — the item buttons gray out with the rule named as the reason. The others-variant can be limited to characters more dominant than the player (on by default). **Forbid freeing self** and **Forbid freeing others** hide the Remove/Struggle/Dismount/Escape buttons, with an option to still allow removing low-difficulty items (hand-held toys, plushies...). **Forbid wardrobe use on self** and **Forbid wardrobe use on others** block changing clothes entirely (others can still dress the player).
+
 ### Fixed
 - The room BC+ badge no longer sits on the character-cell boundary, where it appeared to belong to the neighboring character's icon cluster. It now fills the free in-row gap between BC's relationship icons and the WCE-side cluster (drawn slightly slimmer to fit), with a tighter halo.
 

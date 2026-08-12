@@ -26,6 +26,14 @@ import {
     PreventWhitelisting,
 } from "@/rules/ProtectionRules";
 import {
+    ForbidFreeingOthers,
+    ForbidFreeingSelf,
+    ForbidTyingOthers,
+    ForbidTyingSelf,
+    ForbidWardrobeOthers,
+    ForbidWardrobeSelf,
+} from "@/rules/BondageRules";
+import {
     ForbidKeysOthers,
     ForbidKeysSelf,
     ForbidLockOthers,
@@ -68,6 +76,12 @@ export const RULE_DEFINITIONS: readonly RuleDefinition[] = [
     ForbidDisowning,
     PreventBlacklisting,
     PreventWhitelisting,
+    ForbidTyingSelf,
+    ForbidTyingOthers,
+    ForbidFreeingSelf,
+    ForbidFreeingOthers,
+    ForbidWardrobeSelf,
+    ForbidWardrobeOthers,
     ForbidRemotesSelf,
     ForbidRemotesOthers,
     ForbidKeysSelf,
