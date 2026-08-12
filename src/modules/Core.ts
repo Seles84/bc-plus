@@ -361,13 +361,13 @@ export default class Core extends ModuleInstance {
             return;
         }
         const hasAccess = this.roomIconHasAccess(character);
-        // Head of the icon row: left of WCE's version text (centered at 290
-        // per its source, with a companion icon down to ~228) and of BC's own
-        // conditional slots (30-190). Slot 0 goes first and collides with
-        // nothing but the rare focus-mode warning's edge.
-        const x = CharX;
+        // In-row gap between BC's relationship slot (ends at 190) and the
+        // WCE-adjacent companion icon (~228): a 38px window, so the badge is
+        // drawn a hair slimmer than BC's 40px icons. Slot 0 looked attached
+        // to the neighboring character's cluster; the right end is WCE's.
+        const x = CharX + 190 * Zoom;
         const y = CharY;
-        const size = 40 * Zoom;
+        const size = 36 * Zoom;
         MainCanvas.save();
         if (!hasAccess) {
             // Grayed out: this person's permissions give you no access
@@ -376,7 +376,7 @@ export default class Core extends ModuleInstance {
         // Soft white halo instead of a backplate: keeps the flat icon look
         // while staying visible on dark backgrounds
         MainCanvas.shadowColor = "rgba(255, 255, 255, 0.9)";
-        MainCanvas.shadowBlur = 6 * Zoom;
+        MainCanvas.shadowBlur = 4 * Zoom;
         DrawImageResize(appLogo, x, y, size, size);
         DrawImageResize(appLogo, x, y, size, size);
         MainCanvas.restore();
