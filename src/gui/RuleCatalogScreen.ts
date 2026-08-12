@@ -117,7 +117,12 @@ class RuleCatalogPage extends GUIPage {
         options.forEach((category, i) => {
             const x = 125 + i * 200;
             const selected = this.filterCategory === category;
-            DrawButton(x, 160, 190, 52, category ?? "All", selected ? "#d0c3ea" : "White");
+            // The selected label is drawn manually in dark text: theme mods
+            // repaint button labels white, unreadable on the light highlight
+            DrawButton(x, 160, 190, 52, selected ? "" : (category ?? "All"), selected ? "#d0c3ea" : "White");
+            if (selected) {
+                DrawTextFit(category ?? "All", x + 95, 186, 180, "#2c2140");
+            }
             this.addClickHandler(() => {
                 if (MouseIn(x, 160, 190, 52)) {
                     this.filterCategory = category;
