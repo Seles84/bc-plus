@@ -99,10 +99,11 @@ class RuleCatalogPage extends GUIPage {
         const access = this.screen.access;
         const canEdit = access.canEdit();
 
+        // Right side of the header row - the screen title occupies the left
         ElementSetVisible(SEARCH_INPUT, !this.Screen.HelpVisible);
         MainCanvas.textAlign = "left";
-        DrawText("Search:", 125, 115, "Black");
-        ElementPosition(SEARCH_INPUT, 520, 110, 480, 56);
+        DrawText("Search:", 1090, 115, "Black");
+        ElementPosition(SEARCH_INPUT, 1490, 110, 500, 56);
 
         const query = this.search();
         if (query !== this.lastSearch) {
