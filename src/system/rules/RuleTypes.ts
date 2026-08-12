@@ -22,6 +22,13 @@ export interface RuleContext {
      */
     interval(callback: () => void, ms: number): void;
 
+    /**
+     * Registers a callback run when the rule deactivates - for undoing
+     * side effects that are not hooks or intervals (e.g. entries added
+     * to BC registries).
+     */
+    cleanup(callback: () => void): void;
+
     /** True when the rule applies at all (active and conditions met). */
     inEffect(): boolean;
 

@@ -25,6 +25,8 @@ export default class Rules extends ModuleInstance {
     private timerCheck: ReturnType<typeof setInterval> | null = null;
     /** Intervals owned by installed rules, cleared on uninstall. */
     private readonly ruleTimers = new Map<string, ReturnType<typeof setInterval>[]>();
+    /** Cleanup callbacks registered by installed rules, run on uninstall. */
+    private readonly ruleCleanups = new Map<string, (() => void)[]>();
 
     protected readonly SystemConfig: ModuleConfig = {
         Name: "Rules",
@@ -315,6 +317,14 @@ export default class Rules extends ModuleInstance {
             clearInterval(timer);
         }
         this.ruleTimers.delete(id);
+        for (const cleanup of this.ruleCleanups.get(id) ?? []) {
+            try {
+                cleanup();
+            } catch (e) {
+                warn(`Rule ${id} cleanup failed:`, e);
+            }
+        }
+        this.ruleCleanups.delete(id);
         this.installed.delete(id);
         debug(`Rule uninstalled: ${id}`);
     }
@@ -331,6 +341,11 @@ export default class Rules extends ModuleInstance {
                 const timers = this.ruleTimers.get(definition.id) ?? [];
                 timers.push(timer);
                 this.ruleTimers.set(definition.id, timers);
+            },
+            cleanup: (callback: () => void) => {
+                const cleanups = this.ruleCleanups.get(definition.id) ?? [];
+                cleanups.push(callback);
+                this.ruleCleanups.set(definition.id, cleanups);
             },
             inEffect: () => this.ruleInEffect(definition.id),
             isEnforced: () => state().enforce && this.ruleInEffect(definition.id),
