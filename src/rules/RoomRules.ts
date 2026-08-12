@@ -1,4 +1,5 @@
 import { RuleDefinition, RuleContext } from "@/system/rules/RuleTypes";
+import { stringListValue } from "@/system/gui/Settings";
 
 /**
  * Room control rules: creating rooms, entering rooms, and the room admin UI.
@@ -30,10 +31,7 @@ export const ForbidCreatingRooms: RuleDefinition = {
 };
 
 function allowedRooms(ctx: RuleContext): string[] {
-    return ctx.setting<string>("allowedRooms")
-        .split(",")
-        .map((name) => name.trim())
-        .filter((name) => name.length > 0);
+    return stringListValue(ctx.setting<unknown>("allowedRooms"));
 }
 
 export const RestrictRoomEntry: RuleDefinition = {
@@ -47,11 +45,12 @@ export const RestrictRoomEntry: RuleDefinition = {
     bcxEquivalent: "block_entering_rooms",
     announceViolation: "{Name} entered a room a rule does not allow.",
     settings: [{
-        type: "text",
+        type: "stringList",
         name: "allowedRooms",
-        label: "Allowed room names (comma-separated):",
-        default: "",
-        maxChars: 400,
+        label: "Allowed room names:",
+        default: [],
+        entryLabel: "room name",
+        maxChars: 60,
     }],
     load(ctx) {
         ctx.hook("ChatSearchJoin", 5, (args, next) => {

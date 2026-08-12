@@ -317,9 +317,19 @@ export default class Rules extends ModuleInstance {
         if (!setting) {
             return false;
         }
+        // Legacy string shapes stay accepted for members/stringList: older
+        // clients (and old saves) still hold/send the comma-string form
         const valid = (setting.type === "checkbox" && typeof value === "boolean")
             || (setting.type === "option" && typeof value === "string" && setting.options.includes(value))
-            || (setting.type === "text" && typeof value === "string" && value.length <= (setting.maxChars ?? 256));
+            || (setting.type === "text" && typeof value === "string" && value.length <= (setting.maxChars ?? 256))
+            || (setting.type === "members" && (
+                (Array.isArray(value) && value.length <= 100
+                    && value.every((m) => typeof m === "number" && Number.isInteger(m) && m >= 0))
+                || (typeof value === "string" && value.length <= 500)))
+            || (setting.type === "stringList" && (
+                (Array.isArray(value) && value.length <= (setting.maxEntries ?? 50)
+                    && value.every((s) => typeof s === "string" && s.length <= (setting.maxChars ?? 200)))
+                || (typeof value === "string" && value.length <= 1000)));
         if (!valid) {
             return false;
         }

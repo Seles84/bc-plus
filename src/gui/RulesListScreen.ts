@@ -3,6 +3,9 @@ import { RuleDefinition } from "@/system/rules/RuleTypes";
 import { LocalRuleAccess, RemoteRuleAccess, RuleAccess } from "@/system/rules/RuleAccess";
 import { ButtonActionWidget, DrawInfoPanel } from "@/system/gui/Widgets";
 import { ConditionsScreen } from "@/gui/ConditionsScreen";
+import { MembersSelectScreen } from "@/gui/MembersSelectScreen";
+import { modalListEditor } from "@/gui/Modal";
+import { membersValue, stringListValue } from "@/system/gui/Settings";
 import { RuleCatalogScreen, CATEGORY_ORDER } from "@/gui/RuleCatalogScreen";
 import { describeConditions } from "@/system/conditions/Conditions";
 import { ElementSetVisible } from "@/utils/BCUtils";
@@ -493,6 +496,54 @@ class RuleConfigPage extends GUIPage {
                         ElementSetVisible(id, !this.screen.HelpVisible);
                         ElementPosition(id, 1250, y + 27, 750, 60);
                     }
+                    break;
+                }
+                case "members": {
+                    const selected = membersValue(state.settings[setting.name]);
+                    DrawText(setting.label, 150, y + 32, "Black");
+                    MainCanvas.textAlign = "center";
+                    this.addClickHandler(ButtonActionWidget(
+                        { Left: 850, Top: y, Width: 350, Height: 64 },
+                        { Name: `${selected.length} selected`, Active: active, HoverText: "Browse and pick members" },
+                        () => {
+                            this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(new MembersSelectScreen(
+                                this.screen.Module,
+                                this.Character,
+                                {
+                                    label: definition.name,
+                                    get: () => membersValue(access.state(definition.id).settings[setting.name]),
+                                    set: (members) => access.setSetting(definition.id, setting.name, members),
+                                    canEdit: () => access.canEdit() && (setting.active?.() ?? true),
+                                },
+                            ));
+                        },
+                    ));
+                    MainCanvas.textAlign = "left";
+                    break;
+                }
+                case "stringList": {
+                    const entries = stringListValue(state.settings[setting.name], setting.legacySeparator);
+                    DrawText(setting.label, 150, y + 32, "Black");
+                    MainCanvas.textAlign = "center";
+                    this.addClickHandler(ButtonActionWidget(
+                        { Left: 850, Top: y, Width: 350, Height: 64 },
+                        { Name: `${entries.length} entr${entries.length === 1 ? "y" : "ies"}...`, HoverText: "Edit the list" },
+                        () => {
+                            void modalListEditor({
+                                title: `${definition.name} - ${setting.label.replace(/:$/, "")}`,
+                                entries,
+                                entryLabel: setting.entryLabel,
+                                maxChars: setting.maxChars,
+                                maxEntries: setting.maxEntries,
+                                canEdit: active,
+                            }).then((updated) => {
+                                if (updated !== null) {
+                                    access.setSetting(definition.id, setting.name, updated);
+                                }
+                            });
+                        },
+                    ));
+                    MainCanvas.textAlign = "left";
                     break;
                 }
             }

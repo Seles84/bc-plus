@@ -1,9 +1,9 @@
 import { RuleDefinition } from "@/system/rules/RuleTypes";
+import { stringListValue } from "@/system/gui/Settings";
 import { escapeRegExp, spokenPayload, transformSpoken } from "@/rules/speechUtils";
 
-function parseReplacements(raw: string): [string, string][] {
-    return raw
-        .split(",")
+function parseReplacements(entries: string[]): [string, string][] {
+    return entries
         .map((pair) => pair.split(":").map((s) => s.trim()))
         .filter((parts): parts is [string, string] => parts.length === 2 && parts[0]!.length > 0)
         .map((parts) => [parts[0].toLocaleLowerCase(), parts[1]] as [string, string]);
@@ -14,16 +14,17 @@ export const WordReplace: RuleDefinition = {
     id: "speech.wordReplace",
     name: "Replace spoken words",
     description: "Configured words are replaced in everything the player says. "
-        + "Format: word:replacement, separated by commas (e.g. \"i:this doll, my:this doll's\"). "
+        + "Each entry is word:replacement (e.g. \"i:this doll\"). "
         + "Out-of-character text is not affected.",
     category: "Speech",
     bcxEquivalent: "speech_replace_spoken_words",
     settings: [{
-        type: "text",
+        type: "stringList",
         name: "replacements",
-        label: "Replacements (word:replacement, ...):",
-        default: "",
-        maxChars: 500,
+        label: "Replacements:",
+        default: [],
+        entryLabel: "word:replacement",
+        maxChars: 120,
     }],
     load(ctx) {
         ctx.hook("ServerSend", 4, (args, next) => {
@@ -31,7 +32,7 @@ export const WordReplace: RuleDefinition = {
             if (!data || !ctx.isEnforced()) {
                 return next(args);
             }
-            const replacements = parseReplacements(ctx.setting<string>("replacements"));
+            const replacements = parseReplacements(stringListValue(ctx.setting<unknown>("replacements")));
             if (replacements.length === 0) {
                 return next(args);
             }

@@ -103,6 +103,7 @@ export function defaultRuleState(definition: RuleDefinition): RuleStateData {
         // New rules follow the shared global conditions; rules from older
         // saves lack the flag and keep their own conditions
         useGlobal: true,
-        settings: Object.fromEntries((definition.settings ?? []).map((s) => [s.name, s.default])),
+        settings: Object.fromEntries((definition.settings ?? [])
+            .map((s) => [s.name, Array.isArray(s.default) ? [...s.default] : s.default])),
     };
 }

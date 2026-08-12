@@ -3,13 +3,7 @@ import { SendAction } from "@/utils/Messaging";
 import { BCPNotifyPlayer } from "@/utils/Messaging";
 import { InfoBeep, MovePlayerToRoom } from "@/utils/BCUtils";
 import { debug } from "@/system/Console";
-
-function parseMembers(raw: string): number[] {
-    return raw
-        .split(",")
-        .map((m) => Number.parseInt(m.trim(), 10))
-        .filter((m) => Number.isInteger(m) && m >= 0);
-}
+import { membersValue } from "@/system/gui/Settings";
 
 /**
  * Allows configured members to summon the player from anywhere in the club
@@ -28,11 +22,10 @@ export const ReadyToBeSummoned: RuleDefinition = {
     bcxEquivalent: "alt_forced_summoning",
     settings: [
         {
-            type: "text",
+            type: "members",
             name: "allowedMembers",
             label: "Members who may summon:",
-            default: "",
-            maxChars: 200,
+            default: [],
         },
         {
             type: "text",
@@ -65,7 +58,7 @@ export const ReadyToBeSummoned: RuleDefinition = {
                 if (!ctx.isEnforced()) {
                     return disqualified("rule is not enforced (or paused by its conditions)");
                 }
-                if (!parseMembers(ctx.setting<string>("allowedMembers")).includes(data.MemberNumber)) {
+                if (!membersValue(ctx.setting<unknown>("allowedMembers")).includes(data.MemberNumber)) {
                     return disqualified("sender is not on the allowed members list");
                 }
                 if (data.Message.trim().toLocaleLowerCase() !== "summon"

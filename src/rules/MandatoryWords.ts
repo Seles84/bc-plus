@@ -1,5 +1,6 @@
 import { RuleDefinition } from "@/system/rules/RuleTypes";
-import { containsWord, parseWordList, spokenPayload, spokenText } from "@/rules/speechUtils";
+import { stringListValue } from "@/system/gui/Settings";
+import { containsWord, spokenPayload, spokenText } from "@/rules/speechUtils";
 
 /** Every spoken chat message must contain one of the configured words. */
 export const MandatoryWords: RuleDefinition = {
@@ -12,11 +13,12 @@ export const MandatoryWords: RuleDefinition = {
     announceAttempt: "{Name} forgot to speak properly.",
     settings: [
         {
-            type: "text",
+            type: "stringList",
             name: "words",
             label: "Required words:",
-            default: "",
-            maxChars: 300,
+            default: [],
+            entryLabel: "word",
+            maxChars: 100,
         },
         {
             type: "checkbox",
@@ -32,7 +34,7 @@ export const MandatoryWords: RuleDefinition = {
             if (!data) {
                 return next(args);
             }
-            const words = parseWordList(ctx.setting<string>("words"));
+            const words = stringListValue(ctx.setting<unknown>("words")).map((w) => w.toLocaleLowerCase());
             const spoken = spokenText(data.Content);
             if (words.length === 0 || spoken.length === 0 || words.some((w) => containsWord(spoken, w))) {
                 return next(args);

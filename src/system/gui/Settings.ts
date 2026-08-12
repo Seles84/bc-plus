@@ -30,9 +30,59 @@ export interface TextSetting extends SettingBase {
     onSet?: (value: string, prevValue: string) => void;
 }
 
-export type AnySetting = CheckboxSetting | OptionSetting | TextSetting;
+export interface MembersSetting extends SettingBase {
+    type: "members";
+    default: number[];
+}
+
+export interface StringListSetting extends SettingBase {
+    type: "stringList";
+    default: string[];
+    /** Maximum length per entry (default 200) */
+    maxChars?: number;
+    /** Maximum number of entries (default 50) */
+    maxEntries?: number;
+    /** Noun for one entry, shown in the editor ("word", "sentence", ...) */
+    entryLabel?: string;
+    /** Separator this setting used while it was a plain text field (for old saves) */
+    legacySeparator?: string;
+}
+
+export type AnySetting = CheckboxSetting | OptionSetting | TextSetting | MembersSetting | StringListSetting;
 
 /** Extracts `{ name: default }` records for merging into module defaults. */
 export function settingDefaults(settings: AnySetting[]): Record<string, unknown> {
-    return Object.fromEntries(settings.map((s) => [s.name, s.default]));
+    // Array defaults are copied so stored values never share the declaration's array
+    return Object.fromEntries(settings.map((s) => [s.name, Array.isArray(s.default) ? [...s.default] : s.default]));
+}
+
+/** Coerces a stored members value - number[] or a legacy comma string - to member numbers. */
+export function membersValue(raw: unknown): number[] {
+    if (Array.isArray(raw)) {
+        return raw.filter((m): m is number => typeof m === "number" && Number.isInteger(m) && m >= 0);
+    }
+    if (typeof raw === "string") {
+        return raw
+            .split(",")
+            .map((m) => Number.parseInt(m.trim(), 10))
+            .filter((m) => Number.isInteger(m) && m >= 0);
+    }
+    return [];
+}
+
+/** Coerces a stored list value - string[] or a legacy separated string - to entries. */
+export function stringListValue(raw: unknown, legacySeparator = ","): string[] {
+    if (Array.isArray(raw)) {
+        return raw
+            .filter((s): s is string => typeof s === "string")
+            .map((s) => s.trim())
+            .filter((s) => s.length > 0);
+    }
+    if (typeof raw === "string") {
+        return raw
+            .split(legacySeparator)
+            .map((s) => s.trim())
+            .filter((s) => s.length > 0);
+    }
+    return [];
 }

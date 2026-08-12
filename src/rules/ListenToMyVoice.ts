@@ -1,4 +1,5 @@
 import { RuleDefinition } from "@/system/rules/RuleTypes";
+import { stringListValue } from "@/system/gui/Settings";
 
 /**
  * Periodically shows one of the configured sentences to the player,
@@ -8,17 +9,18 @@ export const ListenToMyVoice: RuleDefinition = {
     id: "other.listenToMyVoice",
     name: "Listen to my voice",
     description: "One of the configured sentences appears to the player at random, at the set "
-        + "interval, while they are in a chat room. Only they can see it. "
-        + "Separate sentences with | (vertical bar).",
+        + "interval, while they are in a chat room. Only they can see it.",
     category: "Other",
     bcxEquivalent: "other_constant_reminder",
     settings: [
         {
-            type: "text",
+            type: "stringList",
             name: "sentences",
-            label: "Sentences (separated by |):",
-            default: "",
-            maxChars: 1000,
+            label: "Sentences:",
+            default: [],
+            entryLabel: "sentence",
+            maxChars: 200,
+            legacySeparator: "|",
         },
         {
             type: "option",
@@ -34,10 +36,7 @@ export const ListenToMyVoice: RuleDefinition = {
             if (!ctx.inEffect() || !ServerPlayerIsInChatRoom()) {
                 return;
             }
-            const sentences = ctx.setting<string>("sentences")
-                .split("|")
-                .map((s) => s.trim())
-                .filter((s) => s.length > 0);
+            const sentences = stringListValue(ctx.setting<unknown>("sentences"), "|");
             const frequencyMs = Number.parseInt(ctx.setting<string>("frequency"), 10) * 60_000;
             if (sentences.length === 0 || Date.now() < lastShown + frequencyMs) {
                 return;
