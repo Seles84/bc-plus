@@ -207,7 +207,6 @@ class RuleConfigPage extends GUIPage {
         const canEdit = access.canEdit();
 
         MainCanvas.textAlign = "left";
-        DrawTextWrap(definition.description, 150 - 1300 / 2, 170, 1300, 110, "Gray");
 
         const toggles: { label: string; value: boolean; set: (v: boolean) => void }[] = [
             {
