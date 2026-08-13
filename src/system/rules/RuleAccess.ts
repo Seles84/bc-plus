@@ -1,4 +1,5 @@
 import { RuleDefinition, RuleStateData, defaultRuleState } from "@/system/rules/RuleTypes";
+import { WELD_LOCKED_RULES } from "@/modules/Welding";
 import { SendBCPMessage } from "@/utils/Messaging";
 import type { ConditionData } from "@/system/conditions/Conditions";
 import type Rules from "@/modules/Rules";
@@ -27,6 +28,8 @@ export interface RuleAccess {
     globalConditions(): ConditionData;
     setGlobalConditions(conditions: ConditionData): void;
     setUseGlobal(id: string, value: boolean): void;
+    /** Whether a welded collar locks this rule (forced on, nobody may change it). */
+    weldLocked(id: string): boolean;
 }
 
 /** Direct access to the player's own rules. */
@@ -88,6 +91,10 @@ export class LocalRuleAccess implements RuleAccess {
 
     setUseGlobal(id: string, value: boolean): void {
         this.rules.setRuleUseGlobal(id, value);
+    }
+
+    weldLocked(id: string): boolean {
+        return this.rules.isRuleWeldLocked(id);
     }
 }
 
@@ -177,6 +184,10 @@ export class RemoteRuleAccess implements RuleAccess {
     setUseGlobal(id: string, value: boolean): void {
         this.send("setUseGlobal", id, undefined, value);
         this.ensureMirror(id).useGlobal = value;
+    }
+
+    weldLocked(id: string): boolean {
+        return this.character.BCPData?.["welding"]?.["welded"] === true && WELD_LOCKED_RULES.includes(id);
     }
 
     private mirror(): Record<string, RuleStateData> | undefined {

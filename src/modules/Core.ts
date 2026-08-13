@@ -13,6 +13,7 @@ import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import appLogo from "@/images/icon90.png";
 import { Role, RoleNames } from "@/system/Roles";
 import type Authority from "@/modules/Authority";
+import type Welding from "@/modules/Welding";
 
 export type BCPPreset = "Dominant" | "Switch" | "Submissive" | "Slave";
 export const PRESETS: readonly BCPPreset[] = ["Dominant", "Switch", "Submissive", "Slave"];
@@ -128,13 +129,28 @@ export default class Core extends ModuleInstance {
 
     /** Whether the player has this feature module switched on. */
     isModuleEnabled(slug: string): boolean {
+        // A welded collar keeps the Rules module on - switching it off would
+        // silently disarm the weld-locked rules
+        if (slug === "rules" && this.isWelded()) {
+            return true;
+        }
         return this.getSetting<boolean>(`module.${slug}`) !== false;
+    }
+
+    private isWelded(): boolean {
+        return this.ModuleManager.getModule<Welding>("welding")?.isWelded() ?? false;
     }
 
     /** Live-applies a toggle: unload stops the module's hooks/listeners immediately. */
     private applyModuleEnabled(slug: string, enabled: boolean): void {
         const module = this.ModuleManager.getModule(slug);
         if (!module?.CanDisable) {
+            return;
+        }
+        if (slug === "rules" && !enabled && this.isWelded()) {
+            // Snap the checkbox back too - the stored setting must match
+            this.setSetting("module.rules", true);
+            BCPNotifyPlayer("The Rules module stays on while your collar is welded.");
             return;
         }
         module.Config.Active = enabled;
@@ -160,6 +176,16 @@ export default class Core extends ModuleInstance {
     /** Two-step "Reset BC+" button: arm on first click, wipe on the second within 3s. */
     override get SettingsFooter(): SettingsFooterRenderer | null {
         return (addClickHandler) => {
+            // A welded collar disables the factory reset entirely - it would
+            // be a one-click escape from the weld
+            if (this.isWelded()) {
+                const prevWeldedAlign = MainCanvas.textAlign;
+                MainCanvas.textAlign = "center";
+                DrawButton(150, 880, 340, 70, "Reset BC+", "#ddd", "",
+                    "Disabled - your collar is welded", true);
+                MainCanvas.textAlign = prevWeldedAlign;
+                return;
+            }
             const armed = Date.now() < this.resetArmedUntil;
             const prevAlign = MainCanvas.textAlign;
             MainCanvas.textAlign = "center";

@@ -18,6 +18,7 @@ import type Core from "@/modules/Core";
 import type Authority from "@/modules/Authority";
 import type DataSync from "@/modules/DataSync";
 import type Logging from "@/modules/Logging";
+import type Welding from "@/modules/Welding";
 
 export default class Rules extends ModuleInstance {
 
@@ -77,6 +78,9 @@ export default class Rules extends ModuleInstance {
     }
 
     setRuleUseGlobal(id: string, value: boolean): void {
+        if (this.isRuleWeldLocked(id)) {
+            return;
+        }
         this.ruleState(id).useGlobal = value;
     }
 
@@ -159,6 +163,15 @@ export default class Rules extends ModuleInstance {
         return store[id];
     }
 
+    /**
+     * Whether a welded collar locks this rule: it is then forced active,
+     * enforced and unconditional, and nobody may change that - the weld
+     * dissolving (owner release) is the only unlock.
+     */
+    isRuleWeldLocked(id: string): boolean {
+        return this.ModuleManager.getModule<Welding>("welding")?.lockedRuleIds().includes(id) ?? false;
+    }
+
     /** Whether the player may change rule states locally. */
     canEdit(): boolean {
         const authority = this.ModuleManager.getModule<Authority>("authority");
@@ -202,12 +215,18 @@ export default class Rules extends ModuleInstance {
             this.setRuleActive(id, state.active === true);
             applied++;
         }
+        // A welded collar survives any import: its rules snap back on
+        this.ModuleManager.getModule<Welding>("welding")?.enforceWeldLocks();
         return applied;
     }
 
     setRuleActive(id: string, active: boolean, by?: Originator): void {
         if (active && this.Preset === "Dominant") {
             BCPNotifyPlayer("Your Dominant preset does not accept rules.");
+            return;
+        }
+        if (!active && this.isRuleWeldLocked(id)) {
+            BCPNotifyPlayer("This rule is locked by the welded collar and cannot be deactivated.");
             return;
         }
         const state = this.ruleState(id);
@@ -244,6 +263,9 @@ export default class Rules extends ModuleInstance {
     }
 
     setRuleEnforce(id: string, value: boolean): void {
+        if (!value && this.isRuleWeldLocked(id)) {
+            return;
+        }
         this.ruleState(id).enforce = value;
     }
 
@@ -257,7 +279,7 @@ export default class Rules extends ModuleInstance {
 
     /** Sets a rule's conditions (sanitized); pass null/{} to clear. */
     setRuleConditions(id: string, raw: unknown): boolean {
-        if (!this.registry.has(id)) {
+        if (!this.registry.has(id) || this.isRuleWeldLocked(id)) {
             return false;
         }
         const sanitized = sanitizeConditions(raw);
@@ -275,6 +297,11 @@ export default class Rules extends ModuleInstance {
     /** Whether the rule currently applies (active + conditions met). */
     ruleInEffect(id: string): boolean {
         const state = this.ruleState(id);
+        // Weld-locked rules apply unconditionally: no conditions, no BCX
+        // deferral - the lock must not be escapable through either
+        if (this.isRuleWeldLocked(id)) {
+            return state.active;
+        }
         return state.active
             && !this.ruleDeferredToBCX(id)
             && conditionsMet(this.effectiveConditions(id), this.ModuleManager.getModule<Roles>("roles"));
@@ -368,7 +395,7 @@ export default class Rules extends ModuleInstance {
                 // Rules following the global set have no live timer (it is
                 // stripped from global conditions); a stale timer in their
                 // dormant custom conditions must not expire them
-                if (state.useGlobal === true) {
+                if (state.useGlobal === true || this.isRuleWeldLocked(id)) {
                     continue;
                 }
                 if (state.active && conditionsExpired(state.conditions)) {
@@ -552,6 +579,12 @@ export default class Rules extends ModuleInstance {
         }
         if (this.Preset === "Dominant") {
             reject("their Dominant preset does not accept rules");
+            return;
+        }
+        // Log/announce stay adjustable; everything that could weaken the
+        // rule is sealed while the collar is welded
+        if (this.isRuleWeldLocked(rule) && action !== "setLog" && action !== "setAnnounce") {
+            reject("this rule is locked by a welded collar");
             return;
         }
 

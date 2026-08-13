@@ -9,6 +9,7 @@ import { GUIScreen } from "@/system/gui/GUIScreen";
 import { err } from "@/system/Console";
 import { AnySetting } from "@/system/gui/Settings";
 import { BCPMessageContent, BCPNotifyPlayer, FindCharacterInRoom, SendAction, SendBCPMessage } from "@/utils/Messaging";
+import { WELD_WHISPER_COMMANDS } from "@/modules/Welding";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Authority from "@/modules/Authority";
 import type Logging from "@/modules/Logging";
@@ -210,6 +211,12 @@ export default class Commands extends ModuleInstance {
         const reply = (message: string): void => SendAction(`BC+: ${message}`, sender);
         const commandId = (match[1] ?? "").toLocaleLowerCase();
         const argument = (match[2] ?? "").trim();
+
+        // Welding whispers are the Welding module's - it answers them itself
+        // (and works even when this module or whisper commands are off)
+        if (WELD_WHISPER_COMMANDS.includes(commandId)) {
+            return;
+        }
 
         if (commandId === "" || commandId === "help" || commandId === "commands") {
             const authority = this.ModuleManager.getModule<Authority>("authority");

@@ -222,10 +222,11 @@ class RulesListPage extends GUIPage {
                     );
                 },
             ));
-            const deferred = local && state.active && rules.ruleDeferredToBCX(definition.id);
-            const chip = deferred ? "BCX" : (state.enforce ? "Enforced" : "Paused");
+            const welded = access.weldLocked(definition.id);
+            const deferred = !welded && local && state.active && rules.ruleDeferredToBCX(definition.id);
+            const chip = welded ? "Welded" : deferred ? "BCX" : (state.enforce ? "Enforced" : "Paused");
             MainCanvas.textAlign = "left";
-            DrawText(chip, x + NAME_W + 20, y + 40, deferred ? "#DAA520" : (state.enforce ? "Green" : "Gray"));
+            DrawText(chip, x + NAME_W + 20, y + 40, welded ? "#A00000" : deferred ? "#DAA520" : (state.enforce ? "Green" : "Gray"));
             const conditions = state.useGlobal === true ? access.globalConditions() : state.conditions;
             if (conditions && Object.keys(conditions).length > 0) {
                 DrawText("◈", x + NAME_W + CHIP_W - 24, y + 40, "Gray");
@@ -360,23 +361,28 @@ class RuleConfigPage extends GUIPage {
         const access = this.screen.access;
         const state = access.state(definition.id);
         const canEdit = access.canEdit();
+        const weldLocked = access.weldLocked(definition.id);
 
         MainCanvas.textAlign = "left";
-        if ((this.Character === null || this.Character.isPlayer())
+        if (weldLocked) {
+            DrawText("Locked by a welded collar - forced on and unconditional until the weld ends.", 150, 200, "#A00000");
+        } else if ((this.Character === null || this.Character.isPlayer())
             && state.active
             && (this.screen.Module as Rules).ruleDeferredToBCX(definition.id)) {
             DrawText("Paused - BCX's matching rule is in effect, so BC+ defers to it.", 150, 200, "#DAA520");
         }
 
-        const toggles: { label: string; value: boolean; set: (v: boolean) => void }[] = [
+        const toggles: { label: string; value: boolean; locked?: boolean; set: (v: boolean) => void }[] = [
             {
                 label: "Rule is active",
                 value: state.active,
+                locked: weldLocked,
                 set: (v) => access.setActive(definition.id, v),
             },
             {
                 label: "Enforce (block the action)",
                 value: state.enforce,
+                locked: weldLocked,
                 set: (v) => access.setEnforce(definition.id, v),
             },
             {
@@ -393,19 +399,21 @@ class RuleConfigPage extends GUIPage {
 
         toggles.forEach((toggle, i) => {
             const y = 300 + i * 80;
-            DrawCheckbox(150, y, 64, 64, toggle.label, toggle.value, !canEdit);
+            const editable = canEdit && toggle.locked !== true;
+            DrawCheckbox(150, y, 64, 64, toggle.label, toggle.value, !editable);
             this.addClickHandler(() => {
-                if (canEdit && MouseIn(150, y, 64, 64)) {
+                if (editable && MouseIn(150, y, 64, 64)) {
                     toggle.set(!toggle.value);
                 }
             });
         });
 
         // Conditions: a rule either follows the shared global set or has its own
+        // (a weld-locked rule ignores conditions entirely, so they lock too)
         const usesGlobal = state.useGlobal === true;
-        DrawCheckbox(1400, 200, 64, 64, "Follow global conditions", usesGlobal, !canEdit);
+        DrawCheckbox(1400, 200, 64, 64, "Follow global conditions", usesGlobal, !canEdit || weldLocked);
         this.addClickHandler(() => {
-            if (canEdit && MouseIn(1400, 200, 64, 64)) {
+            if (canEdit && !weldLocked && MouseIn(1400, 200, 64, 64)) {
                 access.setUseGlobal(definition.id, !usesGlobal);
             }
         });
@@ -414,6 +422,7 @@ class RuleConfigPage extends GUIPage {
             { Left: 1400, Top: 300, Width: 400, Height: 64 },
             {
                 Name: usesGlobal ? "Global conditions..." : "Conditions...",
+                Active: !weldLocked,
                 HoverText: usesGlobal
                     ? "When rules following the global set are in effect - editing affects all of them"
                     : "When this rule is in effect",
