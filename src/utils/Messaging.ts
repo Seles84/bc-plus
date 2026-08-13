@@ -1,4 +1,5 @@
 import { debug, err } from "@/system/Console";
+import { knownMember } from "@/utils/MemberCache";
 
 export interface BCPMessageContent {
     message: string;
@@ -138,7 +139,8 @@ export function MemberNumberToName(member: number, notFound: string = "Unknown")
         return friend;
     }
     const inRoom = FindCharacterInRoom(member, { MemberNumber: true, Nickname: false, Name: false });
-    return inRoom?.Name ?? notFound;
+    // Offline and not a friend: fall back to the persistent member cache
+    return inRoom?.Name ?? knownMember(member)?.name ?? notFound;
 }
 
 export function ArrayToReadableString(arr: string[]): string {

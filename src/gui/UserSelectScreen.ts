@@ -1,6 +1,7 @@
 import { GUIPage, GUIScreen, PageOptions } from "@/system/gui/GUIScreen";
 import { ButtonActionWidget } from "@/system/gui/Widgets";
 import { getAllCharactersInRoom } from "@/utils/BCPlusCharacter";
+import { rememberMember } from "@/utils/MemberCache";
 import type { ModuleInstance } from "@/system/module/ModuleInstance";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 
@@ -128,7 +129,11 @@ class UserSelectPage extends GUIPage {
             this.addClickHandler(ButtonActionWidget(
                 { Left: 150, Top: y, Width: 1300, Height: 70 },
                 { Name: "", HoverText: `Select ${candidate.name} (#${candidate.memberNumber})` },
-                () => this.screen.select(candidate.memberNumber),
+                () => {
+                    // Anyone explicitly picked stays resolvable while offline
+                    rememberMember(candidate.memberNumber, candidate.name);
+                    this.screen.select(candidate.memberNumber);
+                },
             ));
             DrawText(candidate.name, 180, y + 35, "Black");
             DrawText(`#${candidate.memberNumber}`, 800, y + 35, "Black");
