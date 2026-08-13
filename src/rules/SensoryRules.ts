@@ -1,4 +1,5 @@
 import { RuleDefinition } from "@/system/rules/RuleTypes";
+import { membersValue } from "@/system/gui/Settings";
 
 /**
  * Sensory rules impact hearing/sight the same way BC's own items do, by
@@ -6,13 +7,6 @@ import { RuleDefinition } from "@/system/rules/RuleTypes";
  * garbling and view effects. The whitelists carve out exceptions for
  * specific people via scoped bypass flags.
  */
-
-function parseMembers(raw: string): number[] {
-    return raw
-        .split(",")
-        .map((m) => Number.parseInt(m.trim(), 10))
-        .filter((m) => Number.isInteger(m) && m >= 0);
-}
 
 export const SensoryDepSound: RuleDefinition = {
     id: "sensory.sound",
@@ -49,11 +43,10 @@ export const HearingWhitelist: RuleDefinition = {
     bcxEquivalent: "alt_hearing_whitelist",
     settings: [
         {
-            type: "text",
+            type: "members",
             name: "members",
             label: "Members always heard:",
-            default: "",
-            maxChars: 200,
+            default: [],
         },
         {
             type: "checkbox",
@@ -67,7 +60,7 @@ export const HearingWhitelist: RuleDefinition = {
         const whitelisted = (member: number | null | undefined): boolean =>
             typeof member === "number"
             && member !== Player.MemberNumber
-            && parseMembers(ctx.setting<string>("members")).includes(member);
+            && membersValue(ctx.setting<unknown>("members")).includes(member);
 
         ctx.hook("SpeechGarble", 2, (args, next) => {
             const [character, text] = args;
@@ -124,16 +117,15 @@ export const SeeingWhitelist: RuleDefinition = {
     category: "Sensory",
     bcxEquivalent: "alt_seeing_whitelist",
     settings: [{
-        type: "text",
+        type: "members",
         name: "members",
         label: "Members always seen:",
-        default: "",
-        maxChars: 200,
+        default: [],
     }],
     load(ctx) {
         let bypassBlind = false;
         const whitelisted = (member: number | null | undefined): boolean =>
-            typeof member === "number" && parseMembers(ctx.setting<string>("members")).includes(member);
+            typeof member === "number" && membersValue(ctx.setting<unknown>("members")).includes(member);
 
         const bypassFor = (member: number | null | undefined, args: unknown[], next: (a: never) => unknown): unknown => {
             if (ctx.isEnforced() && whitelisted(member)) {
@@ -155,7 +147,7 @@ export const SeeingWhitelist: RuleDefinition = {
         ctx.hook("ChatRoomUpdateDisplay", 0, (args, next) => {
             const result = next(args);
             if (ctx.isEnforced()) {
-                const members = parseMembers(ctx.setting<string>("members"));
+                const members = membersValue(ctx.setting<unknown>("members"));
                 if (members.length > 0 && ChatRoomCharacterViewCharacterCount === 1) {
                     ChatRoomCharacterDrawlist = [Player];
                 }

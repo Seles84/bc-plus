@@ -113,3 +113,124 @@ export function modalPrompt(text: string, value = "", maxLength = 300): Promise<
     return showModal({ text, buttons: ["OK", "Cancel"], input: { value, maxLength } })
         .then((r) => (r.button === "OK" ? r.value : null));
 }
+
+export interface ListEditorOptions {
+    title: string;
+    entries: string[];
+    /** Noun for one entry, used on the add button ("word", "sentence", ...) */
+    entryLabel?: string;
+    maxChars?: number;
+    maxEntries?: number;
+    canEdit: boolean;
+}
+
+/**
+ * Row editor for string-list settings: one input per entry with a remove
+ * button, plus an add row. Resolves with the new entries on Save, or null
+ * when cancelled (or when the viewer cannot edit).
+ */
+export function modalListEditor(options: ListEditorOptions): Promise<string[] | null> {
+    const run = (): Promise<string[] | null> => new Promise((resolve) => {
+        const maxEntries = options.maxEntries ?? 50;
+        const overlay = document.createElement("div");
+        overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.55);"
+            + "z-index:100000;display:flex;align-items:center;justify-content:center;";
+
+        const card = document.createElement("div");
+        card.style.cssText = "background:#241c2e;color:#e8e2f0;border:1px solid #8469b6;"
+            + "border-left:5px solid #8469b6;border-radius:8px;width:560px;max-height:80vh;"
+            + "display:flex;flex-direction:column;"
+            + "padding:20px 24px;font-family:system-ui,sans-serif;font-size:17px;line-height:1.5;"
+            + "box-shadow:0 8px 40px rgba(0,0,0,0.6);";
+
+        const title = document.createElement("div");
+        title.textContent = `BC+ - ${options.title}`;
+        title.style.cssText = "color:#b794e6;font-weight:600;margin-bottom:12px;";
+        card.appendChild(title);
+
+        const rows = document.createElement("div");
+        rows.style.cssText = "overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:12px;";
+        card.appendChild(rows);
+
+        const rowInputs = new Set<HTMLInputElement>();
+        const addRow = (value: string): void => {
+            if (rowInputs.size >= maxEntries) {
+                return;
+            }
+            const row = document.createElement("div");
+            row.style.cssText = "display:flex;gap:8px;align-items:center;";
+            const input = document.createElement("input");
+            input.type = "text";
+            input.value = value;
+            input.maxLength = options.maxChars ?? 200;
+            input.disabled = !options.canEdit;
+            input.style.cssText = "flex:1;box-sizing:border-box;background:#1a1520;color:#e8e2f0;"
+                + "border:1px solid #8469b6;border-radius:4px;padding:6px 10px;font-size:16px;outline:none;";
+            row.appendChild(input);
+            rowInputs.add(input);
+            if (options.canEdit) {
+                const remove = document.createElement("button");
+                remove.textContent = "✕";
+                remove.title = "Remove";
+                remove.style.cssText = "background:#3b2e52;color:#fff;border:none;border-radius:4px;"
+                    + "padding:6px 12px;font-size:16px;cursor:pointer;font-family:inherit;";
+                remove.addEventListener("click", () => {
+                    rowInputs.delete(input);
+                    row.remove();
+                });
+                row.appendChild(remove);
+            }
+            rows.appendChild(row);
+            return;
+        };
+        options.entries.forEach(addRow);
+
+        if (options.canEdit) {
+            const add = document.createElement("button");
+            add.textContent = `+ Add ${options.entryLabel ?? "entry"}`;
+            add.style.cssText = "background:#3b2e52;color:#fff;border:1px dashed #8469b6;border-radius:4px;"
+                + "padding:6px 12px;font-size:16px;cursor:pointer;font-family:inherit;margin-bottom:16px;align-self:flex-start;";
+            add.addEventListener("click", () => {
+                addRow("");
+                const inputs = [...rowInputs];
+                inputs[inputs.length - 1]?.focus();
+            });
+            card.appendChild(add);
+        }
+
+        const buttonRow = document.createElement("div");
+        buttonRow.style.cssText = "display:flex;gap:10px;justify-content:flex-end;";
+        const finish = (save: boolean): void => {
+            document.removeEventListener("keydown", onKey, true);
+            const values = save
+                ? [...rowInputs].map((input) => input.value.trim()).filter((v) => v.length > 0)
+                : null;
+            overlay.remove();
+            resolve(values);
+        };
+        const onKey = (event: KeyboardEvent): void => {
+            if (event.key === "Escape") {
+                event.stopPropagation();
+                finish(false);
+            }
+        };
+        document.addEventListener("keydown", onKey, true);
+
+        const labels: [string, boolean][] = options.canEdit ? [["Save", true], ["Cancel", false]] : [["Close", false]];
+        for (const [label, save] of labels) {
+            const btn = document.createElement("button");
+            btn.textContent = label;
+            btn.style.cssText = `background:${save ? "#8469b6" : "#3b2e52"};color:#fff;border:none;border-radius:4px;`
+                + "padding:8px 18px;font-size:16px;cursor:pointer;font-family:inherit;";
+            btn.addEventListener("click", () => finish(save));
+            buttonRow.appendChild(btn);
+        }
+        card.appendChild(buttonRow);
+
+        overlay.appendChild(card);
+        document.body.appendChild(overlay);
+    });
+    const result = queue.then(run);
+    queue = result.catch(() => undefined);
+    return result;
+}

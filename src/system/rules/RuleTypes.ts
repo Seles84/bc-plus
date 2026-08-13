@@ -86,7 +86,9 @@ export interface RuleStateData {
     /** Whether breaches are announced to the room as an action message */
     announce: boolean;
     settings: Record<string, unknown>;
-    /** When the rule is in effect; absent = always while active */
+    /** When true the rule follows the module's shared global conditions instead of its own */
+    useGlobal?: boolean;
+    /** When the rule is in effect; absent = always while active. Dormant while `useGlobal` is set. */
     conditions?: ConditionData;
     /** Who activated the rule (cleared on deactivation) */
     addedBy?: Originator;
@@ -98,6 +100,10 @@ export function defaultRuleState(definition: RuleDefinition): RuleStateData {
         enforce: true,
         log: true,
         announce: true,
-        settings: Object.fromEntries((definition.settings ?? []).map((s) => [s.name, s.default])),
+        // New rules follow the shared global conditions; rules from older
+        // saves lack the flag and keep their own conditions
+        useGlobal: true,
+        settings: Object.fromEntries((definition.settings ?? [])
+            .map((s) => [s.name, Array.isArray(s.default) ? [...s.default] : s.default])),
     };
 }

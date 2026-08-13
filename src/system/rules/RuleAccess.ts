@@ -12,6 +12,10 @@ import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 export interface RuleAccess {
     definitions(): RuleDefinition[];
     state(id: string): RuleStateData;
+    /** The owner's custom display order (rule ids); read-only for remote viewers. */
+    order(): string[];
+    /** The owner's list sort preference. */
+    sortMode(): "custom" | "category";
     canEdit(): boolean;
     setActive(id: string, value: boolean): void;
     setEnforce(id: string, value: boolean): void;
@@ -19,6 +23,10 @@ export interface RuleAccess {
     setAnnounce(id: string, value: boolean): void;
     setSetting(id: string, name: string, value: unknown): void;
     setConditions(id: string, conditions: ConditionData): void;
+    /** The shared conditions set that rules with `useGlobal` follow. */
+    globalConditions(): ConditionData;
+    setGlobalConditions(conditions: ConditionData): void;
+    setUseGlobal(id: string, value: boolean): void;
 }
 
 /** Direct access to the player's own rules. */
@@ -32,6 +40,14 @@ export class LocalRuleAccess implements RuleAccess {
 
     state(id: string): RuleStateData {
         return this.rules.ruleState(id);
+    }
+
+    order(): string[] {
+        return this.rules.RuleOrder;
+    }
+
+    sortMode(): "custom" | "category" {
+        return this.rules.SortMode;
     }
 
     canEdit(): boolean {
@@ -61,6 +77,18 @@ export class LocalRuleAccess implements RuleAccess {
     setConditions(id: string, conditions: ConditionData): void {
         this.rules.setRuleConditions(id, conditions);
     }
+
+    globalConditions(): ConditionData {
+        return this.rules.GlobalConditions;
+    }
+
+    setGlobalConditions(conditions: ConditionData): void {
+        this.rules.setGlobalConditions(conditions);
+    }
+
+    setUseGlobal(id: string, value: boolean): void {
+        this.rules.setRuleUseGlobal(id, value);
+    }
 }
 
 /**
@@ -88,6 +116,15 @@ export class RemoteRuleAccess implements RuleAccess {
         }
         const definition = this.rules.getDefinition(id);
         return definition ? defaultRuleState(definition) : { active: false, enforce: false, log: false, announce: false, settings: {} };
+    }
+
+    order(): string[] {
+        const raw = this.character.BCPData?.["rules"]?.["ruleOrder"];
+        return Array.isArray(raw) ? raw.filter((id): id is string => typeof id === "string") : [];
+    }
+
+    sortMode(): "custom" | "category" {
+        return this.character.BCPData?.["rules"]?.["ruleSort"] === "custom" ? "custom" : "category";
     }
 
     /** Best-effort preview using the target's synced authority/roles data; the target enforces for real. */
@@ -123,6 +160,23 @@ export class RemoteRuleAccess implements RuleAccess {
     setConditions(id: string, conditions: ConditionData): void {
         this.send("setConditions", id, undefined, conditions);
         this.ensureMirror(id).conditions = conditions;
+    }
+
+    globalConditions(): ConditionData {
+        const raw = this.character.BCPData?.["rules"]?.["globalConditions"];
+        return (typeof raw === "object" && raw !== null ? raw : {}) as ConditionData;
+    }
+
+    setGlobalConditions(conditions: ConditionData): void {
+        this.send("setGlobalConditions", "", undefined, conditions);
+        this.character.BCPData ??= {};
+        const moduleData = (this.character.BCPData["rules"] ??= { rules: {} });
+        moduleData["globalConditions"] = conditions;
+    }
+
+    setUseGlobal(id: string, value: boolean): void {
+        this.send("setUseGlobal", id, undefined, value);
+        this.ensureMirror(id).useGlobal = value;
     }
 
     private mirror(): Record<string, RuleStateData> | undefined {

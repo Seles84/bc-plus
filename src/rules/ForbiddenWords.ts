@@ -1,11 +1,5 @@
 import { RuleDefinition } from "@/system/rules/RuleTypes";
-
-function parseWordList(raw: string): string[] {
-    return raw
-        .split(",")
-        .map((w) => w.trim().toLocaleLowerCase())
-        .filter((w) => w.length > 0);
-}
+import { stringListValue } from "@/system/gui/Settings";
 
 function findForbiddenWord(content: string, words: string[]): string | null {
     const lower = content.toLocaleLowerCase();
@@ -22,18 +16,18 @@ function findForbiddenWord(content: string, words: string[]): string | null {
 export const ForbiddenWords: RuleDefinition = {
     id: "speech.forbiddenWords",
     name: "Forbidden words",
-    description: "The player cannot use the configured words in chat or whispers. "
-        + "Separate words with commas.",
+    description: "The player cannot use the configured words in chat or whispers.",
     category: "Speech",
     bcxEquivalent: "speech_ban_words",
     announceAttempt: "{Name} tried to say a forbidden word.",
     announceViolation: "{Name} said a forbidden word.",
     settings: [{
-        type: "text",
+        type: "stringList",
         name: "words",
         label: "Forbidden words:",
-        default: "",
-        maxChars: 500,
+        default: [],
+        entryLabel: "word",
+        maxChars: 100,
     }],
     load(ctx) {
         ctx.hook("ServerSend", 5, (args, next) => {
@@ -41,7 +35,7 @@ export const ForbiddenWords: RuleDefinition = {
             if (event !== "ChatRoomChat" || (data?.Type !== "Chat" && data?.Type !== "Whisper") || typeof data.Content !== "string") {
                 return next(args);
             }
-            const words = parseWordList(ctx.setting<string>("words"));
+            const words = stringListValue(ctx.setting<unknown>("words")).map((w) => w.toLocaleLowerCase());
             if (words.length === 0) {
                 return next(args);
             }

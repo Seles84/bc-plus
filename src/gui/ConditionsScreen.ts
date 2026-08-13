@@ -11,6 +11,8 @@ export interface ConditionTarget {
     label: string;
     /** Wording for the timer's end effect ("Deactivate" for rules, "Lift curse" for curses) */
     removeLabel: string;
+    /** Hides the timer section (the global conditions set never has a timer). */
+    hideTimer?: boolean;
     get(): ConditionData;
     set(conditions: ConditionData): void;
     canEdit(): boolean;
@@ -68,35 +70,7 @@ class ConditionsPage extends GUIPage {
         this.target.set(conditions);
     }
 
-    override async create(): Promise<void> {
-        const conditions = this.target.get();
-        const members = ElementCreateInput(MEMBERS_INPUT, "text", conditions.members ?? "", "300");
-        members.addEventListener("change", () => this.update((c) => { c.members = members.value; }));
-        const rooms = ElementCreateInput(ROOMS_INPUT, "text", conditions.roomNames ?? "", "300");
-        rooms.addEventListener("change", () => this.update((c) => { c.roomNames = rooms.value; }));
-    }
-
-    override async destroy(): Promise<void> {
-        ElementRemove(MEMBERS_INPUT);
-        ElementRemove(ROOMS_INPUT);
-    }
-
-    render(): void {
-        const conditions = this.target.get();
-        const canEdit = this.target.canEdit();
-
-        // The text inputs are DOM elements and would float above the help box
-        const inputsVisible = !this.screen.HelpVisible;
-        ElementSetVisible(MEMBERS_INPUT, inputsVisible);
-        ElementSetVisible(ROOMS_INPUT, inputsVisible);
-
-        // Layout grid: labels at LABEL_X, controls from CONTROL_X, mode buttons in one right column
-        const LABEL_X = 150;
-        const CONTROL_X = 480;
-        const MODE_X = 1290;
-        const MODE_W = 300;
-
-        // --- Timer: relative adjustments on the current end time ---
+    private renderTimer(conditions: ConditionData, canEdit: boolean, LABEL_X: number, CONTROL_X: number): void {
         DrawText("Timer:", LABEL_X, 232, "Black");
         MainCanvas.textAlign = "center";
         this.addClickHandler(ButtonActionWidget(
@@ -153,6 +127,40 @@ class ConditionsPage extends GUIPage {
                     this.update((c) => { c.timerAction = c.timerAction === "remove" ? "deactivate" : "remove"; });
                 }
             });
+        }
+    }
+
+    override async create(): Promise<void> {
+        const conditions = this.target.get();
+        const members = ElementCreateInput(MEMBERS_INPUT, "text", conditions.members ?? "", "300");
+        members.addEventListener("change", () => this.update((c) => { c.members = members.value; }));
+        const rooms = ElementCreateInput(ROOMS_INPUT, "text", conditions.roomNames ?? "", "300");
+        rooms.addEventListener("change", () => this.update((c) => { c.roomNames = rooms.value; }));
+    }
+
+    override async destroy(): Promise<void> {
+        ElementRemove(MEMBERS_INPUT);
+        ElementRemove(ROOMS_INPUT);
+    }
+
+    render(): void {
+        const conditions = this.target.get();
+        const canEdit = this.target.canEdit();
+
+        // The text inputs are DOM elements and would float above the help box
+        const inputsVisible = !this.screen.HelpVisible;
+        ElementSetVisible(MEMBERS_INPUT, inputsVisible);
+        ElementSetVisible(ROOMS_INPUT, inputsVisible);
+
+        // Layout grid: labels at LABEL_X, controls from CONTROL_X, mode buttons in one right column
+        const LABEL_X = 150;
+        const CONTROL_X = 480;
+        const MODE_X = 1290;
+        const MODE_W = 300;
+
+        // --- Timer: relative adjustments on the current end time ---
+        if (!this.target.hideTimer) {
+            this.renderTimer(conditions, canEdit, LABEL_X, CONTROL_X);
         }
 
         // --- Room type ---
