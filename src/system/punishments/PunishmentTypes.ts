@@ -41,6 +41,8 @@ export interface ActivePunishment {
     startedAt: number;
     /** Unix ms end time; null = until lifted */
     until: number | null;
+    /** Whether re-applications and the ending are announced to the room */
+    announce?: boolean;
     group?: AssetGroupName;
     item?: CurseItemSpec;
     lock?: string;

@@ -304,6 +304,7 @@ export default class Punishments extends ModuleInstance {
             sourceRule,
             startedAt: Date.now(),
             until: definition.durationMin > 0 ? Date.now() + definition.durationMin * 60_000 : null,
+            announce: definition.announce,
         };
 
         if (definition.kind === "item") {
@@ -375,6 +376,12 @@ export default class Punishments extends ModuleInstance {
         this.log(how === "lifted"
             ? `Punishment "${active.name}" lifted by ${byName ?? "?"}`
             : `Punishment "${active.name}" expired`);
+        if (active.announce === true && ServerPlayerIsInChatRoom()) {
+            const name = Player.Nickname || Player.Name;
+            SendAction(how === "lifted"
+                ? `${byName ?? "Someone"} has mercy and lifts ${name}'s punishment: ${active.name}.`
+                : `${name}'s punishment is over: ${active.name}.`);
+        }
         return true;
     }
 
@@ -504,6 +511,9 @@ export default class Punishments extends ModuleInstance {
         if (now - (this.lastNotify.get(id) ?? 0) >= NOTIFY_COOLDOWN_MS) {
             this.lastNotify.set(id, now);
             BCPNotifyPlayer(`Your punishment "${active.name}" reasserted itself.`);
+            if (active.announce === true && ServerPlayerIsInChatRoom()) {
+                SendAction(`${Player.Nickname || Player.Name}'s punishment ${spec.name} refuses to come off.`);
+            }
         }
     }
 
