@@ -82,8 +82,14 @@ class RuleCatalogPage extends GUIPage {
     private filtered(): RuleDefinition[] {
         const access = this.screen.access;
         const query = this.search();
+        // Rules BCX currently enforces (tandem deferral) are hidden too: they
+        // already show in the rules list with a BCX chip, and activating them
+        // in BC+ would be redundant while BCX covers them
+        const local = this.Character === null || this.Character.isPlayer();
+        const rules = this.screen.Module as Rules;
         return access.definitions().filter((definition) => {
-            if (access.state(definition.id).active) {
+            if (access.state(definition.id).active
+                || (local && rules.ruleDeferredToBCX(definition.id))) {
                 return false;
             }
             if (this.filterCategory !== null && definition.category !== this.filterCategory) {
