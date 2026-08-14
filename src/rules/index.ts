@@ -54,6 +54,21 @@ import {
     SensoryDepSight,
     SensoryDepSound,
 } from "@/rules/SensoryRules";
+import {
+    ControlOrgasms,
+    ForbidPoseChanges,
+    ForbiddenPoses,
+    ForceKneeling,
+    SecretOrgasms,
+} from "@/rules/BodyRules";
+import {
+    ControlNickname,
+    ForbidActivities,
+    ForbidDifficultyChange,
+    ForbidEmoticonChange,
+    LockProfileDescription,
+    RestrictLeashing,
+} from "@/rules/ControlRules";
 
 /** Every rule BC+ ships, in display order. */
 export const RULE_DEFINITIONS: readonly RuleDefinition[] = [
@@ -102,4 +117,15 @@ export const RULE_DEFINITIONS: readonly RuleDefinition[] = [
     HearingWhitelist,
     SensoryDepSight,
     SeeingWhitelist,
+    ForbidPoseChanges,
+    ForbiddenPoses,
+    ForceKneeling,
+    ControlOrgasms,
+    SecretOrgasms,
+    ForbidDifficultyChange,
+    ForbidActivities,
+    ForbidEmoticonChange,
+    RestrictLeashing,
+    ControlNickname,
+    LockProfileDescription,
 ];

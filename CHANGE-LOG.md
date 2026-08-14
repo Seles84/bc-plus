@@ -4,6 +4,11 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Body and control rules batch (11 new rules, 55 total; new "Body" category): **Forbid changing poses** (no unaided pose changes at all), **Forbid specific poses** (a configurable pose-name list), **Forced to kneel** (standing is blocked and corrected - poses held by restraints are left alone), **Control orgasms** (arousal peaks are edged, ruined, or unresistable - mirrors BCX's approach in tandem), **Secret arousal meter** (the player cannot see their own meter), **Forbid changing difficulty**, **Forbid using activities** (the activities button vanishes; others can still use activities on the player), **Forbid changing emoticon**, **Restrict who may leash** (minimum BC+ role, others' leashes slip off), **Control nickname** (force a nickname or lock the current one), and **Lock profile description** (changes revert to the text the rule captured). All but Forced-to-kneel defer to their BCX equivalents in tandem mode.
+
 ## [0.6.0] - 2026-08-14
 
 ### Added
