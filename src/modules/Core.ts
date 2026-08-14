@@ -465,8 +465,30 @@ export default class Core extends ModuleInstance {
         DrawImageResize(appLogo, x, y, size, size);
         DrawImageResize(appLogo, x, y, size, size);
         MainCanvas.restore();
+        // Welded collar marker: a small lock on the badge corner, visible to
+        // everyone with BC+ (the welded flag is public-synced)
+        const welded = character.isPlayer()
+            ? this.isWelded()
+            : character.BCPData?.["welding"]?.["welded"] === true;
+        if (welded) {
+            const lock = 20 * Zoom;
+            const lockX = x + size - lock * 0.75;
+            const lockY = y + size - lock * 0.75;
+            MainCanvas.save();
+            // Light disc with a dark red ring: BC's lock glyph is dark, so it
+            // needs a bright backplate to read at this size
+            MainCanvas.beginPath();
+            MainCanvas.arc(lockX + lock / 2, lockY + lock / 2, lock * 0.62, 0, Math.PI * 2);
+            MainCanvas.fillStyle = "#f2eefa";
+            MainCanvas.fill();
+            MainCanvas.lineWidth = Math.max(1.5, 2 * Zoom);
+            MainCanvas.strokeStyle = "#7a1010";
+            MainCanvas.stroke();
+            DrawImageResize("Icons/Lock.png", lockX, lockY, lock, lock);
+            MainCanvas.restore();
+        }
         if (MouseIn(x, y, size, size)) {
-            const label = `BC+ ${character.BCPVersion}${hasAccess ? "" : " - no access"}`;
+            const label = `BC+ ${character.BCPVersion}${welded ? " - collar welded" : ""}${hasAccess ? "" : " - no access"}`;
             const prevAlign = MainCanvas.textAlign;
             MainCanvas.textAlign = "center";
             DrawRect(x + size / 2 - 150, y + size + 6, 300, 44, "rgba(0, 0, 0, 0.75)");
