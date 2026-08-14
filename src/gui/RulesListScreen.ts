@@ -589,9 +589,11 @@ class RuleConfigPage extends GUIPage {
                         if (element) {
                             element.disabled = !active;
                         }
-                        // DOM inputs float above the canvas-drawn help box
+                        // DOM inputs float above the canvas-drawn help box.
+                        // Aligned with the other setting controls (left edge
+                        // 850) and kept clear of the right column at 1400
                         ElementSetVisible(id, !this.screen.HelpVisible);
-                        ElementPosition(id, 1250, y + 27, 750, 60);
+                        ElementPosition(id, 1110, y + 27, 520, 60);
                     }
                     break;
                 }
