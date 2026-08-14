@@ -4,7 +4,7 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.6.0] - 2026-08-14
 
 ### Added
 - A welded collar shows on the BC+ room badge: a small lock marker on the badge corner, visible to everyone running BC+, with "collar welded" added to the badge's hover text.
@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Member settings on rules ("Members who may summon", the hearing/seeing whitelists) are now a browse-and-pick screen instead of a comma-number text field: a "N selected" button opens the same member browser Roles uses (relationships, current room, friends — with checkboxes), plus a field to add any member number directly. Old comma-string values keep working and remain understood from older clients.
 - Multi-entry rule settings (Forbidden/Required words, Replace spoken words, Restrained speech phrases, Listen-to-my-voice sentences, allowed room names) now open a row editor: each entry on its own line with a remove button, plus an add button — no more comma or | separators. Old separated values keep working.
 - Global rule conditions: a shared conditions set (room type, room names, roles, members — no timer) edited via the "Global conditions" button on the Rules screen. Every rule has a "Follow global conditions" checkbox on its config page — newly added rules follow the global set by default, existing rules keep their own conditions. Editing the global set immediately affects every rule following it, locally and remotely (changing it remotely requires unscoped rule-edit permission, since it touches all following rules).
+- Room control rules (new "Rooms" category, 44 rules total): **Forbid creating new rooms** (blocks the room creation screen; editing rooms the player already administrates still works), **Restrict entering rooms** (only rooms on a configurable name list can be joined — inactive while the list is empty as a safety measure; BC+ summons and go-to-room commands are exempt), and **Forbid room admin UI while blind** (the admin button grays out while the player cannot see, keeping the background and admin numbers hidden; admin chat commands still work). All three defer to their BCX equivalents in tandem mode.
 
 ### Changed
 - "Forbidden words" now leaves OOC (parenthesized) text alone by default - out-of-character communication should not be blocked by an in-character rule. A new "Also forbid the words in OOC" checkbox on the rule's config page restores the old catch-everything behavior.
@@ -25,9 +26,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Remote screens that live-refresh when the viewed person's data changes (punishments, curses, rules) no longer multiply their update listeners on every refresh. Editing e.g. a punishment's duration on someone else's screen doubled internal event handlers with each synced change until the browser froze with "Page Unresponsive"; screens now clean up exactly the page that was created and refresh strictly one step at a time.
 - In tandem mode, the behavior log no longer mirrors BCX rule triggers that BCX itself would not log. BCX's setting-enforcement rules (e.g. forcing the safeword setting) announce a trigger every time they snap a BC setting back — on every login — which flooded the log with entries BCX's own log never shows. BC+ now applies the same gate BCX does (the rule's log toggle plus whether it has log text at all), and logged BCX triggers show the rule's display name instead of its internal id.
 - "Forbid leaving the room" now also hooks BC's official leave-permission check, so the exit button properly disables and leave commands added by other mods (e.g. /leave) are blocked too. Forced moves — leashes, kicks, cell/GGTS transfers and BC's safeword release — intentionally still work.
-
-### Added
-- Room control rules (new "Rooms" category, 44 rules total): **Forbid creating new rooms** (blocks the room creation screen; editing rooms the player already administrates still works), **Restrict entering rooms** (only rooms on a configurable name list can be joined — inactive while the list is empty as a safety measure; BC+ summons and go-to-room commands are exempt), and **Forbid room admin UI while blind** (the admin button grays out while the player cannot see, keeping the background and admin numbers hidden; admin chat commands still work). All three defer to their BCX equivalents in tandem mode.
 
 ## [0.5.0] - 2026-08-12
 
