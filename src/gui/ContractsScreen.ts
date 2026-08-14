@@ -238,6 +238,7 @@ class ContractDraftPage extends GUIPage {
             }
         });
         const terms = ElementCreateInput(TERMS_INPUT, "text", draft?.terms ?? "", "1000");
+        terms.placeholder = "Free-text terms, shown to the signer on the review screen";
         terms.addEventListener("change", () => {
             const current = this.draft;
             if (current) {
@@ -265,9 +266,9 @@ class ContractDraftPage extends GUIPage {
         ElementSetVisible(TITLE_INPUT, !helpOpen);
         ElementPosition(TITLE_INPUT, 700, 227, 700, 60);
 
-        DrawText("Terms (shown at signing):", 150, 312, "Black");
+        DrawText("Terms:", 150, 312, "Black");
         ElementSetVisible(TERMS_INPUT, !helpOpen);
-        ElementPosition(TERMS_INPUT, 1050, 307, 1400, 60);
+        ElementPosition(TERMS_INPUT, 1075, 307, 1450, 60);
 
         DrawText("Duration:", 150, 402, "Black");
         MainCanvas.textAlign = "center";
