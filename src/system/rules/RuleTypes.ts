@@ -77,6 +77,7 @@ export interface RuleDefinition {
 
 import type { ConditionData } from "@/system/conditions/Conditions";
 import type { Originator } from "@/system/module/ModuleTypes";
+import type { RulePunishConfig } from "@/system/punishments/PunishmentTypes";
 
 /** Per-rule persisted state. */
 export interface RuleStateData {
@@ -86,6 +87,8 @@ export interface RuleStateData {
     /** Whether breaches are announced to the room as an action message */
     announce: boolean;
     settings: Record<string, unknown>;
+    /** Punishments applied when this rule is broken; absent = none */
+    punish?: RulePunishConfig;
     /** When true the rule follows the module's shared global conditions instead of its own */
     useGlobal?: boolean;
     /** When the rule is in effect; absent = always while active. Dormant while `useGlobal` is set. */

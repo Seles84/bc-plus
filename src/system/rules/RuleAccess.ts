@@ -1,6 +1,7 @@
 import { RuleDefinition, RuleStateData, defaultRuleState } from "@/system/rules/RuleTypes";
 import { SendBCPMessage } from "@/utils/Messaging";
 import type { ConditionData } from "@/system/conditions/Conditions";
+import type { RulePunishConfig } from "@/system/punishments/PunishmentTypes";
 import type Rules from "@/modules/Rules";
 import type Authority from "@/modules/Authority";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
@@ -27,6 +28,8 @@ export interface RuleAccess {
     globalConditions(): ConditionData;
     setGlobalConditions(conditions: ConditionData): void;
     setUseGlobal(id: string, value: boolean): void;
+    /** Sets the rule's punishment attachment; an empty list clears it. */
+    setPunish(id: string, config: RulePunishConfig): void;
 }
 
 /** Direct access to the player's own rules. */
@@ -88,6 +91,10 @@ export class LocalRuleAccess implements RuleAccess {
 
     setUseGlobal(id: string, value: boolean): void {
         this.rules.setRuleUseGlobal(id, value);
+    }
+
+    setPunish(id: string, config: RulePunishConfig): void {
+        this.rules.setRulePunish(id, config);
     }
 }
 
@@ -177,6 +184,15 @@ export class RemoteRuleAccess implements RuleAccess {
     setUseGlobal(id: string, value: boolean): void {
         this.send("setUseGlobal", id, undefined, value);
         this.ensureMirror(id).useGlobal = value;
+    }
+
+    setPunish(id: string, config: RulePunishConfig): void {
+        this.send("setPunish", id, undefined, config);
+        if (config.punishments.length === 0) {
+            delete this.ensureMirror(id).punish;
+        } else {
+            this.ensureMirror(id).punish = config;
+        }
     }
 
     private mirror(): Record<string, RuleStateData> | undefined {

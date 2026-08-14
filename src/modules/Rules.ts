@@ -10,6 +10,7 @@ import { BCPMessageContent, BCPNotifyPlayer, SendAction, SendBCPMessage } from "
 import { decodeExport, encodeExport } from "@/utils/ExportImport";
 import { jsonClone } from "@/utils/BCUtils";
 import { ConditionData, conditionsExpired, conditionsMet, sanitizeConditions } from "@/system/conditions/Conditions";
+import { sanitizePunishConfig } from "@/system/punishments/PunishmentTypes";
 import { debug, warn } from "@/system/Console";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type { Originator } from "@/system/module/ModuleTypes";
@@ -18,6 +19,7 @@ import type Core from "@/modules/Core";
 import type Authority from "@/modules/Authority";
 import type DataSync from "@/modules/DataSync";
 import type Logging from "@/modules/Logging";
+import type Punishments from "@/modules/Punishments";
 
 export default class Rules extends ModuleInstance {
 
@@ -194,6 +196,11 @@ export default class Rules extends ModuleInstance {
             if (typeof state.useGlobal === "boolean") {
                 this.setRuleUseGlobal(id, state.useGlobal);
             }
+            if (state.punish !== undefined) {
+                // Referenced punishment ids may not exist here; unknown ids are
+                // simply never applied
+                this.setRulePunish(id, state.punish);
+            }
             if (typeof state.settings === "object" && state.settings !== null) {
                 for (const [name, value] of Object.entries(state.settings)) {
                     this.setRuleSetting(id, name, value);
@@ -205,9 +212,35 @@ export default class Rules extends ModuleInstance {
         return applied;
     }
 
+    /** Whether an active punishment currently forces this rule on. */
+    isRulePunishmentForced(id: string): boolean {
+        return this.ModuleManager.getModule<Punishments>("punishments")?.isRuleForced(id) === true;
+    }
+
+    /** Sets the punishments attached to a rule; an empty list clears the attachment. */
+    setRulePunish(id: string, raw: unknown): boolean {
+        if (!this.registry.has(id)) {
+            return false;
+        }
+        const sanitized = sanitizePunishConfig(raw);
+        if (sanitized === null) {
+            return false;
+        }
+        if (sanitized.punishments.length === 0) {
+            delete this.ruleState(id).punish;
+        } else {
+            this.ruleState(id).punish = sanitized;
+        }
+        return true;
+    }
+
     setRuleActive(id: string, active: boolean, by?: Originator): void {
         if (active && this.Preset === "Dominant") {
             BCPNotifyPlayer("Your Dominant preset does not accept rules.");
+            return;
+        }
+        if (!active && this.isRulePunishmentForced(id)) {
+            BCPNotifyPlayer(`The rule "${this.registry.get(id)?.name ?? id}" is enforced as a punishment right now and cannot be deactivated.`);
             return;
         }
         const state = this.ruleState(id);
@@ -244,6 +277,9 @@ export default class Rules extends ModuleInstance {
     }
 
     setRuleEnforce(id: string, value: boolean): void {
+        if (!value && this.isRulePunishmentForced(id)) {
+            return;
+        }
         this.ruleState(id).enforce = value;
     }
 
@@ -274,6 +310,11 @@ export default class Rules extends ModuleInstance {
 
     /** Whether the rule currently applies (active + conditions met). */
     ruleInEffect(id: string): boolean {
+        // A punishment-forced rule is unconditional: conditions and BCX
+        // deferral are ignored for the punishment's duration
+        if (this.isRulePunishmentForced(id)) {
+            return true;
+        }
         const state = this.ruleState(id);
         return state.active
             && !this.ruleDeferredToBCX(id)
@@ -368,7 +409,7 @@ export default class Rules extends ModuleInstance {
                 // Rules following the global set have no live timer (it is
                 // stripped from global conditions); a stale timer in their
                 // dormant custom conditions must not expire them
-                if (state.useGlobal === true) {
+                if (state.useGlobal === true || this.isRulePunishmentForced(id)) {
                     continue;
                 }
                 if (state.active && conditionsExpired(state.conditions)) {
@@ -554,6 +595,11 @@ export default class Rules extends ModuleInstance {
             reject("their Dominant preset does not accept rules");
             return;
         }
+        if (this.isRulePunishmentForced(rule) && value === false
+            && (action === "setActive" || action === "setEnforce")) {
+            reject("this rule is currently enforced as a punishment");
+            return;
+        }
 
         let applied = false;
         let verb = "changed";
@@ -583,6 +629,9 @@ export default class Rules extends ModuleInstance {
             this.setRuleUseGlobal(rule, value);
             verb = value ? "set to the global conditions" : "gave own conditions to";
             applied = true;
+        } else if (action === "setPunish") {
+            applied = this.setRulePunish(rule, value ?? { punishments: [] });
+            verb = "changed the punishments of";
         }
 
         if (!applied) {
