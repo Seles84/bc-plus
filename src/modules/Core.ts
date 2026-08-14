@@ -8,6 +8,7 @@ import { AnySetting } from "@/system/gui/Settings";
 import { modalConfirm } from "@/gui/Modal";
 import { BCPNotifyLines, BCPNotifyPlayer } from "@/utils/Messaging";
 import { getChatroomCharacter } from "@/utils/BCPlusCharacter";
+import { KnownMember, bindMemberCache, rememberCharacter } from "@/utils/MemberCache";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import appLogo from "@/images/icon90.png";
 import { Role, RoleNames } from "@/system/Roles";
@@ -43,6 +44,7 @@ export default class Core extends ModuleInstance {
             ...super.Defaults,
             firstRun: true,
             presetLocked: false,
+            knownMembers: {},
         };
     }
 
@@ -350,15 +352,22 @@ export default class Core extends ModuleInstance {
         this.checkForUpdate();
         void this.fetchLatestVersion();
         this.installRoomIcon();
+        bindMemberCache(this.Data.knownMembers as Record<string, KnownMember>);
 
         // Flush queued chat notices once the player lands in a room; small
         // delay so BC finishes building the chat log first
         this.addHook("ChatRoomSync", 0, (args, next) => {
             const result = next(args);
+            this.captureRoomMembers();
             if (this.pendingChatNotices.length > 0) {
                 const notices = this.pendingChatNotices.splice(0);
                 setTimeout(() => notices.forEach((lines) => BCPNotifyLines(lines)), 500);
             }
+            return result;
+        });
+        this.addHook("ChatRoomSyncMemberJoin", 0, (args, next) => {
+            const result = next(args);
+            this.captureRoomMembers();
             return result;
         });
         const mode = this.BCMode === "tandem"
@@ -372,6 +381,13 @@ export default class Core extends ModuleInstance {
         log(`Ready! Running ${mode}.`);
 
         // BCX rule triggers are recorded by the Logging module in tandem mode
+    }
+
+    /** Remembers everyone currently in the room, so their names survive them going offline. */
+    private captureRoomMembers(): void {
+        for (const character of ChatRoomCharacter ?? []) {
+            rememberCharacter(character);
+        }
     }
 
     /** Per-member access preview for the room icon, refreshed at most once a second. */

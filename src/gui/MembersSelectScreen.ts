@@ -1,6 +1,8 @@
 import { GUIPage, GUIScreen, PageOptions } from "@/system/gui/GUIScreen";
 import { UserCandidate, collectMemberCandidates } from "@/gui/UserSelectScreen";
 import { ElementSetVisible } from "@/utils/BCUtils";
+import { MemberNumberToName } from "@/utils/Messaging";
+import { rememberMember } from "@/utils/MemberCache";
 import type { ModuleInstance } from "@/system/module/ModuleInstance";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 
@@ -43,7 +45,7 @@ export class MembersSelectScreen extends GUIScreen {
             .filter((m) => !known.has(m))
             .map((memberNumber): UserCandidate => ({
                 memberNumber,
-                name: Player.FriendNames?.get(memberNumber) ?? `#${memberNumber}`,
+                name: MemberNumberToName(memberNumber, `#${memberNumber}`),
                 note: "Selected",
             }));
         const rows = [...extras, ...candidates];
@@ -104,6 +106,10 @@ class MembersSelectPage extends GUIPage {
             DrawText(candidate.note, 1050, y + 35, "Gray");
             this.addClickHandler(() => {
                 if (canEdit && MouseIn(150, y, 64, 64)) {
+                    if (!checked) {
+                        // Anyone explicitly picked stays resolvable while offline
+                        rememberMember(candidate.memberNumber, candidate.name);
+                    }
                     this.target.set(checked
                         ? selected.filter((m) => m !== candidate.memberNumber)
                         : [...selected, candidate.memberNumber]);
