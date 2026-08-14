@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Changed
+- Hovering a rule in the rules list now shows just its description (long ones trimmed) - the status, conditions and set-by details that made the hover panel overflow its box live elsewhere: a new "Waiting" chip in the list shows an enforced rule whose conditions do not hold right now (the ◈ mark still flags configured conditions), and conditions/origin details remain on the rule's config page.
 - The members condition on the Conditions screen is now a browse-and-pick button (the same member browser rule settings use) instead of a comma-number text field. Existing configured member lists carry over unchanged.
 - Settings of modules whose data is not public (currently the Log's recording toggles) now show their real values when viewed remotely instead of defaults. The values are shared only with people permitted to change them (the module's edit permission, validated by the owner's client); the view refreshes live after each change. Requires both sides on this version - older clients simply keep showing defaults.
 

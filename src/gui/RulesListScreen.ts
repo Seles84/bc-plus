@@ -115,12 +115,13 @@ class RulesListPage extends GUIPage {
             showTitle: true,
             showBack: true,
             showHelp: true,
-            helpText: "Your active rules. 'Add rule' opens the searchable catalog; 'Enable all' and "
-                + "'Disable all' flip enforcement on every active rule at once (the rules stay "
-                + "configured). The Sort button switches between grouping by category and your own "
-                + "order - in Custom mode, use a row's arrows to move it. Click a rule to configure "
-                + "or deactivate it. 'Global conditions' edits the shared conditions set that rules "
-                + "with 'Follow global conditions' obey (new rules follow it by default).",
+            helpText: "Your active rules. Status chips: Enforced (in effect right now), Waiting "
+                + "(enforced, but its conditions do not hold at the moment), Paused (not enforced), "
+                + "BCX (deferred to BCX's matching rule), Contract/Punished/Welded (bound). The ◈ "
+                + "mark means conditions are configured. 'Add rule' opens the searchable catalog; "
+                + "'Enable all'/'Disable all' flip enforcement on every active rule. The Sort button "
+                + "switches between category grouping and your own order (use a row's arrows to move "
+                + "it). Click a rule to configure or deactivate it.",
         };
     }
 
@@ -245,10 +246,16 @@ class RulesListPage extends GUIPage {
             // Deferred also covers rules NOT active in BC+ - they are listed
             // purely because BCX enforces them right now
             const deferred = !welded && !punished && !contracted && local && rules.ruleDeferredToBCX(definition.id);
-            const chip = welded ? "Welded" : punished ? "Punished" : contracted ? "Contract" : deferred ? "BCX" : (state.enforce ? "Enforced" : "Paused");
+            // "Waiting": enforced, but its conditions do not hold right now -
+            // the live in-effect state, readable straight from the table
+            const waiting = !welded && !punished && !contracted && !deferred
+                && local && state.active && state.enforce && !rules.ruleInEffect(definition.id);
+            const chip = welded ? "Welded" : punished ? "Punished" : contracted ? "Contract" : deferred ? "BCX"
+                : waiting ? "Waiting" : (state.enforce ? "Enforced" : "Paused");
             MainCanvas.textAlign = "left";
             DrawText(chip, x + NAME_W + 20, y + 40,
-                welded || punished ? "#A00000" : contracted ? "#6A3FA0" : deferred ? "#DAA520" : (state.enforce ? "Green" : "Gray"));
+                welded || punished ? "#A00000" : contracted ? "#6A3FA0" : deferred ? "#DAA520"
+                    : waiting ? "#8A7A50" : (state.enforce ? "Green" : "Gray"));
             const conditions = state.useGlobal === true ? access.globalConditions() : state.conditions;
             if (conditions && Object.keys(conditions).length > 0) {
                 DrawText("◈", x + NAME_W + CHIP_W - 24, y + 40, "Gray");
@@ -274,22 +281,18 @@ class RulesListPage extends GUIPage {
             }
         });
 
-        // Hovering a rule shows its details over the opposite column (BCX-style)
+        // Hovering a rule shows its description over the opposite column
+        // (BCX-style). Description only: status lives in the chip column,
+        // conditions/origin on the config page - and BC's DrawTextWrap
+        // centers overlong text vertically, spilling over the panel title.
         if (hovered !== null) {
             const { definition, column } = hovered as { definition: RuleDefinition; column: number };
-            const state = access.state(definition.id);
-            const status = local && rules.ruleDeferredToBCX(definition.id)
-                ? (state.active
-                    ? "Paused - BCX's matching rule is in effect, BC+ defers to it"
-                    : "Covered by BCX - its matching rule is in effect, adding it in BC+ would be redundant")
-                : `Active${state.enforce ? ", enforced" : ""}${state.log ? ", logged" : ""}${state.announce ? ", announced" : ""}`;
-            const origin = state.addedBy ? ` Set by ${state.addedBy.name} (#${state.addedBy.member}).` : "";
-            const conditionsText = state.useGlobal === true
-                ? `Follows the global conditions (${describeConditions(access.globalConditions())})`
-                : describeConditions(state.conditions);
+            const description = definition.description.length > 350
+                ? `${definition.description.slice(0, 350)}...`
+                : definition.description;
             DrawInfoPanel(
                 `${definition.name}  ·  ${definition.category}`,
-                `${definition.description} — ${status}. ${conditionsText}.${origin}`,
+                description,
                 { Left: COL_X[1 - column]!, Top: LIST_TOP, Width: NAME_W + CHIP_W + 60, Height: ROWS_PER_COL * ROW_H - 16 },
             );
         }
@@ -389,7 +392,7 @@ class RuleConfigPage extends GUIPage {
     private renderPunishments(definition: RuleDefinition, access: RuleAccess, state: RuleStateData): void {
         MainCanvas.textAlign = "center";
         this.addClickHandler(ButtonActionWidget(
-            { Left: 1400, Top: 530, Width: 400, Height: 64 },
+            { Left: 1400, Top: 620, Width: 400, Height: 64 },
             { Name: "Punishments...", HoverText: "What happens when this rule is broken" },
             () => {
                 this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(new RulePunishScreen(
@@ -417,7 +420,7 @@ class RuleConfigPage extends GUIPage {
                 ? "No punishments attached"
                 : `${punish.punishments.length} punishment${punish.punishments.length === 1 ? "" : "s"}`
                     + (punish.threshold > 1 ? ` after ${punish.threshold} violations in ${punish.windowMin} min` : ", every violation"),
-            1400, 650, 460, "Gray",
+            1400, 740, 460, "Gray",
         );
     }
 
@@ -488,17 +491,18 @@ class RuleConfigPage extends GUIPage {
 
         // Conditions: a rule either follows the shared global set or has its
         // own (weld-locked and contract-bound rules seal them too)
+        // The right column starts below the help button (ends at y 280)
         const conditionsLocked = weldLocked || contractBound;
         const usesGlobal = state.useGlobal === true;
-        DrawCheckbox(1400, 200, 64, 64, "Follow global conditions", usesGlobal, !canEdit || conditionsLocked);
+        DrawCheckbox(1400, 290, 64, 64, "Follow global conditions", usesGlobal, !canEdit || conditionsLocked);
         this.addClickHandler(() => {
-            if (canEdit && !conditionsLocked && MouseIn(1400, 200, 64, 64)) {
+            if (canEdit && !conditionsLocked && MouseIn(1400, 290, 64, 64)) {
                 access.setUseGlobal(definition.id, !usesGlobal);
             }
         });
         MainCanvas.textAlign = "center";
         this.addClickHandler(ButtonActionWidget(
-            { Left: 1400, Top: 300, Width: 400, Height: 64 },
+            { Left: 1400, Top: 390, Width: 400, Height: 64 },
             {
                 Name: usesGlobal ? "Global conditions..." : "Conditions...",
                 Active: !conditionsLocked && !(draft && usesGlobal),
@@ -534,10 +538,10 @@ class RuleConfigPage extends GUIPage {
             usesGlobal
                 ? (draft ? "Follows the signer's global conditions" : `Global: ${describeConditions(access.globalConditions())}`)
                 : describeConditions(state.conditions),
-            1400, 420, 460, "Gray",
+            1400, 510, 460, "Gray",
         );
         if (!draft && state.active && state.addedBy) {
-            DrawTextFit(`Set by ${state.addedBy.name} (#${state.addedBy.member})`, 1400, 470, 460, "Gray");
+            DrawTextFit(`Set by ${state.addedBy.name} (#${state.addedBy.member})`, 1400, 560, 460, "Gray");
         }
 
         // Punishments attached to this rule (not part of contract drafts:
@@ -585,9 +589,11 @@ class RuleConfigPage extends GUIPage {
                         if (element) {
                             element.disabled = !active;
                         }
-                        // DOM inputs float above the canvas-drawn help box
+                        // DOM inputs float above the canvas-drawn help box.
+                        // Aligned with the other setting controls (left edge
+                        // 850) and kept clear of the right column at 1400
                         ElementSetVisible(id, !this.screen.HelpVisible);
-                        ElementPosition(id, 1250, y + 27, 750, 60);
+                        ElementPosition(id, 1110, y + 27, 520, 60);
                     }
                     break;
                 }
