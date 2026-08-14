@@ -210,7 +210,31 @@ export default class Logging extends ModuleInstance {
             try {
                 const bcxAPI = this.SDK.bcxAPI();
                 bcxAPI?.on("ruleTrigger", (data) => {
-                    this.log("rule", `BCX rule "${data.rule}" ${data.triggerType === "triggerAttempt" ? "blocked an action" : "was violated"}`);
+                    // Mirror BCX's own behavior-log gate: skip triggers BCX itself
+                    // would not record. Its setting-enforcement rules (loggable:
+                    // false, no log text) fire this event every time they snap a
+                    // BC setting back, which spammed the log.
+                    let name = data.rule;
+                    try {
+                        const state = bcxAPI?.getRuleState(data.rule);
+                        const definition = state?.ruleDefinition as {
+                            name?: string;
+                            triggerTexts?: { log?: string; attempt_log?: string };
+                        } | null | undefined;
+                        const logText = data.triggerType === "triggerAttempt"
+                            ? definition?.triggerTexts?.attempt_log
+                            : definition?.triggerTexts?.log;
+                        if (state?.isLogged !== true || typeof logText !== "string") {
+                            debug(`BCX rule trigger not logged (BCX would not log it either): ${data.rule}`);
+                            return;
+                        }
+                        if (typeof definition?.name === "string" && definition.name.length > 0) {
+                            name = definition.name;
+                        }
+                    } catch {
+                        // On BCX API errors fall back to logging with the raw id
+                    }
+                    this.log("rule", `BCX rule "${name}" ${data.triggerType === "triggerAttempt" ? "blocked an action" : "was violated"}`);
                 });
                 this.bcxSubscribed = bcxAPI !== undefined && bcxAPI !== null;
             } catch (e) {
