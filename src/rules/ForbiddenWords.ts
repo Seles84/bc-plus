@@ -1,5 +1,6 @@
 import { RuleDefinition } from "@/system/rules/RuleTypes";
 import { stringListValue } from "@/system/gui/Settings";
+import { spokenText } from "@/rules/speechUtils";
 
 function findForbiddenWord(content: string, words: string[]): string | null {
     const lower = content.toLocaleLowerCase();
@@ -28,6 +29,11 @@ export const ForbiddenWords: RuleDefinition = {
         default: [],
         entryLabel: "word",
         maxChars: 100,
+    }, {
+        type: "checkbox",
+        name: "includeOOC",
+        label: "Also forbid the words in OOC (parentheses)",
+        default: false,
     }],
     load(ctx) {
         ctx.hook("ServerSend", 5, (args, next) => {
@@ -39,7 +45,11 @@ export const ForbiddenWords: RuleDefinition = {
             if (words.length === 0) {
                 return next(args);
             }
-            const match = findForbiddenWord(data.Content, words);
+            // OOC segments are exempt unless configured otherwise
+            const checked = ctx.setting<boolean>("includeOOC") === true
+                ? data.Content
+                : spokenText(data.Content);
+            const match = findForbiddenWord(checked, words);
             if (match === null) {
                 return next(args);
             }

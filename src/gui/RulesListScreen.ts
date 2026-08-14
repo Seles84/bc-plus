@@ -66,7 +66,13 @@ export class RulesListScreen extends GUIScreen {
 
     /** Active rules in the owner's preferred presentation. */
     private buildItems(): ListItem[] {
-        const active = this.access.definitions().filter((d) => this.access.state(d.id).active);
+        // With tandem deferral on, rules BCX currently enforces are listed too
+        // (BCX chip): adding them in BC+ would be redundant. Local view only -
+        // a remote character's tandem state is unknowable.
+        const local = this.Character === null || this.Character.isPlayer();
+        const rules = this.Module as Rules;
+        const active = this.access.definitions().filter((d) =>
+            this.access.state(d.id).active || (local && rules.ruleDeferredToBCX(d.id)));
         if (this.access.sortMode() === "custom") {
             const position = new Map(this.access.order().map((id, i) => [id, i]));
             return active
@@ -117,9 +123,16 @@ class RulesListPage extends GUIPage {
         };
     }
 
-    /** Ids of the rules (not headers) on this page, in display order. */
+    /**
+     * Ids of the ACTIVE rules (not headers) on this page, in display order.
+     * BCX-covered rows that are not activated in BC+ are excluded: bulk
+     * enforce/pause and reordering only apply to real active rules.
+     */
     ruleIds(): string[] {
-        return this.items.flatMap((item) => ("definition" in item ? [item.definition.id] : []));
+        return this.items.flatMap((item) =>
+            "definition" in item && this.screen.access.state(item.definition.id).active
+                ? [item.definition.id]
+                : []);
     }
 
     private controlsRow(): void {
@@ -227,7 +240,9 @@ class RulesListPage extends GUIPage {
             ));
             const welded = access.weldLocked(definition.id);
             const punished = !welded && local && rules.isRulePunishmentForced(definition.id);
-            const deferred = !welded && !punished && local && state.active && rules.ruleDeferredToBCX(definition.id);
+            // Deferred also covers rules NOT active in BC+ - they are listed
+            // purely because BCX enforces them right now
+            const deferred = !welded && !punished && local && rules.ruleDeferredToBCX(definition.id);
             const chip = welded ? "Welded" : punished ? "Punished" : deferred ? "BCX" : (state.enforce ? "Enforced" : "Paused");
             MainCanvas.textAlign = "left";
             DrawText(chip, x + NAME_W + 20, y + 40, welded || punished ? "#A00000" : deferred ? "#DAA520" : (state.enforce ? "Green" : "Gray"));
@@ -236,7 +251,7 @@ class RulesListPage extends GUIPage {
                 DrawText("◈", x + NAME_W + CHIP_W - 24, y + 40, "Gray");
             }
 
-            if (reorderable) {
+            if (reorderable && state.active) {
                 const position = displayed.indexOf(definition.id);
                 const arrowX = x + NAME_W + CHIP_W + 10;
                 MainCanvas.textAlign = "center";
@@ -261,7 +276,9 @@ class RulesListPage extends GUIPage {
             const { definition, column } = hovered as { definition: RuleDefinition; column: number };
             const state = access.state(definition.id);
             const status = local && rules.ruleDeferredToBCX(definition.id)
-                ? "Paused - BCX's matching rule is in effect, BC+ defers to it"
+                ? (state.active
+                    ? "Paused - BCX's matching rule is in effect, BC+ defers to it"
+                    : "Covered by BCX - its matching rule is in effect, adding it in BC+ would be redundant")
                 : `Active${state.enforce ? ", enforced" : ""}${state.log ? ", logged" : ""}${state.announce ? ", announced" : ""}`;
             const origin = state.addedBy ? ` Set by ${state.addedBy.name} (#${state.addedBy.member}).` : "";
             const conditionsText = state.useGlobal === true
@@ -371,9 +388,10 @@ class RuleConfigPage extends GUIPage {
         if (weldLocked) {
             DrawText("Locked by a welded collar - forced on and unconditional until the weld ends.", 150, 200, "#A00000");
         } else if ((this.Character === null || this.Character.isPlayer())
-            && state.active
             && (this.screen.Module as Rules).ruleDeferredToBCX(definition.id)) {
-            DrawText("Paused - BCX's matching rule is in effect, so BC+ defers to it.", 150, 200, "#DAA520");
+            DrawText(state.active
+                ? "Paused - BCX's matching rule is in effect, so BC+ defers to it."
+                : "BCX's matching rule is in effect - activating this in BC+ is redundant while it is.", 150, 200, "#DAA520");
         }
         if ((this.Character === null || this.Character.isPlayer())
             && (this.screen.Module as Rules).isRulePunishmentForced(definition.id)) {
