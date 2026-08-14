@@ -360,6 +360,14 @@ export default class Curses extends ModuleInstance {
         super.Unload();
     }
 
+    /**
+     * Another enforcement system (e.g. an item punishment) temporarily owns a
+     * group - the curse on it stops restoring until the given time has passed.
+     */
+    yieldSlot(group: string, ms: number): void {
+        this.suspendedUntil.set(group, Math.max(this.suspendedUntil.get(group) ?? 0, Date.now() + ms));
+    }
+
     /** A BCX curse acted on a group; if we curse it too, our curse yields. */
     private onBCXCurseTrigger(group: string): void {
         if (!this.Config.Active || !this.getSlot(group)) {

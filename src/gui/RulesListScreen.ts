@@ -8,10 +8,13 @@ import { modalListEditor } from "@/gui/Modal";
 import { membersValue, stringListValue } from "@/system/gui/Settings";
 import { RuleCatalogScreen, CATEGORY_ORDER } from "@/gui/RuleCatalogScreen";
 import { describeConditions } from "@/system/conditions/Conditions";
+import { RulePunishScreen } from "@/gui/PunishmentsScreen";
+import { PunishmentDefinition, defaultPunishConfig } from "@/system/punishments/PunishmentTypes";
 import { ElementSetVisible } from "@/utils/BCUtils";
 import type { GUI } from "@/modules/GUI";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Authority from "@/modules/Authority";
+import type Punishments from "@/modules/Punishments";
 import type Rules from "@/modules/Rules";
 
 const PER_PAGE = 16;
@@ -223,10 +226,11 @@ class RulesListPage extends GUIPage {
                 },
             ));
             const welded = access.weldLocked(definition.id);
-            const deferred = !welded && local && state.active && rules.ruleDeferredToBCX(definition.id);
-            const chip = welded ? "Welded" : deferred ? "BCX" : (state.enforce ? "Enforced" : "Paused");
+            const punished = !welded && local && rules.isRulePunishmentForced(definition.id);
+            const deferred = !welded && !punished && local && state.active && rules.ruleDeferredToBCX(definition.id);
+            const chip = welded ? "Welded" : punished ? "Punished" : deferred ? "BCX" : (state.enforce ? "Enforced" : "Paused");
             MainCanvas.textAlign = "left";
-            DrawText(chip, x + NAME_W + 20, y + 40, welded ? "#A00000" : deferred ? "#DAA520" : (state.enforce ? "Green" : "Gray"));
+            DrawText(chip, x + NAME_W + 20, y + 40, welded || punished ? "#A00000" : deferred ? "#DAA520" : (state.enforce ? "Green" : "Gray"));
             const conditions = state.useGlobal === true ? access.globalConditions() : state.conditions;
             if (conditions && Object.keys(conditions).length > 0) {
                 DrawText("◈", x + NAME_W + CHIP_W - 24, y + 40, "Gray");
@@ -371,6 +375,10 @@ class RuleConfigPage extends GUIPage {
             && (this.screen.Module as Rules).ruleDeferredToBCX(definition.id)) {
             DrawText("Paused - BCX's matching rule is in effect, so BC+ defers to it.", 150, 200, "#DAA520");
         }
+        if ((this.Character === null || this.Character.isPlayer())
+            && (this.screen.Module as Rules).isRulePunishmentForced(definition.id)) {
+            DrawText("Enforced as a punishment right now - unconditional until the punishment ends.", 150, 240, "#A00000");
+        }
 
         const toggles: { label: string; value: boolean; locked?: boolean; set: (v: boolean) => void }[] = [
             {
@@ -460,6 +468,40 @@ class RuleConfigPage extends GUIPage {
         if (state.active && state.addedBy) {
             DrawTextFit(`Set by ${state.addedBy.name} (#${state.addedBy.member})`, 1400, 470, 460, "Gray");
         }
+
+        // Punishments attached to this rule
+        MainCanvas.textAlign = "center";
+        this.addClickHandler(ButtonActionWidget(
+            { Left: 1400, Top: 530, Width: 400, Height: 64 },
+            { Name: "Punishments...", HoverText: "What happens when this rule is broken" },
+            () => {
+                this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(new RulePunishScreen(
+                    this.screen.Module,
+                    this.Character,
+                    {
+                        label: definition.name,
+                        get: () => access.state(definition.id).punish ?? defaultPunishConfig(),
+                        set: (c) => access.setPunish(definition.id, c),
+                        canEdit: () => access.canEdit(),
+                        definitions: () => {
+                            if (this.Character && !this.Character.isPlayer()) {
+                                return (this.Character.BCPData?.["punishments"]?.["punishments"] ?? {}) as Record<string, PunishmentDefinition>;
+                            }
+                            return this.Core.ModuleManager.getModule<Punishments>("punishments")?.Definitions ?? {};
+                        },
+                    },
+                ));
+            },
+        ));
+        MainCanvas.textAlign = "left";
+        const punish = state.punish;
+        DrawTextFit(
+            !punish || punish.punishments.length === 0
+                ? "No punishments attached"
+                : `${punish.punishments.length} punishment${punish.punishments.length === 1 ? "" : "s"}`
+                    + (punish.threshold > 1 ? ` after ${punish.threshold} violations in ${punish.windowMin} min` : ", every violation"),
+            1400, 650, 460, "Gray",
+        );
 
         const settings = definition.settings ?? [];
         settings.forEach((setting, i) => {

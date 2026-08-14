@@ -19,7 +19,7 @@ export type BCPPreset = "Dominant" | "Switch" | "Submissive" | "Slave";
 export const PRESETS: readonly BCPPreset[] = ["Dominant", "Switch", "Submissive", "Slave"];
 
 /** Permissions the Slave preset removes self-access to. */
-const SLAVE_SELF_LOCKED = ["rules.edit", "curses.edit", "authority.edit", "roles.assign", "roles.revoke", "relationships.edit", "log.delete", "core.modules"];
+const SLAVE_SELF_LOCKED = ["rules.edit", "curses.edit", "punishments.edit", "punishments.lift", "authority.edit", "roles.assign", "roles.revoke", "relationships.edit", "log.delete", "core.modules"];
 
 /**
  * Core housekeeping module: run preset, update notifications and, in tandem
