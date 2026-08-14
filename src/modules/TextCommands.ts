@@ -235,6 +235,15 @@ export default class TextCommands extends ModuleInstance {
             name: "test",
             description: "DEV: test helpers (test version [x.y.z|clear])",
             handler: (args: string[]) => this.handleTest(args),
+        }, {
+            name: "unweld",
+            description: "DEV: break the weld on your collar directly",
+            handler: () => {
+                const done = this.ModuleManager.getModule<Welding>("welding")?.devUnweld() === true;
+                this.reply(done
+                    ? "The weld has been broken (dev override)."
+                    : "Your collar is not welded.");
+            },
         }] : []),
         {
             name: "debug",

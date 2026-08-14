@@ -401,6 +401,15 @@ export default class Welding extends ModuleInstance {
         }
     }
 
+    /** DEV builds only: breaks the weld directly, for testing the full cycle. */
+    devUnweld(): boolean {
+        if (!BCP_DEV_ENV || !this.isWelded()) {
+            return false;
+        }
+        this.dissolveWeld();
+        return true;
+    }
+
     /** The only exit: the owner releasing the sub in BC dissolves the weld. */
     private dissolveWeld(): void {
         const ownerName = String(this.Data.weldOwnerName ?? "your owner");
