@@ -454,7 +454,11 @@ export default class Welding extends ModuleInstance {
     /** Notifies a participant: BC+ users get a proper invite, others a whispered action line. */
     private inviteParticipant(member: number, actionText: string): void {
         const ceremony = this.Ceremony;
-        if (getChatroomCharacter(member)?.BCPVersion) {
+        // Gate on the synced welding category, not BC+ presence: a BC+ build
+        // without the Welding module (older release) would drop the hidden
+        // WeldInvite silently and the participant would never learn of it
+        const peer = getChatroomCharacter(member);
+        if (peer?.BCPVersion && peer.BCPData?.["welding"] !== undefined) {
             SendBCPMessage({ message: "WeldInvite", deadline: ceremony?.deadline }, member);
             return;
         }
