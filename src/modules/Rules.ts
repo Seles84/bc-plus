@@ -19,6 +19,7 @@ import type Core from "@/modules/Core";
 import type Authority from "@/modules/Authority";
 import type DataSync from "@/modules/DataSync";
 import type Logging from "@/modules/Logging";
+import type Contracts from "@/modules/Contracts";
 import type Punishments from "@/modules/Punishments";
 import type Welding from "@/modules/Welding";
 
@@ -80,7 +81,7 @@ export default class Rules extends ModuleInstance {
     }
 
     setRuleUseGlobal(id: string, value: boolean): void {
-        if (this.isRuleWeldLocked(id)) {
+        if (this.isRuleWeldLocked(id) || this.isRuleContractBound(id)) {
             return;
         }
         this.ruleState(id).useGlobal = value;
@@ -232,6 +233,11 @@ export default class Rules extends ModuleInstance {
         return this.ModuleManager.getModule<Punishments>("punishments")?.isRuleForced(id) === true;
     }
 
+    /** Whether a signed contract currently binds this rule. */
+    isRuleContractBound(id: string): boolean {
+        return this.ModuleManager.getModule<Contracts>("contracts")?.isRuleContractBound(id) === true;
+    }
+
     /** Sets the punishments attached to a rule; an empty list clears the attachment. */
     setRulePunish(id: string, raw: unknown): boolean {
         if (!this.registry.has(id)) {
@@ -260,6 +266,10 @@ export default class Rules extends ModuleInstance {
         }
         if (!active && this.isRulePunishmentForced(id)) {
             BCPNotifyPlayer(`The rule "${this.registry.get(id)?.name ?? id}" is enforced as a punishment right now and cannot be deactivated.`);
+            return;
+        }
+        if (!active && this.isRuleContractBound(id)) {
+            BCPNotifyPlayer(`The rule "${this.registry.get(id)?.name ?? id}" is bound by a signed contract and cannot be deactivated until the contract ends.`);
             return;
         }
         const state = this.ruleState(id);
@@ -296,7 +306,7 @@ export default class Rules extends ModuleInstance {
     }
 
     setRuleEnforce(id: string, value: boolean): void {
-        if (!value && (this.isRuleWeldLocked(id) || this.isRulePunishmentForced(id))) {
+        if (!value && (this.isRuleWeldLocked(id) || this.isRulePunishmentForced(id) || this.isRuleContractBound(id))) {
             return;
         }
         this.ruleState(id).enforce = value;
@@ -312,7 +322,7 @@ export default class Rules extends ModuleInstance {
 
     /** Sets a rule's conditions (sanitized); pass null/{} to clear. */
     setRuleConditions(id: string, raw: unknown): boolean {
-        if (!this.registry.has(id) || this.isRuleWeldLocked(id)) {
+        if (!this.registry.has(id) || this.isRuleWeldLocked(id) || this.isRuleContractBound(id)) {
             return false;
         }
         const sanitized = sanitizeConditions(raw);
@@ -379,7 +389,7 @@ export default class Rules extends ModuleInstance {
     setRuleSetting(id: string, name: string, value: unknown): boolean {
         const definition = this.registry.get(id);
         const setting = definition?.settings?.find((s) => s.name === name);
-        if (!setting) {
+        if (!setting || this.isRuleContractBound(id)) {
             return false;
         }
         // Legacy string shapes stay accepted for members/stringList: older
@@ -433,7 +443,8 @@ export default class Rules extends ModuleInstance {
                 // Rules following the global set have no live timer (it is
                 // stripped from global conditions); a stale timer in their
                 // dormant custom conditions must not expire them
-                if (state.useGlobal === true || this.isRuleWeldLocked(id) || this.isRulePunishmentForced(id)) {
+                if (state.useGlobal === true || this.isRuleWeldLocked(id)
+                    || this.isRulePunishmentForced(id) || this.isRuleContractBound(id)) {
                     continue;
                 }
                 if (state.active && conditionsExpired(state.conditions)) {
@@ -628,6 +639,12 @@ export default class Rules extends ModuleInstance {
         if (this.isRulePunishmentForced(rule) && value === false
             && (action === "setActive" || action === "setEnforce")) {
             reject("this rule is currently enforced as a punishment");
+            return;
+        }
+        // Contract-bound rules are sealed for everyone until the contract
+        // ends - the author amends by releasing and re-offering
+        if (this.isRuleContractBound(rule) && action !== "setLog" && action !== "setAnnounce") {
+            reject("this rule is bound by a signed contract");
             return;
         }
 

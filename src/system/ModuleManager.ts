@@ -3,6 +3,7 @@ import { debug, err } from "@/system/Console";
 import type { BCPlus } from "@/index";
 import Authority from "@/modules/Authority";
 import Commands from "@/modules/Commands";
+import Contracts from "@/modules/Contracts";
 import Core from "@/modules/Core";
 import Curses from "@/modules/Curses";
 import DataSync from "@/modules/DataSync";
@@ -28,6 +29,7 @@ export default class ModuleManager {
             new Rules(parent),
             new Curses(parent),
             new Punishments(parent),
+            new Contracts(parent),
             new Commands(parent),
             new Relationships(parent),
             new Welding(parent),
