@@ -115,12 +115,13 @@ class RulesListPage extends GUIPage {
             showTitle: true,
             showBack: true,
             showHelp: true,
-            helpText: "Your active rules. 'Add rule' opens the searchable catalog; 'Enable all' and "
-                + "'Disable all' flip enforcement on every active rule at once (the rules stay "
-                + "configured). The Sort button switches between grouping by category and your own "
-                + "order - in Custom mode, use a row's arrows to move it. Click a rule to configure "
-                + "or deactivate it. 'Global conditions' edits the shared conditions set that rules "
-                + "with 'Follow global conditions' obey (new rules follow it by default).",
+            helpText: "Your active rules. Status chips: Enforced (in effect right now), Waiting "
+                + "(enforced, but its conditions do not hold at the moment), Paused (not enforced), "
+                + "BCX (deferred to BCX's matching rule), Contract/Punished/Welded (bound). The ◈ "
+                + "mark means conditions are configured. 'Add rule' opens the searchable catalog; "
+                + "'Enable all'/'Disable all' flip enforcement on every active rule. The Sort button "
+                + "switches between category grouping and your own order (use a row's arrows to move "
+                + "it). Click a rule to configure or deactivate it.",
         };
     }
 
@@ -245,10 +246,16 @@ class RulesListPage extends GUIPage {
             // Deferred also covers rules NOT active in BC+ - they are listed
             // purely because BCX enforces them right now
             const deferred = !welded && !punished && !contracted && local && rules.ruleDeferredToBCX(definition.id);
-            const chip = welded ? "Welded" : punished ? "Punished" : contracted ? "Contract" : deferred ? "BCX" : (state.enforce ? "Enforced" : "Paused");
+            // "Waiting": enforced, but its conditions do not hold right now -
+            // the live in-effect state, readable straight from the table
+            const waiting = !welded && !punished && !contracted && !deferred
+                && local && state.active && state.enforce && !rules.ruleInEffect(definition.id);
+            const chip = welded ? "Welded" : punished ? "Punished" : contracted ? "Contract" : deferred ? "BCX"
+                : waiting ? "Waiting" : (state.enforce ? "Enforced" : "Paused");
             MainCanvas.textAlign = "left";
             DrawText(chip, x + NAME_W + 20, y + 40,
-                welded || punished ? "#A00000" : contracted ? "#6A3FA0" : deferred ? "#DAA520" : (state.enforce ? "Green" : "Gray"));
+                welded || punished ? "#A00000" : contracted ? "#6A3FA0" : deferred ? "#DAA520"
+                    : waiting ? "#8A7A50" : (state.enforce ? "Green" : "Gray"));
             const conditions = state.useGlobal === true ? access.globalConditions() : state.conditions;
             if (conditions && Object.keys(conditions).length > 0) {
                 DrawText("◈", x + NAME_W + CHIP_W - 24, y + 40, "Gray");
@@ -274,22 +281,18 @@ class RulesListPage extends GUIPage {
             }
         });
 
-        // Hovering a rule shows its details over the opposite column (BCX-style)
+        // Hovering a rule shows its description over the opposite column
+        // (BCX-style). Description only: status lives in the chip column,
+        // conditions/origin on the config page - and BC's DrawTextWrap
+        // centers overlong text vertically, spilling over the panel title.
         if (hovered !== null) {
             const { definition, column } = hovered as { definition: RuleDefinition; column: number };
-            const state = access.state(definition.id);
-            const status = local && rules.ruleDeferredToBCX(definition.id)
-                ? (state.active
-                    ? "Paused - BCX's matching rule is in effect, BC+ defers to it"
-                    : "Covered by BCX - its matching rule is in effect, adding it in BC+ would be redundant")
-                : `Active${state.enforce ? ", enforced" : ""}${state.log ? ", logged" : ""}${state.announce ? ", announced" : ""}`;
-            const origin = state.addedBy ? ` Set by ${state.addedBy.name} (#${state.addedBy.member}).` : "";
-            const conditionsText = state.useGlobal === true
-                ? `Follows the global conditions (${describeConditions(access.globalConditions())})`
-                : describeConditions(state.conditions);
+            const description = definition.description.length > 350
+                ? `${definition.description.slice(0, 350)}...`
+                : definition.description;
             DrawInfoPanel(
                 `${definition.name}  ·  ${definition.category}`,
-                `${definition.description} — ${status}. ${conditionsText}.${origin}`,
+                description,
                 { Left: COL_X[1 - column]!, Top: LIST_TOP, Width: NAME_W + CHIP_W + 60, Height: ROWS_PER_COL * ROW_H - 16 },
             );
         }
