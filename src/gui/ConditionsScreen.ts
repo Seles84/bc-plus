@@ -1,8 +1,10 @@
 import { GUIPage, GUIScreen, PageOptions } from "@/system/gui/GUIScreen";
 import { ButtonActionWidget } from "@/system/gui/Widgets";
-import { ConditionData, formatDuration } from "@/system/conditions/Conditions";
+import { ConditionData, formatDuration, parseMembers } from "@/system/conditions/Conditions";
+import { MembersSelectScreen } from "@/gui/MembersSelectScreen";
 import { Role, RoleNames } from "@/system/Roles";
 import { ElementSetVisible, jsonClone } from "@/utils/BCUtils";
+import type { GUI } from "@/modules/GUI";
 import type { ModuleInstance } from "@/system/module/ModuleInstance";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 
@@ -38,7 +40,6 @@ export class ConditionsScreen extends GUIScreen {
     }
 }
 
-const MEMBERS_INPUT = "BCP_condMembers";
 const ROOMS_INPUT = "BCP_condRooms";
 
 class ConditionsPage extends GUIPage {
@@ -132,14 +133,11 @@ class ConditionsPage extends GUIPage {
 
     override async create(): Promise<void> {
         const conditions = this.target.get();
-        const members = ElementCreateInput(MEMBERS_INPUT, "text", conditions.members ?? "", "300");
-        members.addEventListener("change", () => this.update((c) => { c.members = members.value; }));
         const rooms = ElementCreateInput(ROOMS_INPUT, "text", conditions.roomNames ?? "", "300");
         rooms.addEventListener("change", () => this.update((c) => { c.roomNames = rooms.value; }));
     }
 
     override async destroy(): Promise<void> {
-        ElementRemove(MEMBERS_INPUT);
         ElementRemove(ROOMS_INPUT);
     }
 
@@ -147,10 +145,8 @@ class ConditionsPage extends GUIPage {
         const conditions = this.target.get();
         const canEdit = this.target.canEdit();
 
-        // The text inputs are DOM elements and would float above the help box
-        const inputsVisible = !this.screen.HelpVisible;
-        ElementSetVisible(MEMBERS_INPUT, inputsVisible);
-        ElementSetVisible(ROOMS_INPUT, inputsVisible);
+        // The text input is a DOM element and would float above the help box
+        ElementSetVisible(ROOMS_INPUT, !this.screen.HelpVisible);
 
         // Layout grid: labels at LABEL_X, controls from CONTROL_X, mode buttons in one right column
         const LABEL_X = 150;
@@ -211,13 +207,25 @@ class ConditionsPage extends GUIPage {
 
         // --- Member presence ---
         const membersModeLabel = conditions.membersMode === undefined ? "Ignored" : (conditions.membersMode === "present" ? "Present" : "Absent");
+        const selected = parseMembers(conditions.members);
         DrawText("Members:", LABEL_X, 612, "Black");
-        ElementPosition(MEMBERS_INPUT, CONTROL_X + 380, 607, 760, 60);
-        const membersInput = document.getElementById(MEMBERS_INPUT) as HTMLInputElement | null;
-        if (membersInput) {
-            membersInput.disabled = !canEdit;
-        }
         MainCanvas.textAlign = "center";
+        this.addClickHandler(ButtonActionWidget(
+            { Left: CONTROL_X, Top: 580, Width: 350, Height: 64 },
+            { Name: `${selected.length} selected`, Active: canEdit, HoverText: "Browse and pick members" },
+            () => {
+                this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(new MembersSelectScreen(
+                    this.screen.Module,
+                    this.Character,
+                    {
+                        label: this.target.label,
+                        get: () => parseMembers(this.target.get().members),
+                        set: (members) => this.update((c) => { c.members = members.join(","); }),
+                        canEdit: () => this.target.canEdit(),
+                    },
+                ));
+            },
+        ));
         DrawBackNextButton(MODE_X, 580, MODE_W, 64, membersModeLabel, canEdit ? "White" : "#ddd", "", () => "", () => "", !canEdit);
         MainCanvas.textAlign = "left";
         this.addClickHandler(() => {

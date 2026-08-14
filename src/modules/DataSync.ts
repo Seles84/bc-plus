@@ -92,6 +92,8 @@ export default class DataSync extends ModuleInstance {
                 BCPNotifyPlayer(`${sender.Name} rejected the settings change${typeof content.reason === "string" ? `: ${content.reason}` : "."}`);
             }
         });
+        this.addSyncListener("SettingsRequest", (sender, content) => this.onSettingsRequest(sender, content));
+        this.addSyncListener("SettingsResponse", (sender, content) => this.onSettingsResponse(sender, content));
 
         // Receive hidden BC+ messages and dispatch them to listeners
         this.addHook("ChatRoomMessage", 0, (args, next) => {
@@ -197,6 +199,67 @@ export default class DataSync extends ModuleInstance {
         this.ModuleManager.getModule<Logging>("logging")
             ?.log("authority", `${sender.Name} (#${senderNumber}) changed ${module.Config.Name} setting "${setting.label}"`);
         SendBCPMessage({ message: "SettingCommandResult", ok: true }, senderNumber);
+        // Public modules refresh mirrors via the change broadcast; private
+        // ones push their fresh settings view to the editor directly
+        if (!module.Config.PublicData) {
+            this.sendSettingsView(module, senderNumber);
+        }
+    }
+
+    /**
+     * Asks another character for the current values of a private (non-public-
+     * data) module's declared settings. The reply lands in their mirror.
+     */
+    requestModuleSettings(slug: string, target: number): void {
+        SendBCPMessage({ message: "SettingsRequest", module: slug }, target);
+    }
+
+    /**
+     * Settings of private modules are shared only with people permitted to
+     * edit them (the module's EditPermission) - unlike public data, which
+     * everyone in the room mirrors.
+     */
+    private onSettingsRequest(sender: Character, content: BCPMessageContent): void {
+        const senderNumber = sender.MemberNumber;
+        if (typeof senderNumber !== "number") {
+            return;
+        }
+        const module = typeof content.module === "string" ? this.ModuleManager.getModule(content.module) : undefined;
+        const permission = module?.EditPermission;
+        if (!module || !permission || !module.SupportsRemote || module.Config.PublicData) {
+            return;
+        }
+        const authority = this.ModuleManager.getModule<Authority>("authority");
+        if (!authority?.hasPermission(senderNumber, permission)) {
+            debug(`Settings request for ${module.Slug} from #${senderNumber}: denied`);
+            return;
+        }
+        this.sendSettingsView(module, senderNumber);
+    }
+
+    /** Sends the declared-settings values of a module to one member. */
+    private sendSettingsView(module: ModuleInstance, target: number): void {
+        SendBCPMessage({
+            message: "SettingsResponse",
+            module: module.Slug,
+            values: Object.fromEntries(module.Settings.map((s) => [s.name, jsonClone(module.getSetting(s.name))])),
+        }, target);
+    }
+
+    /** A requested private-module settings view arrived - store it in the mirror. */
+    private onSettingsResponse(sender: Character, content: BCPMessageContent): void {
+        const character = typeof sender.MemberNumber === "number" ? getChatroomCharacter(sender.MemberNumber) : null;
+        if (!character || typeof content.module !== "string"
+            || typeof content.values !== "object" || content.values === null) {
+            return;
+        }
+        character.BCPData ??= {};
+        character.BCPData[content.module] = {
+            ...character.BCPData[content.module],
+            ...(content.values as Record<string, unknown>),
+        };
+        debug(`Settings view for ${content.module} received from ${character.toString()}`);
+        this.Events.emit("characterSyncReceived", { memberNumber: character.MemberNumber });
     }
 
     private collectPublicData(): Record<string, Record<string, unknown>> {

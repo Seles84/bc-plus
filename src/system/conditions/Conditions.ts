@@ -27,7 +27,8 @@ export interface ConditionData {
     membersMode?: "present" | "absent";
 }
 
-function parseMembers(raw: string | undefined): number[] {
+/** Member numbers from the comma-string form conditions use. */
+export function parseMembers(raw: string | undefined): number[] {
     return (raw ?? "")
         .split(",")
         .map((m) => Number.parseInt(m.trim(), 10))
