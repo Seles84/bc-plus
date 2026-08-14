@@ -1,5 +1,5 @@
 import { GUIPage, GUIScreen, PageOptions } from "@/system/gui/GUIScreen";
-import { RuleDefinition } from "@/system/rules/RuleTypes";
+import { RuleDefinition, RuleStateData } from "@/system/rules/RuleTypes";
 import { LocalRuleAccess, RemoteRuleAccess, RuleAccess } from "@/system/rules/RuleAccess";
 import { ButtonActionWidget, DrawInfoPanel } from "@/system/gui/Widgets";
 import { ConditionsScreen } from "@/gui/ConditionsScreen";
@@ -14,6 +14,7 @@ import { ElementSetVisible } from "@/utils/BCUtils";
 import type { GUI } from "@/modules/GUI";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Authority from "@/modules/Authority";
+import type Contracts from "@/modules/Contracts";
 import type Punishments from "@/modules/Punishments";
 import type Rules from "@/modules/Rules";
 
@@ -240,12 +241,14 @@ class RulesListPage extends GUIPage {
             ));
             const welded = access.weldLocked(definition.id);
             const punished = !welded && local && rules.isRulePunishmentForced(definition.id);
+            const contracted = !welded && !punished && local && rules.isRuleContractBound(definition.id);
             // Deferred also covers rules NOT active in BC+ - they are listed
             // purely because BCX enforces them right now
-            const deferred = !welded && !punished && local && rules.ruleDeferredToBCX(definition.id);
-            const chip = welded ? "Welded" : punished ? "Punished" : deferred ? "BCX" : (state.enforce ? "Enforced" : "Paused");
+            const deferred = !welded && !punished && !contracted && local && rules.ruleDeferredToBCX(definition.id);
+            const chip = welded ? "Welded" : punished ? "Punished" : contracted ? "Contract" : deferred ? "BCX" : (state.enforce ? "Enforced" : "Paused");
             MainCanvas.textAlign = "left";
-            DrawText(chip, x + NAME_W + 20, y + 40, welded || punished ? "#A00000" : deferred ? "#DAA520" : (state.enforce ? "Green" : "Gray"));
+            DrawText(chip, x + NAME_W + 20, y + 40,
+                welded || punished ? "#A00000" : contracted ? "#6A3FA0" : deferred ? "#DAA520" : (state.enforce ? "Green" : "Gray"));
             const conditions = state.useGlobal === true ? access.globalConditions() : state.conditions;
             if (conditions && Object.keys(conditions).length > 0) {
                 DrawText("◈", x + NAME_W + CHIP_W - 24, y + 40, "Gray");
@@ -307,13 +310,18 @@ export class RuleConfigScreen extends GUIScreen {
         module: Rules,
         character: BCPlusCharacter | null,
         private readonly definition: RuleDefinition,
+        accessOverride?: RuleAccess,
     ) {
         super(module, character);
-        this.access = buildAccess(module, character);
+        this.access = accessOverride ?? buildAccess(module, character);
+        this.isDraft = accessOverride !== undefined;
     }
 
+    /** True when editing a contract draft: live-state UI (locks, BCX, punishments) is hidden. */
+    readonly isDraft: boolean;
+
     get Title(): string {
-        return `Rule - ${this.definition.name}`;
+        return this.isDraft ? `Contract rule - ${this.definition.name}` : `Rule - ${this.definition.name}`;
     }
 
     get Definition(): RuleDefinition {
@@ -377,117 +385,8 @@ class RuleConfigPage extends GUIPage {
         this.inputs.clear();
     }
 
-    render(): void {
-        const definition = this.screen.Definition;
-        const access = this.screen.access;
-        const state = access.state(definition.id);
-        const canEdit = access.canEdit();
-        const weldLocked = access.weldLocked(definition.id);
-
-        MainCanvas.textAlign = "left";
-        if (weldLocked) {
-            DrawText("Locked by a welded collar - forced on and unconditional until the weld ends.", 150, 200, "#A00000");
-        } else if ((this.Character === null || this.Character.isPlayer())
-            && (this.screen.Module as Rules).ruleDeferredToBCX(definition.id)) {
-            DrawText(state.active
-                ? "Paused - BCX's matching rule is in effect, so BC+ defers to it."
-                : "BCX's matching rule is in effect - activating this in BC+ is redundant while it is.", 150, 200, "#DAA520");
-        }
-        if ((this.Character === null || this.Character.isPlayer())
-            && (this.screen.Module as Rules).isRulePunishmentForced(definition.id)) {
-            DrawText("Enforced as a punishment right now - unconditional until the punishment ends.", 150, 240, "#A00000");
-        }
-
-        const toggles: { label: string; value: boolean; locked?: boolean; set: (v: boolean) => void }[] = [
-            {
-                label: "Rule is active",
-                value: state.active,
-                locked: weldLocked,
-                set: (v) => access.setActive(definition.id, v),
-            },
-            {
-                label: "Enforce (block the action)",
-                value: state.enforce,
-                locked: weldLocked,
-                set: (v) => access.setEnforce(definition.id, v),
-            },
-            {
-                label: "Log violations",
-                value: state.log,
-                set: (v) => access.setLog(definition.id, v),
-            },
-            {
-                label: "Announce breaches in chat",
-                value: state.announce,
-                set: (v) => access.setAnnounce(definition.id, v),
-            },
-        ];
-
-        toggles.forEach((toggle, i) => {
-            const y = 300 + i * 80;
-            const editable = canEdit && toggle.locked !== true;
-            DrawCheckbox(150, y, 64, 64, toggle.label, toggle.value, !editable);
-            this.addClickHandler(() => {
-                if (editable && MouseIn(150, y, 64, 64)) {
-                    toggle.set(!toggle.value);
-                }
-            });
-        });
-
-        // Conditions: a rule either follows the shared global set or has its own
-        // (a weld-locked rule ignores conditions entirely, so they lock too)
-        const usesGlobal = state.useGlobal === true;
-        DrawCheckbox(1400, 200, 64, 64, "Follow global conditions", usesGlobal, !canEdit || weldLocked);
-        this.addClickHandler(() => {
-            if (canEdit && !weldLocked && MouseIn(1400, 200, 64, 64)) {
-                access.setUseGlobal(definition.id, !usesGlobal);
-            }
-        });
-        MainCanvas.textAlign = "center";
-        this.addClickHandler(ButtonActionWidget(
-            { Left: 1400, Top: 300, Width: 400, Height: 64 },
-            {
-                Name: usesGlobal ? "Global conditions..." : "Conditions...",
-                Active: !weldLocked,
-                HoverText: usesGlobal
-                    ? "When rules following the global set are in effect - editing affects all of them"
-                    : "When this rule is in effect",
-            },
-            () => {
-                this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(new ConditionsScreen(
-                    this.screen.Module,
-                    this.Character,
-                    usesGlobal
-                        ? {
-                            label: "Global",
-                            removeLabel: "Deactivate",
-                            hideTimer: true,
-                            get: () => access.globalConditions(),
-                            set: (c) => access.setGlobalConditions(c),
-                            canEdit: () => access.canEdit(),
-                        }
-                        : {
-                            label: definition.name,
-                            removeLabel: "Deactivate & clear",
-                            get: () => access.state(definition.id).conditions ?? {},
-                            set: (c) => access.setConditions(definition.id, c),
-                            canEdit: () => access.canEdit(),
-                        },
-                ));
-            },
-        ));
-        MainCanvas.textAlign = "left";
-        DrawTextFit(
-            usesGlobal
-                ? `Global: ${describeConditions(access.globalConditions())}`
-                : describeConditions(state.conditions),
-            1400, 420, 460, "Gray",
-        );
-        if (state.active && state.addedBy) {
-            DrawTextFit(`Set by ${state.addedBy.name} (#${state.addedBy.member})`, 1400, 470, 460, "Gray");
-        }
-
-        // Punishments attached to this rule
+    /** The right-column punishments block (hidden while editing contract drafts). */
+    private renderPunishments(definition: RuleDefinition, access: RuleAccess, state: RuleStateData): void {
         MainCanvas.textAlign = "center";
         this.addClickHandler(ButtonActionWidget(
             { Left: 1400, Top: 530, Width: 400, Height: 64 },
@@ -520,7 +419,132 @@ class RuleConfigPage extends GUIPage {
                     + (punish.threshold > 1 ? ` after ${punish.threshold} violations in ${punish.windowMin} min` : ", every violation"),
             1400, 650, 460, "Gray",
         );
+    }
 
+    render(): void {
+        const definition = this.screen.Definition;
+        const access = this.screen.access;
+        const state = access.state(definition.id);
+        const canEdit = access.canEdit();
+        const draft = this.screen.isDraft;
+        const local = this.Character === null || this.Character.isPlayer();
+        // Live-state locks/notes never apply while editing a contract draft
+        const weldLocked = !draft && access.weldLocked(definition.id);
+        const contractBound = !draft && local && (this.screen.Module as Rules).isRuleContractBound(definition.id);
+
+        MainCanvas.textAlign = "left";
+        if (draft) {
+            DrawText("Contract draft - this configures what signing will apply, nothing changes yet.", 150, 200, "#6A3FA0");
+        } else if (weldLocked) {
+            DrawText("Locked by a welded collar - forced on and unconditional until the weld ends.", 150, 200, "#A00000");
+        } else if (contractBound) {
+            const bound = (this.screen.Module as Rules).ModuleManager
+                .getModule<Contracts>("contracts")?.boundBy(definition.id);
+            DrawTextFit(`Bound by the signed contract "${bound?.title ?? "?"}" - sealed until the contract ends.`, 150, 200, 1200, "#6A3FA0");
+        } else if (local && (this.screen.Module as Rules).ruleDeferredToBCX(definition.id)) {
+            DrawText(state.active
+                ? "Paused - BCX's matching rule is in effect, so BC+ defers to it."
+                : "BCX's matching rule is in effect - activating this in BC+ is redundant while it is.", 150, 200, "#DAA520");
+        }
+        if (!draft && local && (this.screen.Module as Rules).isRulePunishmentForced(definition.id)) {
+            DrawText("Enforced as a punishment right now - unconditional until the punishment ends.", 150, 240, "#A00000");
+        }
+
+        const toggles: { label: string; value: boolean; locked?: boolean; set: (v: boolean) => void }[] = [
+            {
+                label: draft ? "Included in the contract" : "Rule is active",
+                value: state.active,
+                locked: weldLocked || contractBound,
+                set: (v) => access.setActive(definition.id, v),
+            },
+            {
+                label: "Enforce (block the action)",
+                value: state.enforce,
+                locked: weldLocked || contractBound,
+                set: (v) => access.setEnforce(definition.id, v),
+            },
+            {
+                label: "Log violations",
+                value: state.log,
+                set: (v) => access.setLog(definition.id, v),
+            },
+            {
+                label: "Announce breaches in chat",
+                value: state.announce,
+                set: (v) => access.setAnnounce(definition.id, v),
+            },
+        ];
+
+        toggles.forEach((toggle, i) => {
+            const y = 300 + i * 80;
+            const editable = canEdit && toggle.locked !== true;
+            DrawCheckbox(150, y, 64, 64, toggle.label, toggle.value, !editable);
+            this.addClickHandler(() => {
+                if (editable && MouseIn(150, y, 64, 64)) {
+                    toggle.set(!toggle.value);
+                }
+            });
+        });
+
+        // Conditions: a rule either follows the shared global set or has its
+        // own (weld-locked and contract-bound rules seal them too)
+        const conditionsLocked = weldLocked || contractBound;
+        const usesGlobal = state.useGlobal === true;
+        DrawCheckbox(1400, 200, 64, 64, "Follow global conditions", usesGlobal, !canEdit || conditionsLocked);
+        this.addClickHandler(() => {
+            if (canEdit && !conditionsLocked && MouseIn(1400, 200, 64, 64)) {
+                access.setUseGlobal(definition.id, !usesGlobal);
+            }
+        });
+        MainCanvas.textAlign = "center";
+        this.addClickHandler(ButtonActionWidget(
+            { Left: 1400, Top: 300, Width: 400, Height: 64 },
+            {
+                Name: usesGlobal ? "Global conditions..." : "Conditions...",
+                Active: !conditionsLocked && !(draft && usesGlobal),
+                HoverText: usesGlobal
+                    ? "When rules following the global set are in effect - editing affects all of them"
+                    : "When this rule is in effect",
+            },
+            () => {
+                this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(new ConditionsScreen(
+                    this.screen.Module,
+                    this.Character,
+                    usesGlobal
+                        ? {
+                            label: "Global",
+                            removeLabel: "Deactivate",
+                            hideTimer: true,
+                            get: () => access.globalConditions(),
+                            set: (c) => access.setGlobalConditions(c),
+                            canEdit: () => access.canEdit(),
+                        }
+                        : {
+                            label: definition.name,
+                            removeLabel: "Deactivate & clear",
+                            get: () => access.state(definition.id).conditions ?? {},
+                            set: (c) => access.setConditions(definition.id, c),
+                            canEdit: () => access.canEdit(),
+                        },
+                ));
+            },
+        ));
+        MainCanvas.textAlign = "left";
+        DrawTextFit(
+            usesGlobal
+                ? (draft ? "Follows the signer's global conditions" : `Global: ${describeConditions(access.globalConditions())}`)
+                : describeConditions(state.conditions),
+            1400, 420, 460, "Gray",
+        );
+        if (!draft && state.active && state.addedBy) {
+            DrawTextFit(`Set by ${state.addedBy.name} (#${state.addedBy.member})`, 1400, 470, 460, "Gray");
+        }
+
+        // Punishments attached to this rule (not part of contract drafts:
+        // punishment definitions live on the future signer's client)
+        if (!draft) {
+            this.renderPunishments(definition, access, state);
+        }
         const settings = definition.settings ?? [];
         settings.forEach((setting, i) => {
             const y = 660 + i * 80;
