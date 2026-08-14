@@ -504,8 +504,9 @@ class ContractReviewPage extends GUIPage {
 
         MainCanvas.textAlign = "left";
         DrawTextFit(`Author: ${authorName}`, 150, 210, 700, "Black");
-        DrawTextFit(`Duration: ${describeContractDuration(terms.durationMin)}${subject.kind === "signed" ? ` (${remainingText(subject.contract)})` : ""}`, 900, 210, 500, "Black");
-        DrawTextFit(describeContractPolicy(terms.policy), 1430, 210, 420, "Black");
+        // A signed contract shows what is left; an offer shows the full term
+        DrawTextFit(`Duration: ${subject.kind === "signed" ? remainingText(subject.contract) : describeContractDuration(terms.durationMin)}`, 950, 210, 700, "Black");
+        DrawTextFit(describeContractPolicy(terms.policy), 950, 255, 700, "Gray");
         if (subject.kind === "signed") {
             DrawTextFit(`Signed ${new Date(subject.contract.signedAt).toLocaleString()}`, 150, 255, 700, "Gray");
         }
