@@ -78,6 +78,17 @@ export abstract class GUIScreen {
     private pageIndex = 0;
     private pageReady = false;
     private helpVisible = false;
+    /**
+     * The page instance whose create() has run and whose destroy() is owed.
+     * Tracked separately from the page cache: reopen() drops the cache, and
+     * the ActivePage getter would then return a freshly built instance -
+     * destroying that instead of this one leaked the old page's DOM elements
+     * and event subscriptions (each leaked sync listener re-triggered
+     * reopen(), doubling listeners until the page froze).
+     */
+    private createdPage: GUIPage | null = null;
+    /** Serializes page transitions so overlapping reopens/destroys cannot interleave. */
+    private transition: Promise<void> = Promise.resolve();
 
     constructor(
         private readonly module: ModuleInstance,
@@ -118,19 +129,32 @@ export abstract class GUIScreen {
         return this.helpVisible;
     }
 
+    /** Queues a page transition; they run strictly one after another. */
+    private queueTransition(operation: () => Promise<void>): void {
+        this.transition = this.transition.then(async () => {
+            try {
+                await operation();
+            } catch (e) {
+                err("Page transition failed:", e);
+            }
+        });
+    }
+
     /** @internal Called by the GUI module when the screen becomes active. */
     open(): void {
-        void this.setPage(0);
+        this.queueTransition(() => this.setPage(0));
     }
 
     /**
-     * @internal Called by the GUI module when navigating back to this screen.
-     * Pages are rebuilt so lists reflect changes made on deeper screens
+     * @internal Called when navigating back to this screen or when fresh data
+     * arrives. Pages are rebuilt so lists reflect changes made elsewhere
      * (e.g. a curse added or removed); the page position is kept when possible.
      */
     reopen(): void {
-        this.pages = null;
-        void this.setPage(this.pageIndex);
+        this.queueTransition(() => {
+            this.pages = null;
+            return this.setPage(this.pageIndex);
+        });
     }
 
     /** Called every frame while this screen is active. */
@@ -191,32 +215,39 @@ export abstract class GUIScreen {
         this.module.ModuleManager.getModule<GUI>("gui")?.backSubscreen();
     }
 
+    /** @internal Called by the GUI module when the screen is replaced. */
+    async destroy(): Promise<void> {
+        this.queueTransition(() => this.destroyCreatedPage());
+        await this.transition;
+    }
+
+    /** Destroys exactly the page whose create() ran, never a rebuilt instance. */
+    private async destroyCreatedPage(): Promise<void> {
+        this.pageReady = false;
+        const page = this.createdPage;
+        this.createdPage = null;
+        await page?.destroy();
+    }
+
     nextPage(): void {
-        void this.setPage((this.pageIndex + 1) % this.Pages.length);
+        this.queueTransition(() => this.setPage((this.pageIndex + 1) % this.Pages.length));
     }
 
     prevPage(): void {
-        void this.setPage((this.pageIndex - 1 + this.Pages.length) % this.Pages.length);
-    }
-
-    /** @internal Called by the GUI module when the screen is replaced. */
-    async destroy(): Promise<void> {
-        this.pageReady = false;
-        await this.ActivePage?.destroy();
+        this.queueTransition(() => this.setPage((this.pageIndex - 1 + this.Pages.length) % this.Pages.length));
     }
 
     private async setPage(index: number): Promise<void> {
         this.helpVisible = false;
-        if (this.pageReady) {
-            this.pageReady = false;
-            await this.ActivePage?.destroy();
-        }
+        await this.destroyCreatedPage();
         this.pageIndex = Math.max(0, Math.min(index, this.Pages.length - 1));
+        const page = this.ActivePage;
         try {
-            await this.ActivePage?.create();
+            await page?.create();
         } catch (e) {
             err("Failed to create page:", e);
         }
+        this.createdPage = page;
         this.pageReady = true;
     }
 
