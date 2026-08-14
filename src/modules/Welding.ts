@@ -151,15 +151,20 @@ export default class Welding extends ModuleInstance {
                 + "Accept with /bcp accept, or on their BC+ Welding page.");
         });
 
-        // Whisper interface so the owner and witness need no BC+ at all
-        this.addHook("ChatRoomMessage", 3, (args, next) => {
-            const result = next(args);
+        // Whisper interface so the owner and witness need no BC+ at all.
+        // Priority 11: ABOVE BCX's whisper-command hook (9), which swallows
+        // every "!" whisper it does not know and replies "Unknown command" -
+        // weld whispers must be consumed before BCX ever sees them.
+        this.addHook("ChatRoomMessage", 11, (args, next) => {
             try {
-                this.onWhisper(args[0] as ServerChatRoomMessage);
+                if (this.onWhisper(args[0] as ServerChatRoomMessage)) {
+                    // Consumed: no display, and BCX never sees it
+                    return;
+                }
             } catch (e) {
                 err("Weld whisper handling failed:", e);
             }
-            return result;
+            return next(args);
         });
 
         this.tickTimer = setInterval(() => this.tick(), 5000);
@@ -492,10 +497,11 @@ export default class Welding extends ModuleInstance {
     }
 
     /** Whispered "!bcp weld/accept/decline" - works without the sender running BC+. */
-    private onWhisper(data: ServerChatRoomMessage): void {
+    /** Returns true when the message was a weld whisper and has been handled. */
+    private onWhisper(data: ServerChatRoomMessage): boolean {
         if (data.Type !== "Whisper" || typeof data.Content !== "string" || typeof data.Sender !== "number"
             || data.Sender === Player.MemberNumber) {
-            return;
+            return false;
         }
         let text = data.Content.trim();
         if (text.startsWith("(")) {
@@ -504,11 +510,12 @@ export default class Welding extends ModuleInstance {
         const match = /^!bcp\b\s*(\S*)/i.exec(text);
         const commandId = (match?.[1] ?? "").toLocaleLowerCase();
         if (!WELD_WHISPER_COMMANDS.includes(commandId)) {
-            return;
+            return false;
         }
         const sender = FindCharacterInRoom(data.Sender, { MemberNumber: true, Nickname: false, Name: false });
         if (!sender) {
-            return;
+            // Still a weld whisper - consume it so BCX does not error on it
+            return true;
         }
         let result: true | string;
         let done: string;
@@ -523,6 +530,7 @@ export default class Welding extends ModuleInstance {
             done = "The welding is called off.";
         }
         SendAction(`BC+: ${result === true ? done : `That did not work: ${result}.`}`, sender);
+        return true;
     }
 
     private log(message: string): void {
