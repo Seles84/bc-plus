@@ -3,6 +3,7 @@ import { AnySetting, TextSetting } from "@/system/gui/Settings";
 import { SendBCPMessage } from "@/utils/Messaging";
 import { ElementSetVisible } from "@/utils/BCUtils";
 import type Authority from "@/modules/Authority";
+import type DataSync from "@/modules/DataSync";
 
 const ROW_HEIGHT = 80;
 const TOP = 220;
@@ -79,6 +80,10 @@ export class ModuleSettingsScreen extends GUIScreen {
 
 class SettingsPage extends GUIPage {
 
+    /** Settings whose input the user actually typed in (guards stale commits). */
+    private readonly dirty = new Set<string>();
+    private removeListener: (() => void) | null = null;
+
     constructor(protected override readonly screen: ModuleSettingsScreen, private readonly settings: AnySetting[]) {
         super(screen);
     }
@@ -98,6 +103,18 @@ class SettingsPage extends GUIPage {
 
     /** Same lifecycle as rule config text settings: create, position, commit on change + destroy. */
     override async create(): Promise<void> {
+        const screen = this.screen;
+        // Private modules' settings are not in the public mirror - ask the
+        // target for a fresh view; the response refreshes this screen
+        if (screen.Remote && !screen.Module.Config.PublicData) {
+            this.Core.ModuleManager.getModule<DataSync>("data-sync")
+                ?.requestModuleSettings(screen.Module.Slug, screen.Character!.MemberNumber);
+            this.removeListener = this.Core.Events.on("characterSyncReceived", ({ memberNumber }) => {
+                if (memberNumber === screen.Character!.MemberNumber) {
+                    screen.reopen();
+                }
+            });
+        }
         for (const setting of this.settings) {
             if (setting.type !== "text") {
                 continue;
@@ -106,18 +123,25 @@ class SettingsPage extends GUIPage {
                 this.inputId(setting.name), "text",
                 String(this.screen.getValue(setting) ?? ""), String(setting.maxChars ?? 256),
             );
+            // `input` (not `change`) marks user edits: a screen refresh must
+            // never commit an input the user never touched, or a stale value
+            // would overwrite the freshly arrived one
+            element.addEventListener("input", () => this.dirty.add(setting.name));
             element.addEventListener("change", () => this.commitText(setting, element.value));
         }
     }
 
     override async destroy(): Promise<void> {
+        this.removeListener?.();
+        this.removeListener = null;
         for (const setting of this.settings) {
             if (setting.type !== "text") {
                 continue;
             }
             const id = this.inputId(setting.name);
             const element = document.getElementById(id) as HTMLInputElement | null;
-            if (element && element.value !== String(this.screen.getValue(setting) ?? "")) {
+            if (element && this.dirty.has(setting.name)
+                && element.value !== String(this.screen.getValue(setting) ?? "")) {
                 this.commitText(setting, element.value);
             }
             ElementRemove(id);
@@ -140,7 +164,10 @@ class SettingsPage extends GUIPage {
         const canEdit = screen.canEdit();
 
         if (screen.Remote && !canEdit) {
-            DrawText("You do not have permission to change these settings; viewing only.", LEFT, 190, "Gray");
+            DrawText(screen.Module.Config.PublicData
+                ? "You do not have permission to change these settings; viewing only."
+                : "These settings are only shared with people permitted to change them - values shown are defaults.",
+            LEFT, 190, "Gray");
         }
 
         this.settings.forEach((setting, i) => {

@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+- The members condition on the Conditions screen is now a browse-and-pick button (the same member browser rule settings use) instead of a comma-number text field. Existing configured member lists carry over unchanged.
+- Settings of modules whose data is not public (currently the Log's recording toggles) now show their real values when viewed remotely instead of defaults. The values are shared only with people permitted to change them (the module's edit permission, validated by the owner's client); the view refreshes live after each change. Requires both sides on this version - older clients simply keep showing defaults.
+
 ### Added
 - Body and control rules batch (11 new rules, 55 total; new "Body" category): **Forbid changing poses** (no unaided pose changes at all), **Forbid specific poses** (a configurable pose-name list), **Forced to kneel** (standing is blocked and corrected - poses held by restraints are left alone), **Control orgasms** (arousal peaks are edged, ruined, or unresistable - mirrors BCX's approach in tandem), **Secret arousal meter** (the player cannot see their own meter), **Forbid changing difficulty**, **Forbid using activities** (the activities button vanishes; others can still use activities on the player), **Forbid changing emoticon**, **Restrict who may leash** (minimum BC+ role, others' leashes slip off), **Control nickname** (force a nickname or lock the current one), and **Lock profile description** (changes revert to the text the rule captured). All but Forced-to-kneel defer to their BCX equivalents in tandem mode.
 
