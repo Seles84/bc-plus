@@ -392,7 +392,7 @@ class RuleConfigPage extends GUIPage {
     private renderPunishments(definition: RuleDefinition, access: RuleAccess, state: RuleStateData): void {
         MainCanvas.textAlign = "center";
         this.addClickHandler(ButtonActionWidget(
-            { Left: 1400, Top: 530, Width: 400, Height: 64 },
+            { Left: 1400, Top: 620, Width: 400, Height: 64 },
             { Name: "Punishments...", HoverText: "What happens when this rule is broken" },
             () => {
                 this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(new RulePunishScreen(
@@ -420,7 +420,7 @@ class RuleConfigPage extends GUIPage {
                 ? "No punishments attached"
                 : `${punish.punishments.length} punishment${punish.punishments.length === 1 ? "" : "s"}`
                     + (punish.threshold > 1 ? ` after ${punish.threshold} violations in ${punish.windowMin} min` : ", every violation"),
-            1400, 650, 460, "Gray",
+            1400, 740, 460, "Gray",
         );
     }
 
@@ -491,17 +491,18 @@ class RuleConfigPage extends GUIPage {
 
         // Conditions: a rule either follows the shared global set or has its
         // own (weld-locked and contract-bound rules seal them too)
+        // The right column starts below the help button (ends at y 280)
         const conditionsLocked = weldLocked || contractBound;
         const usesGlobal = state.useGlobal === true;
-        DrawCheckbox(1400, 200, 64, 64, "Follow global conditions", usesGlobal, !canEdit || conditionsLocked);
+        DrawCheckbox(1400, 290, 64, 64, "Follow global conditions", usesGlobal, !canEdit || conditionsLocked);
         this.addClickHandler(() => {
-            if (canEdit && !conditionsLocked && MouseIn(1400, 200, 64, 64)) {
+            if (canEdit && !conditionsLocked && MouseIn(1400, 290, 64, 64)) {
                 access.setUseGlobal(definition.id, !usesGlobal);
             }
         });
         MainCanvas.textAlign = "center";
         this.addClickHandler(ButtonActionWidget(
-            { Left: 1400, Top: 300, Width: 400, Height: 64 },
+            { Left: 1400, Top: 390, Width: 400, Height: 64 },
             {
                 Name: usesGlobal ? "Global conditions..." : "Conditions...",
                 Active: !conditionsLocked && !(draft && usesGlobal),
@@ -537,10 +538,10 @@ class RuleConfigPage extends GUIPage {
             usesGlobal
                 ? (draft ? "Follows the signer's global conditions" : `Global: ${describeConditions(access.globalConditions())}`)
                 : describeConditions(state.conditions),
-            1400, 420, 460, "Gray",
+            1400, 510, 460, "Gray",
         );
         if (!draft && state.active && state.addedBy) {
-            DrawTextFit(`Set by ${state.addedBy.name} (#${state.addedBy.member})`, 1400, 470, 460, "Gray");
+            DrawTextFit(`Set by ${state.addedBy.name} (#${state.addedBy.member})`, 1400, 560, 460, "Gray");
         }
 
         // Punishments attached to this rule (not part of contract drafts:
