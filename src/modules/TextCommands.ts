@@ -10,6 +10,7 @@ import type Curses from "@/modules/Curses";
 import type Logging from "@/modules/Logging";
 import type DataSync from "@/modules/DataSync";
 import type Core from "@/modules/Core";
+import type Welding from "@/modules/Welding";
 
 const COMMAND_TAG = "bcp";
 
@@ -163,9 +164,58 @@ export default class TextCommands extends ModuleInstance {
             },
         },
         {
+            name: "weld",
+            description: "Show or initiate the welding of your collar",
+            handler: () => {
+                const welding = this.ModuleManager.getModule<Welding>("welding");
+                if (!welding) {
+                    return;
+                }
+                const info = welding.WeldInfo;
+                if (info) {
+                    this.reply(`Your collar is welded shut - owner ${escapeHtml(info.ownerName)} (#${info.owner}), `
+                        + `witnessed by ${escapeHtml(info.witnessName)}. Only your owner releasing you undoes it.`);
+                    return;
+                }
+                const ceremony = welding.Ceremony;
+                if (ceremony) {
+                    this.reply(`A welding is in progress (${ceremony.accepted.length}/3 accepted). `
+                        + "See the BC+ Welding page for details.");
+                    return;
+                }
+                const result = welding.startCeremony(Player.MemberNumber ?? -1);
+                this.reply(result === true
+                    ? "Welding initiated - all three of you must accept within 10 minutes. "
+                        + "Choose your witness on the BC+ Welding page."
+                    : `Cannot start a welding: ${escapeHtml(result)}.`);
+            },
+        },
+        {
+            name: "accept",
+            description: "Accept a pending welding request",
+            handler: () => {
+                const result = this.ModuleManager.getModule<Welding>("welding")?.acceptAsPlayer()
+                    ?? "welding is unavailable";
+                this.reply(result === true ? "Acceptance sent." : escapeHtml(result));
+            },
+        },
+        {
+            name: "decline",
+            description: "Decline or cancel a welding request",
+            handler: () => {
+                const result = this.ModuleManager.getModule<Welding>("welding")?.declineAsPlayer()
+                    ?? "welding is unavailable";
+                this.reply(result === true ? "Declined." : escapeHtml(result));
+            },
+        },
+        {
             name: "reset",
             description: "Factory reset: wipe ALL BC+ data (rules, curses, roles, permissions, log)",
             handler: () => {
+                if (this.ModuleManager.getModule<Welding>("welding")?.isWelded()) {
+                    this.reply("Factory reset is disabled while your collar is welded.");
+                    return;
+                }
                 this.reply("Factory reset requested - confirm in the popup. This wipes every BC+ "
                     + "setting, rule, curse, role and log entry, then reloads the club.");
                 setTimeout(() => {
@@ -185,6 +235,15 @@ export default class TextCommands extends ModuleInstance {
             name: "test",
             description: "DEV: test helpers (test version [x.y.z|clear])",
             handler: (args: string[]) => this.handleTest(args),
+        }, {
+            name: "unweld",
+            description: "DEV: break the weld on your collar directly",
+            handler: () => {
+                const done = this.ModuleManager.getModule<Welding>("welding")?.devUnweld() === true;
+                this.reply(done
+                    ? "The weld has been broken (dev override)."
+                    : "Your collar is not welded.");
+            },
         }] : []),
         {
             name: "debug",

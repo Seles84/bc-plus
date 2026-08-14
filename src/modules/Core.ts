@@ -13,6 +13,7 @@ import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import appLogo from "@/images/icon90.png";
 import { Role, RoleNames } from "@/system/Roles";
 import type Authority from "@/modules/Authority";
+import type Welding from "@/modules/Welding";
 
 export type BCPPreset = "Dominant" | "Switch" | "Submissive" | "Slave";
 export const PRESETS: readonly BCPPreset[] = ["Dominant", "Switch", "Submissive", "Slave"];
@@ -128,13 +129,28 @@ export default class Core extends ModuleInstance {
 
     /** Whether the player has this feature module switched on. */
     isModuleEnabled(slug: string): boolean {
+        // A welded collar keeps the Rules module on - switching it off would
+        // silently disarm the weld-locked rules
+        if (slug === "rules" && this.isWelded()) {
+            return true;
+        }
         return this.getSetting<boolean>(`module.${slug}`) !== false;
+    }
+
+    private isWelded(): boolean {
+        return this.ModuleManager.getModule<Welding>("welding")?.isWelded() ?? false;
     }
 
     /** Live-applies a toggle: unload stops the module's hooks/listeners immediately. */
     private applyModuleEnabled(slug: string, enabled: boolean): void {
         const module = this.ModuleManager.getModule(slug);
         if (!module?.CanDisable) {
+            return;
+        }
+        if (slug === "rules" && !enabled && this.isWelded()) {
+            // Snap the checkbox back too - the stored setting must match
+            this.setSetting("module.rules", true);
+            BCPNotifyPlayer("The Rules module stays on while your collar is welded.");
             return;
         }
         module.Config.Active = enabled;
@@ -160,6 +176,16 @@ export default class Core extends ModuleInstance {
     /** Two-step "Reset BC+" button: arm on first click, wipe on the second within 3s. */
     override get SettingsFooter(): SettingsFooterRenderer | null {
         return (addClickHandler) => {
+            // A welded collar disables the factory reset entirely - it would
+            // be a one-click escape from the weld
+            if (this.isWelded()) {
+                const prevWeldedAlign = MainCanvas.textAlign;
+                MainCanvas.textAlign = "center";
+                DrawButton(150, 880, 340, 70, "Reset BC+", "#ddd", "",
+                    "Disabled - your collar is welded", true);
+                MainCanvas.textAlign = prevWeldedAlign;
+                return;
+            }
             const armed = Date.now() < this.resetArmedUntil;
             const prevAlign = MainCanvas.textAlign;
             MainCanvas.textAlign = "center";
@@ -439,8 +465,30 @@ export default class Core extends ModuleInstance {
         DrawImageResize(appLogo, x, y, size, size);
         DrawImageResize(appLogo, x, y, size, size);
         MainCanvas.restore();
+        // Welded collar marker: a small lock on the badge corner, visible to
+        // everyone with BC+ (the welded flag is public-synced)
+        const welded = character.isPlayer()
+            ? this.isWelded()
+            : character.BCPData?.["welding"]?.["welded"] === true;
+        if (welded) {
+            const lock = 20 * Zoom;
+            const lockX = x + size - lock * 0.75;
+            const lockY = y + size - lock * 0.75;
+            MainCanvas.save();
+            // Light disc with a dark red ring: BC's lock glyph is dark, so it
+            // needs a bright backplate to read at this size
+            MainCanvas.beginPath();
+            MainCanvas.arc(lockX + lock / 2, lockY + lock / 2, lock * 0.62, 0, Math.PI * 2);
+            MainCanvas.fillStyle = "#f2eefa";
+            MainCanvas.fill();
+            MainCanvas.lineWidth = Math.max(1.5, 2 * Zoom);
+            MainCanvas.strokeStyle = "#7a1010";
+            MainCanvas.stroke();
+            DrawImageResize("Icons/Lock.png", lockX, lockY, lock, lock);
+            MainCanvas.restore();
+        }
         if (MouseIn(x, y, size, size)) {
-            const label = `BC+ ${character.BCPVersion}${hasAccess ? "" : " - no access"}`;
+            const label = `BC+ ${character.BCPVersion}${welded ? " - collar welded" : ""}${hasAccess ? "" : " - no access"}`;
             const prevAlign = MainCanvas.textAlign;
             MainCanvas.textAlign = "center";
             DrawRect(x + size / 2 - 150, y + size + 6, 300, 44, "rgba(0, 0, 0, 0.75)");

@@ -9,6 +9,7 @@ import { GUIScreen } from "@/system/gui/GUIScreen";
 import { err } from "@/system/Console";
 import { AnySetting } from "@/system/gui/Settings";
 import { BCPMessageContent, BCPNotifyPlayer, FindCharacterInRoom, SendAction, SendBCPMessage } from "@/utils/Messaging";
+import { WELD_WHISPER_COMMANDS } from "@/modules/Welding";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Authority from "@/modules/Authority";
 import type Logging from "@/modules/Logging";
@@ -116,14 +117,19 @@ export default class Commands extends ModuleInstance {
             }
         });
 
-        this.addHook("ChatRoomMessage", 3, (args, next) => {
-            const result = next(args);
+        // Priority 10: above BCX's whisper-command hook (9), which swallows
+        // every "!" whisper it does not know and replies "Unknown command";
+        // below Welding's (11), which owns the weld whispers
+        this.addHook("ChatRoomMessage", 10, (args, next) => {
             try {
-                this.onWhisper(args[0] as ServerChatRoomMessage);
+                if (this.onWhisper(args[0] as ServerChatRoomMessage)) {
+                    // Consumed: no display, and BCX never sees it
+                    return;
+                }
             } catch (e) {
                 err("Whisper command handling failed:", e);
             }
-            return result;
+            return next(args);
         });
 
         // Priority below the speech rules: transformed messages are counted
@@ -188,10 +194,10 @@ export default class Commands extends ModuleInstance {
      * go back as targeted action messages (never garbled, and not blocked by
      * the player's own whisper rules).
      */
-    private onWhisper(data: ServerChatRoomMessage): void {
+    private onWhisper(data: ServerChatRoomMessage): boolean {
         if (data.Type !== "Whisper" || typeof data.Content !== "string" || typeof data.Sender !== "number"
             || data.Sender === Player.MemberNumber || this.getSetting<boolean>("whisperCommands") !== true) {
-            return;
+            return false;
         }
         const senderNumber = data.Sender;
         // A gagged sender can wrap the command in OOC parentheses
@@ -201,15 +207,23 @@ export default class Commands extends ModuleInstance {
         }
         const match = /^!bcp\b\s*(\S*)\s*([\s\S]*)$/i.exec(text);
         if (!match) {
-            return;
+            return false;
         }
-        const sender = FindCharacterInRoom(senderNumber, { MemberNumber: true, Nickname: false, Name: false });
-        if (!sender) {
-            return;
-        }
-        const reply = (message: string): void => SendAction(`BC+: ${message}`, sender);
         const commandId = (match[1] ?? "").toLocaleLowerCase();
         const argument = (match[2] ?? "").trim();
+
+        // Welding whispers are the Welding module's - it answers them itself
+        // (and works even when this module or whisper commands are off)
+        if (WELD_WHISPER_COMMANDS.includes(commandId)) {
+            return false;
+        }
+
+        const sender = FindCharacterInRoom(senderNumber, { MemberNumber: true, Nickname: false, Name: false });
+        if (!sender) {
+            // Still a !bcp whisper - consume it so BCX does not error on it
+            return true;
+        }
+        const reply = (message: string): void => SendAction(`BC+: ${message}`, sender);
 
         if (commandId === "" || commandId === "help" || commandId === "commands") {
             const authority = this.ModuleManager.getModule<Authority>("authority");
@@ -217,15 +231,16 @@ export default class Commands extends ModuleInstance {
             reply(usable.length === 0
                 ? "You are not permitted to use any commands here."
                 : `Commands you may whisper: ${usable.map((d) => `!bcp ${d.id}`).join(", ")}. Add any text after the command.`);
-            return;
+            return true;
         }
         const definition = this.Definitions.find((d) => d.id.toLocaleLowerCase() === commandId);
         if (!definition) {
             reply(`Unknown command "!bcp ${commandId}" - whisper "!bcp help" for the list.`);
-            return;
+            return true;
         }
         const result = this.executeValidated(senderNumber, sender.Name, definition, argument);
         reply(result === true ? `Command "${definition.name}" executed.` : `Command failed: ${result}`);
+        return true;
     }
 
     /** Tracks "write lines" progress on the player's own sent chat messages. */
