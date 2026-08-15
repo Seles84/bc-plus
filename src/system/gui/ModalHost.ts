@@ -142,7 +142,11 @@ export class ModalHost {
         if (this.minimized || !this.ctx) {
             return;
         }
-        const darkTheme = Player?.ChatSettings?.ColorTheme === "Dark" || Player?.ChatSettings?.ColorTheme === "Dark2";
+        // Our screens draw black text (BC's white-canvas convention); theme
+        // mods repaint it light. A dark window background is only readable
+        // when such a mod is present - without one, stay classic white.
+        const darkTheme = this.themeModPresent()
+            && (Player?.ChatSettings?.ColorTheme === "Dark" || Player?.ChatSettings?.ColorTheme === "Dark2");
         const prevMainCanvas = MainCanvas;
         const prevMouseX = MouseX;
         const prevMouseY = MouseY;
@@ -192,6 +196,16 @@ export class ModalHost {
             MainCanvas = prevMainCanvas;
             MouseX = prevMouseX;
             MouseY = prevMouseY;
+        }
+    }
+
+    /** Whether a canvas-repainting theme mod (e.g. Themed) is loaded. */
+    private themeModPresent(): boolean {
+        try {
+            const sdk = (window as { bcModSdk?: { getModsInfo?: () => { name: string }[] } }).bcModSdk;
+            return (sdk?.getModsInfo?.() ?? []).some((mod) => /theme/i.test(mod.name));
+        } catch {
+            return false;
         }
     }
 
