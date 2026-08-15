@@ -7,7 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
-- Social and body rules batch (3 new rules, 58 total): **Forbid sending beeps** blocks all beeps - plain or with a message - while hidden mod-to-mod beeps (leashes, summons, BCX) keep working, with a list of members who may still be beeped; **Forbid friend-list changes** blocks adding and/or removing BC friends (each direction toggleable) across the friend list screen and in-room dialogs; **Forced AFK behavior** applies configured behaviors when the player goes idle - the Afk emoticon, closed eyes, kneeling (never fighting restraints), and an automatic OOC whisper reply with custom text (at most one reply per person every 5 minutes). Emoticon and eyes are restored the moment the player is back.
+- Social and body rules batch (3 new rules, 59 total): **Forbid sending beeps** blocks all beeps - plain or with a message - while hidden mod-to-mod beeps (leashes, summons, BCX) keep working, with a list of members who may still be beeped; **Forbid friend-list changes** blocks adding and/or removing BC friends (each direction toggleable) across the friend list screen and in-room dialogs; **Forced AFK behavior** applies configured behaviors when the player goes idle - the Afk emoticon, closed eyes, kneeling (never fighting restraints), and an automatic OOC whisper reply with custom text (at most one reply per person every 5 minutes). Emoticon and eyes are restored the moment the player is back.
 
 ### Fixed
 - Rules export codes (and the "everything" code) now include the global rule conditions; importing a code applies them. Old codes keep working.
