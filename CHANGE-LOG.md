@@ -4,7 +4,7 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.7.1] - 2026-08-15
 
 ### Fixed
 - The BC+ floating window showed black text on a dark background for players using BC's dark theme without a canvas-repainting theme mod (e.g. Themed). The dark window background is now only used when such a mod is present to recolor the text; otherwise the window stays classic white.
