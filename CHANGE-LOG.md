@@ -4,7 +4,7 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.7.0] - 2026-08-15
 
 ### Changed
 - Hovering a rule in the rules list now shows just its description (long ones trimmed) - the status, conditions and set-by details that made the hover panel overflow its box live elsewhere: a new "Waiting" chip in the list shows an enforced rule whose conditions do not hold right now (the ◈ mark still flags configured conditions), and conditions/origin details remain on the rule's config page.
