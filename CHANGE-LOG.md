@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+- Picking a rule in the "Add rule" catalog no longer activates it - it just opens the rule's configuration page, and nothing turns on until "Rule is active" is ticked there. Several people activated rules by accident while only browsing what a rule does; viewing is now also possible without edit permission (activating still requires it).
+
 ### Added
 - Leaving someone's rules with unsaved changes now asks first: a Save / Discard / Stay dialog appears when backing out of their rules list or closing the BC+ floating window mid-edit, so pending changes can no longer be forgotten unsent. (They were never lost before - just quietly kept - but the view made them look applied.)
 

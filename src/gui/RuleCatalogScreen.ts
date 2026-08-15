@@ -61,8 +61,8 @@ class RuleCatalogPage extends GUIPage {
             showHelp: true,
             helpText: "Every rule that is not active yet. Type in the search field to filter by "
                 + "name or description, or narrow the list to one category with the buttons. "
-                + "Picking a rule activates it immediately and opens its configuration page "
-                + "(where it can also be deactivated again).",
+                + "Picking a rule opens its configuration page for a look - nothing turns on "
+                + "until 'Rule is active' is ticked there.",
         };
     }
 
@@ -145,11 +145,14 @@ class RuleCatalogPage extends GUIPage {
             const column = Math.floor(i / ROWS_PER_COL);
             const x = COL_X[column]!;
             const y = LIST_TOP + (i % ROWS_PER_COL) * ROW_H;
+            // Picking only OPENS the rule - people browse the catalog to read
+            // rules, and auto-activating surprised them. Activation is the
+            // "Rule is active" checkbox on the config page (which is also why
+            // rows stay clickable without edit permission: viewing is free)
             this.addClickHandler(ButtonActionWidget(
                 { Left: x, Top: y, Width: NAME_W, Height: 62 },
-                { Name: definition.name, Active: canEdit },
+                { Name: definition.name },
                 () => {
-                    access.setActive(definition.id, true);
                     this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(
                         new RuleConfigScreen(this.screen.Module as Rules, this.Character, definition),
                     );
