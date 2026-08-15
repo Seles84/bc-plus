@@ -23,6 +23,9 @@ import type Contracts from "@/modules/Contracts";
 import type Punishments from "@/modules/Punishments";
 import type Welding from "@/modules/Welding";
 
+/** Status of a BC+ rule's BCX equivalent (see {@link Rules.bcxEquivalentStatus}). */
+export type BCXEquivalentStatus = "none" | "active" | "inEffect";
+
 export default class Rules extends ModuleInstance {
 
     private readonly registry = new Map<string, RuleDefinition>();
@@ -59,7 +62,7 @@ export default class Rules extends ModuleInstance {
     }
 
     override get Defaults(): Record<string, unknown> {
-        return { rules: {}, ruleOrder: [], ruleSort: "category", globalConditions: {} };
+        return { rules: {}, ruleOrder: [], ruleSort: "category", globalConditions: {}, bcxRules: {} };
     }
 
     /** The shared conditions set that rules with `useGlobal` follow. Never has a timer. */
@@ -371,18 +374,21 @@ export default class Rules extends ModuleInstance {
     }
 
     /**
-     * True when tandem mode hands this rule over to BCX: the rule maps to a
-     * BCX equivalent that is currently in effect, and deferring is enabled.
-     * BCX toggling its rule immediately un-pauses ours - the query is live.
+     * Live status of this rule's BCX equivalent in tandem mode:
+     * "inEffect" - BCX polices it right now (BC+ defers);
+     * "active" - switched on in BCX but its conditions do not currently hold
+     * (BC+ does NOT defer - BCX is not policing - but the rule is listed so
+     * the full BCX coverage stays visible);
+     * "none" - no equivalent, not added in BCX, or deferral disabled.
      */
-    ruleDeferredToBCX(id: string): boolean {
+    bcxEquivalentStatus(id: string): BCXEquivalentStatus {
         const definition = this.registry.get(id);
         if (!definition?.bcxEquivalent || !this.SDK.bcxInstalled()) {
-            return false;
+            return "none";
         }
         const core = this.ModuleManager.getModule<Core>("core");
         if (core?.getSetting<boolean>("tandemDefer") === false) {
-            return false;
+            return "none";
         }
         let state = this.bcxRuleStates.get(definition.bcxEquivalent);
         if (state === undefined) {
@@ -394,9 +400,45 @@ export default class Rules extends ModuleInstance {
             this.bcxRuleStates.set(definition.bcxEquivalent, state);
         }
         try {
-            return state?.inEffect === true;
+            if (state?.inEffect === true) {
+                return "inEffect";
+            }
+            // `condition` exists once the rule is added in BCX; its `active`
+            // flag is BCX's on/off toggle
+            const condition = state?.condition as { active?: boolean } | null | undefined;
+            return condition?.active === true ? "active" : "none";
         } catch {
-            return false;
+            return "none";
+        }
+    }
+
+    /**
+     * True when tandem mode hands this rule over to BCX: the equivalent is
+     * currently in effect. An equivalent that is active but conditionally off
+     * does not defer - BCX is not policing, so the BC+ rule keeps running.
+     * BCX toggling its rule immediately un-pauses ours - the query is live.
+     */
+    ruleDeferredToBCX(id: string): boolean {
+        return this.bcxEquivalentStatus(id) === "inEffect";
+    }
+
+    /**
+     * Mirrors the BCX-equivalent statuses into this module's public data, so
+     * remote viewers see which rules BCX covers on this client. Written only
+     * on change; the changed-category broadcast then refreshes room mirrors.
+     */
+    private publishBCXStatus(): void {
+        const statuses: Record<string, BCXEquivalentStatus> = {};
+        if (this.SDK.bcxInstalled()) {
+            for (const id of this.registry.keys()) {
+                const status = this.bcxEquivalentStatus(id);
+                if (status !== "none") {
+                    statuses[id] = status;
+                }
+            }
+        }
+        if (JSON.stringify(this.Data.bcxRules ?? {}) !== JSON.stringify(statuses)) {
+            this.Data.bcxRules = statuses;
         }
     }
 
@@ -474,6 +516,8 @@ export default class Rules extends ModuleInstance {
                     BCPNotifyPlayer(`The rule "${name}" has expired.`);
                 }
             }
+            // Same beat keeps the synced BCX coverage map fresh for remote viewers
+            this.publishBCXStatus();
         }, 5000);
 
         // Incoming remote edits: validate permission and value here - the

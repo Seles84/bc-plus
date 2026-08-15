@@ -67,13 +67,11 @@ export class RulesListScreen extends GUIScreen {
 
     /** Active rules in the owner's preferred presentation. */
     private buildItems(): ListItem[] {
-        // With tandem deferral on, rules BCX currently enforces are listed too
-        // (BCX chip): adding them in BC+ would be redundant. Local view only -
-        // a remote character's tandem state is unknowable.
-        const local = this.Character === null || this.Character.isPlayer();
-        const rules = this.Module as Rules;
+        // With tandem deferral on, rules covered by BCX are listed too (BCX
+        // chips) - in effect or merely active there. Remote characters sync
+        // their own BCX coverage map, so their view shows it just the same.
         const active = this.access.definitions().filter((d) =>
-            this.access.state(d.id).active || (local && rules.ruleDeferredToBCX(d.id)));
+            this.access.state(d.id).active || this.access.bcxStatus(d.id) !== "none");
         if (this.access.sortMode() === "custom") {
             const position = new Map(this.access.order().map((id, i) => [id, i]));
             return active
@@ -117,7 +115,9 @@ class RulesListPage extends GUIPage {
             showHelp: true,
             helpText: "Your active rules. Status chips: Enforced (in effect right now), Waiting "
                 + "(enforced, but its conditions do not hold at the moment), Paused (not enforced), "
-                + "BCX (deferred to BCX's matching rule), Contract/Punished/Welded (bound). The ◈ "
+                + "BCX (deferred to BCX's matching rule, which is in effect), BCX wait (the rule is "
+                + "active in BCX but its conditions do not hold - BC+ is not deferring), "
+                + "Contract/Punished/Welded (bound). The ◈ "
                 + "mark means conditions are configured. 'Add rule' opens the searchable catalog; "
                 + "'Enable all'/'Disable all' flip enforcement on every active rule. The Sort button "
                 + "switches between category grouping and your own order (use a row's arrows to move "
@@ -202,8 +202,8 @@ class RulesListPage extends GUIPage {
 
     render(): void {
         const access = this.screen.access;
-        // BCX deferral is a fact about THIS client's tandem state - it is
-        // unknowable for a remote character's rules, so never shown there
+        // Punishment/contract binding stays local-only (not synced); BCX
+        // coverage is shown for remote characters too via their synced map
         const local = this.Character === null || this.Character.isPlayer();
         const rules = this.screen.Module as Rules;
         const canEdit = access.canEdit();
@@ -243,19 +243,22 @@ class RulesListPage extends GUIPage {
             const welded = access.weldLocked(definition.id);
             const punished = !welded && local && rules.isRulePunishmentForced(definition.id);
             const contracted = !welded && !punished && local && rules.isRuleContractBound(definition.id);
-            // Deferred also covers rules NOT active in BC+ - they are listed
-            // purely because BCX enforces them right now
-            const deferred = !welded && !punished && !contracted && local && rules.ruleDeferredToBCX(definition.id);
+            // BCX coverage also lists rules NOT active in BC+: "BCX" while its
+            // rule is in effect (BC+ defers), "BCX wait" while the BCX rule is
+            // active but conditionally off (BC+ does not defer)
+            const bcxStatus = !welded && !punished && !contracted ? access.bcxStatus(definition.id) : "none";
+            const deferred = bcxStatus === "inEffect";
+            const bcxIdle = bcxStatus === "active" && !state.active;
             // "Waiting": enforced, but its conditions do not hold right now -
             // the live in-effect state, readable straight from the table
-            const waiting = !welded && !punished && !contracted && !deferred
+            const waiting = !welded && !punished && !contracted && !deferred && !bcxIdle
                 && local && state.active && state.enforce && !rules.ruleInEffect(definition.id);
             const chip = welded ? "Welded" : punished ? "Punished" : contracted ? "Contract" : deferred ? "BCX"
-                : waiting ? "Waiting" : (state.enforce ? "Enforced" : "Paused");
+                : bcxIdle ? "BCX wait" : waiting ? "Waiting" : (state.enforce ? "Enforced" : "Paused");
             MainCanvas.textAlign = "left";
             DrawText(chip, x + NAME_W + 20, y + 40,
                 welded || punished ? "#A00000" : contracted ? "#6A3FA0" : deferred ? "#DAA520"
-                    : waiting ? "#8A7A50" : (state.enforce ? "Green" : "Gray"));
+                    : bcxIdle || waiting ? "#8A7A50" : (state.enforce ? "Green" : "Gray"));
             const conditions = state.useGlobal === true ? access.globalConditions() : state.conditions;
             if (conditions && Object.keys(conditions).length > 0) {
                 DrawText("◈", x + NAME_W + CHIP_W - 24, y + 40, "Gray");
@@ -444,10 +447,13 @@ class RuleConfigPage extends GUIPage {
             const bound = (this.screen.Module as Rules).ModuleManager
                 .getModule<Contracts>("contracts")?.boundBy(definition.id);
             DrawTextFit(`Bound by the signed contract "${bound?.title ?? "?"}" - sealed until the contract ends.`, 150, 200, 1200, "#6A3FA0");
-        } else if (local && (this.screen.Module as Rules).ruleDeferredToBCX(definition.id)) {
+        } else if (!draft && access.bcxStatus(definition.id) === "inEffect") {
             DrawText(state.active
                 ? "Paused - BCX's matching rule is in effect, so BC+ defers to it."
                 : "BCX's matching rule is in effect - activating this in BC+ is redundant while it is.", 150, 200, "#DAA520");
+        } else if (!draft && access.bcxStatus(definition.id) === "active") {
+            DrawTextFit("BCX has this rule active, but its conditions do not hold right now - BC+ is not "
+                + `deferring${state.active ? "" : "; activating it here lets BC+ cover the gap"}.`, 150, 200, 1200, "#8A7A50");
         }
         if (!draft && local && (this.screen.Module as Rules).isRulePunishmentForced(definition.id)) {
             DrawText("Enforced as a punishment right now - unconditional until the punishment ends.", 150, 240, "#A00000");

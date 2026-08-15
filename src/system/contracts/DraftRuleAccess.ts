@@ -126,6 +126,11 @@ export class DraftRuleAccess implements RuleAccess {
         return false;
     }
 
+    /** Drafts describe future state - the signer's live BCX coverage is irrelevant here. */
+    bcxStatus(): "none" {
+        return "none";
+    }
+
     setPunish(_id: string, _config: RulePunishConfig): void {
         // Punishment attachments reference the signer's punishment
         // definitions, which a draft cannot know - not supported (v1)
