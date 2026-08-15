@@ -18,6 +18,13 @@ export interface CheckboxSetting extends SettingBase {
 export interface OptionSetting extends SettingBase {
     type: "option";
     options: string[];
+    /**
+     * Optional icon path per option (same length as `options`; null entries
+     * get a small text button). When present, rule config pages render the
+     * option as a row of icon buttons with the selection highlighted, instead
+     * of the back/next cycler.
+     */
+    icons?: (string | null)[];
     default: string;
     onSet?: (value: string, prevValue: string) => void;
 }

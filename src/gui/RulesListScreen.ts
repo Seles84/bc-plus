@@ -623,17 +623,36 @@ class RuleConfigPage extends GUIPage {
                     const value = state.settings[setting.name] as string;
                     DrawText(setting.label, labelX, y + 32, "Black");
                     MainCanvas.textAlign = "center";
-                    DrawBackNextButton(controlX, y, 350, 64, value, active ? "White" : "#ddd", "", () => "", () => "", !active);
+                    if (setting.icons) {
+                        // Icon-button row: one button per option, selection
+                        // ringed (a drawn ring survives theme mods repainting
+                        // button backgrounds; the label is the hover text)
+                        setting.options.forEach((option, j) => {
+                            const bx = controlX + j * 74;
+                            const icon = setting.icons![j];
+                            DrawButton(bx, y, 64, 64, icon ? "" : option, active ? "White" : "#ddd", icon ?? "", option, !active);
+                            if (option === value) {
+                                DrawEmptyRect(bx - 3, y - 3, 70, 70, "#b794e6", 5);
+                            }
+                            this.addClickHandler(() => {
+                                if (active && MouseIn(bx, y, 64, 64)) {
+                                    access.setSetting(definition.id, setting.name, option);
+                                }
+                            });
+                        });
+                    } else {
+                        DrawBackNextButton(controlX, y, 350, 64, value, active ? "White" : "#ddd", "", () => "", () => "", !active);
+                        this.addClickHandler(() => {
+                            if (!active || !MouseIn(controlX, y, 350, 64)) {
+                                return;
+                            }
+                            const index = setting.options.indexOf(value);
+                            const direction = MouseX < controlX + 175 ? -1 : 1;
+                            const next = setting.options[(index + direction + setting.options.length) % setting.options.length]!;
+                            access.setSetting(definition.id, setting.name, next);
+                        });
+                    }
                     MainCanvas.textAlign = "left";
-                    this.addClickHandler(() => {
-                        if (!active || !MouseIn(controlX, y, 350, 64)) {
-                            return;
-                        }
-                        const index = setting.options.indexOf(value);
-                        const direction = MouseX < controlX + 175 ? -1 : 1;
-                        const next = setting.options[(index + direction + setting.options.length) % setting.options.length]!;
-                        access.setSetting(definition.id, setting.name, next);
-                    });
                     break;
                 }
                 case "text": {
