@@ -4,7 +4,7 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.8.0] - 2026-08-15
 
 ### Added
 - New rule **Forced position** (Body category, 60 rules total): holds the player in a chosen position - pick an arms pose (hands/elbows/wrists behind back, yoked, overhead), a legs pose (standing, closed, spread, kneeling, kneeling spread), or both, or a full-body position (hogtied, all fours) that overrides the other two. The pickers use BC's own pose silhouettes as icon buttons with the selection ringed (poses BC has no icon for get a small text button). Changing away is blocked and deviations are corrected within seconds; poses held by restraints are never fought.
