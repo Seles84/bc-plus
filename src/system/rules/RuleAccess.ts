@@ -4,6 +4,7 @@ import { SendBCPMessage } from "@/utils/Messaging";
 import type { ConditionData } from "@/system/conditions/Conditions";
 import type { RulePunishConfig } from "@/system/punishments/PunishmentTypes";
 import type Rules from "@/modules/Rules";
+import type { BCXEquivalentStatus } from "@/modules/Rules";
 import type Authority from "@/modules/Authority";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 
@@ -33,6 +34,11 @@ export interface RuleAccess {
     weldLocked(id: string): boolean;
     /** Sets the rule's punishment attachment; an empty list clears it. */
     setPunish(id: string, config: RulePunishConfig): void;
+    /**
+     * Status of the rule's BCX equivalent on the OWNER's client: live query
+     * for the own view, the synced coverage map for remote characters.
+     */
+    bcxStatus(id: string): BCXEquivalentStatus;
 }
 
 /** Direct access to the player's own rules. */
@@ -102,6 +108,10 @@ export class LocalRuleAccess implements RuleAccess {
 
     setPunish(id: string, config: RulePunishConfig): void {
         this.rules.setRulePunish(id, config);
+    }
+
+    bcxStatus(id: string): BCXEquivalentStatus {
+        return this.rules.bcxEquivalentStatus(id);
     }
 }
 
@@ -204,6 +214,13 @@ export class RemoteRuleAccess implements RuleAccess {
         } else {
             this.ensureMirror(id).punish = config;
         }
+    }
+
+    /** The target's synced BCX coverage map (published by their client; older versions lack it). */
+    bcxStatus(id: string): BCXEquivalentStatus {
+        const raw = this.character.BCPData?.["rules"]?.["bcxRules"];
+        const value = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>)[id] : undefined;
+        return value === "inEffect" || value === "active" ? value : "none";
     }
 
     private mirror(): Record<string, RuleStateData> | undefined {
