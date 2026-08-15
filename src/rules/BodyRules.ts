@@ -163,31 +163,33 @@ const POSITION_CHECK_MS = 4000;
 interface PositionOption {
     label: string;
     pose: AssetPoseName | null;
+    /** BC's pose-menu silhouette; null poses (and Spread/Hogtied, which have none) get a text button */
+    icon: string | null;
 }
 
 const ARMS_POSITIONS: readonly PositionOption[] = [
-    { label: "Any", pose: null },
-    { label: "Free", pose: "BaseUpper" },
-    { label: "Hands behind back", pose: "BackBoxTie" },
-    { label: "Elbows behind back", pose: "BackElbowTouch" },
-    { label: "Wrists behind back", pose: "BackCuffs" },
-    { label: "Yoked", pose: "Yoked" },
-    { label: "Arms overhead", pose: "OverTheHead" },
+    { label: "Any", pose: null, icon: null },
+    { label: "Free", pose: "BaseUpper", icon: "Icons/Poses/BaseUpper.png" },
+    { label: "Hands behind back", pose: "BackBoxTie", icon: "Icons/Poses/BackBoxTie.png" },
+    { label: "Elbows behind back", pose: "BackElbowTouch", icon: "Icons/Poses/BackElbowTouch.png" },
+    { label: "Wrists behind back", pose: "BackCuffs", icon: "Icons/Poses/BackCuffs.png" },
+    { label: "Yoked", pose: "Yoked", icon: "Icons/Poses/Yoked.png" },
+    { label: "Arms overhead", pose: "OverTheHead", icon: "Icons/Poses/OverTheHead.png" },
 ];
 
 const LEGS_POSITIONS: readonly PositionOption[] = [
-    { label: "Any", pose: null },
-    { label: "Standing", pose: "BaseLower" },
-    { label: "Legs closed", pose: "LegsClosed" },
-    { label: "Legs spread", pose: "Spread" },
-    { label: "Kneeling", pose: "Kneel" },
-    { label: "Kneeling spread", pose: "KneelingSpread" },
+    { label: "Any", pose: null, icon: null },
+    { label: "Standing", pose: "BaseLower", icon: "Icons/Poses/BaseLower.png" },
+    { label: "Legs closed", pose: "LegsClosed", icon: "Icons/Poses/LegsClosed.png" },
+    { label: "Legs spread", pose: "Spread", icon: null },
+    { label: "Kneeling", pose: "Kneel", icon: "Icons/Poses/Kneel.png" },
+    { label: "Kneeling spread", pose: "KneelingSpread", icon: "Icons/Poses/KneelingSpread.png" },
 ];
 
 const FULL_POSITIONS: readonly PositionOption[] = [
-    { label: "Any", pose: null },
-    { label: "Hogtied", pose: "Hogtied" },
-    { label: "All fours", pose: "AllFours" },
+    { label: "Any", pose: null, icon: null },
+    { label: "Hogtied", pose: "Hogtied", icon: null },
+    { label: "All fours", pose: "AllFours", icon: "Icons/Poses/AllFours.png" },
 ];
 
 /** The pose category each forcible pose lives in (mirrors BC's PoseFemale3DCG). */
@@ -215,6 +217,7 @@ export const ForcedPosition: RuleDefinition = {
             name: "fullPose",
             label: "Full body (overrides arms/legs)",
             options: FULL_POSITIONS.map((o) => o.label),
+            icons: FULL_POSITIONS.map((o) => o.icon),
             default: "Any",
         },
         {
@@ -222,6 +225,7 @@ export const ForcedPosition: RuleDefinition = {
             name: "armsPose",
             label: "Arms",
             options: ARMS_POSITIONS.map((o) => o.label),
+            icons: ARMS_POSITIONS.map((o) => o.icon),
             default: "Any",
         },
         {
@@ -229,6 +233,7 @@ export const ForcedPosition: RuleDefinition = {
             name: "legsPose",
             label: "Legs",
             options: LEGS_POSITIONS.map((o) => o.label),
+            icons: LEGS_POSITIONS.map((o) => o.icon),
             default: "Any",
         },
     ],
