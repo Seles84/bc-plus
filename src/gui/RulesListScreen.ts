@@ -626,11 +626,17 @@ class RuleConfigPage extends GUIPage {
                     if (setting.icons) {
                         // Icon-button row: one button per option, selection
                         // ringed (a drawn ring survives theme mods repainting
-                        // button backgrounds; the label is the hover text)
+                        // button backgrounds; the label is the hover text).
+                        // DrawButton blits images at natural size (the pose
+                        // silhouettes are 90x90), so the icon is drawn
+                        // separately, scaled to fit the button
                         setting.options.forEach((option, j) => {
                             const bx = controlX + j * 74;
                             const icon = setting.icons![j];
-                            DrawButton(bx, y, 64, 64, icon ? "" : option, active ? "White" : "#ddd", icon ?? "", option, !active);
+                            DrawButton(bx, y, 64, 64, icon ? "" : option, active ? "White" : "#ddd", "", option, !active);
+                            if (icon) {
+                                DrawImageResize(icon, bx + 4, y + 4, 56, 56);
+                            }
                             if (option === value) {
                                 DrawEmptyRect(bx - 3, y - 3, 70, 70, "#b794e6", 5);
                             }
