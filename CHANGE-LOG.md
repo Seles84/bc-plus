@@ -4,6 +4,11 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- Closing the BC+ floating window with its X button while on a page with text fields (rule settings, punishment or contract editors) left those fields stranded on the screen. Closing now runs the page's cleanup, and the window sweeps up any leftover BC+ fields as a safety net.
+
 ## [0.7.0] - 2026-08-15
 
 ### Changed

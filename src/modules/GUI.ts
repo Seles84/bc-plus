@@ -123,6 +123,11 @@ export class GUI extends ModuleInstance {
     }
 
     closeSubscreen(): void {
+        // Destroy the active screen so its page cleanup runs - skipping it
+        // left DOM inputs (rule/punishment text fields) stranded on screen
+        if (this.currentSubscreen) {
+            void this.currentSubscreen.destroy();
+        }
         this.screenStack = [];
         this.currentSubscreen = null;
         this.setSheetDOMVisible(true);

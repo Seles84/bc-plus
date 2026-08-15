@@ -64,6 +64,15 @@ export class ModalHost {
             this.pill.style.display = "none";
         }
         this.minimized = false;
+        // Safety net: page destruction is async - once no BC+ screen is open
+        // at all, any BC+ input still in the document is an orphan
+        setTimeout(() => {
+            if (!this.Active && !this.gui.CurrentSubscreen) {
+                for (const element of document.querySelectorAll("input[id^='BCP_'], textarea[id^='BCP_']")) {
+                    element.remove();
+                }
+            }
+        }, 300);
     }
 
     destroy(): void {
