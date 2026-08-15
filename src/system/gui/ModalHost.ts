@@ -318,7 +318,11 @@ export class ModalHost {
 #${PANEL_ID} .BCP-modal-hbtn{width:26px;height:26px;border-radius:50%;background:#2a2048;border:1px solid #8469b6;
   color:#c8b2e8;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;line-height:1;}
 #${PANEL_ID} .BCP-modal-hbtn:hover{background:#3b2e52;color:#f2eefa;}
-#${PANEL_ID} .BCP-modal-canvas{display:block;cursor:default;flex-shrink:0;}
+/* BC's global stylesheet declares canvas{position:absolute;width:100%;margin:auto;inset:0}
+   (height:100% on wide viewports), which rips the canvas out of the panel's flow and
+   collapses the window - force it back into normal layout */
+#${PANEL_ID} .BCP-modal-canvas{display:block!important;position:static!important;inset:auto!important;
+  margin:0!important;cursor:default;flex-shrink:0;}
 #${PILL_ID}{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);height:36px;padding:0 18px;
   background:#1e1730;border:2px solid #8469b6;border-radius:18px;display:none;align-items:center;gap:8px;
   cursor:pointer;z-index:${Z_INDEX};color:#b794e6;font-weight:700;font-size:12px;letter-spacing:1.5px;
