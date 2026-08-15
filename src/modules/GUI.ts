@@ -3,11 +3,13 @@ import { ModuleConfig, PermissionDefinition } from "@/system/module/ModuleTypes"
 import { Role } from "@/system/Roles";
 import { BCPLUS_AUTHOR, BCPLUS_SHORT_NAME, BCPLUS_VERSION } from "@/system/Constants";
 import { GUIScreen } from "@/system/gui/GUIScreen";
+import { ModalHost } from "@/system/gui/ModalHost";
 import { MainMenu } from "@/gui/MainMenu";
 import { WelcomeScreen } from "@/gui/WelcomeScreen";
 import { BCPlusCharacter, getChatroomCharacter } from "@/utils/BCPlusCharacter";
 import { debug } from "@/system/Console";
 import type Authority from "@/modules/Authority";
+import type Core from "@/modules/Core";
 import appLogo from "@/images/icon90.png";
 
 /**
@@ -18,6 +20,7 @@ export class GUI extends ModuleInstance {
 
     static instance: GUI | null = null;
 
+    private modalHost: ModalHost | null = null;
     private currentSubscreen: GUIScreen | null = null;
     private bcPlusButton: [number, number, number, number] = [1600, 800, 90, 90];
     private readonly escapeHandler = (event: KeyboardEvent): void => {
@@ -50,6 +53,38 @@ export class GUI extends ModuleInstance {
 
     get CurrentSubscreen(): GUIScreen | null {
         return this.currentSubscreen;
+    }
+
+    /** Whether the floating-window host is currently showing the GUI. */
+    get ModalActive(): boolean {
+        return this.modalHost?.Active === true;
+    }
+
+    /** @internal The host, for the element-positioning hooks. */
+    get Modal(): ModalHost | null {
+        return this.modalHost;
+    }
+
+    /** Whether the player opted into modal mode. */
+    modalModeEnabled(): boolean {
+        return this.ModuleManager.getModule<Core>("core")?.getSetting<boolean>("modalMode") === true;
+    }
+
+    /** Opens a screen in the floating window (modal mode). */
+    openModal(screen: GUIScreen): void {
+        this.modalHost ??= new ModalHost(this);
+        this.setSubscreen(screen);
+        this.modalHost.open();
+    }
+
+    /** Opens the main menu in the floating window, for /bcp menu. */
+    openModalMenu(): boolean {
+        const character = getChatroomCharacter(Player.MemberNumber ?? -1);
+        if (!character) {
+            return false;
+        }
+        this.openModal(new MainMenu(this, character));
+        return true;
     }
 
     private screenStack: GUIScreen[] = [];
@@ -126,7 +161,8 @@ export class GUI extends ModuleInstance {
             if (window.bcx?.inBcxSubscreen()) {
                 return next(args);
             }
-            if (this.currentSubscreen) {
+            // A modal-hosted subscreen renders in its own window, never here
+            if (this.currentSubscreen && !this.ModalActive) {
                 this.currentSubscreen.render();
                 return;
             }
@@ -135,7 +171,7 @@ export class GUI extends ModuleInstance {
         });
 
         this.addHook("InformationSheetClick", 10, (args, next) => {
-            if (this.currentSubscreen) {
+            if (this.currentSubscreen && !this.ModalActive) {
                 this.currentSubscreen.click();
                 return;
             }
@@ -143,10 +179,16 @@ export class GUI extends ModuleInstance {
             if (character && this.canOpenMenuFor(character) && MouseIn(...this.bcPlusButton)) {
                 debug(`Opening BC+ main menu for ${character.toString()}`);
                 const core = this.ModuleManager.getModule("core") as { isFirstRun?: () => boolean } | undefined;
-                if (character.isPlayer() && core?.isFirstRun?.()) {
-                    this.setSubscreen(new WelcomeScreen(this, character));
+                const screen = character.isPlayer() && core?.isFirstRun?.()
+                    ? new WelcomeScreen(this, character)
+                    : new MainMenu(this, character);
+                if (this.modalModeEnabled()) {
+                    // Modal mode: leave the sheet so the club stays visible,
+                    // then open the same menu in the floating window
+                    InformationSheetExit();
+                    this.openModal(screen);
                 } else {
-                    this.setSubscreen(new MainMenu(this, character));
+                    this.setSubscreen(screen);
                 }
                 return;
             }
@@ -154,11 +196,27 @@ export class GUI extends ModuleInstance {
         });
 
         this.addHook("InformationSheetExit", 10, (args, next) => {
-            if (this.currentSubscreen) {
+            if (this.currentSubscreen && !this.ModalActive) {
                 this.currentSubscreen.exit();
                 return;
             }
             next(args);
+        });
+
+        // Modal mode: our DOM inputs (all BCP_-prefixed) must land on the
+        // floating window's canvas, not BC's - BC computes against MainCanvas
+        // offsets, which are wrong for a fixed-position overlay panel
+        this.addHook("ElementPosition", 20, (args, next) => {
+            const host = this.modalHost;
+            if (!host?.Active || !host.swapped) {
+                return next(args);
+            }
+            const [elementOrId, x, y, w, h] = args as unknown as [string | HTMLElement, number, number, number, number?];
+            const element = typeof elementOrId === "string" ? document.getElementById(elementOrId) : elementOrId;
+            if (!element || !element.id.startsWith("BCP_")) {
+                return next(args);
+            }
+            host.positionElement(element, x, y, w, h ?? 60);
         });
 
         document.addEventListener("keydown", this.escapeHandler, true);
@@ -166,6 +224,8 @@ export class GUI extends ModuleInstance {
 
     override Unload(): void {
         document.removeEventListener("keydown", this.escapeHandler, true);
+        this.modalHost?.destroy();
+        this.modalHost = null;
         this.setSubscreen(null);
         GUI.instance = null;
         super.Unload();
