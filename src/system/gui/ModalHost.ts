@@ -64,6 +64,15 @@ export class ModalHost {
             this.pill.style.display = "none";
         }
         this.minimized = false;
+        // Safety net: page destruction is async - once no BC+ screen is open
+        // at all, any BC+ input still in the document is an orphan
+        setTimeout(() => {
+            if (!this.Active && !this.gui.CurrentSubscreen) {
+                for (const element of document.querySelectorAll("input[id^='BCP_'], textarea[id^='BCP_']")) {
+                    element.remove();
+                }
+            }
+        }, 300);
     }
 
     destroy(): void {
@@ -133,7 +142,11 @@ export class ModalHost {
         if (this.minimized || !this.ctx) {
             return;
         }
-        const darkTheme = Player?.ChatSettings?.ColorTheme === "Dark" || Player?.ChatSettings?.ColorTheme === "Dark2";
+        // Our screens draw black text (BC's white-canvas convention); theme
+        // mods repaint it light. A dark window background is only readable
+        // when such a mod is present - without one, stay classic white.
+        const darkTheme = this.themeModPresent()
+            && (Player?.ChatSettings?.ColorTheme === "Dark" || Player?.ChatSettings?.ColorTheme === "Dark2");
         const prevMainCanvas = MainCanvas;
         const prevMouseX = MouseX;
         const prevMouseY = MouseY;
@@ -146,6 +159,11 @@ export class ModalHost {
             this.ctx.fillStyle = darkTheme ? "#1f1f24" : "#ffffff";
             this.ctx.fillRect(0, 0, 2000, 1000);
             subscreen.render();
+            // Button tooltips are QUEUED by DrawButton and flushed later by
+            // BC's main loop - onto the real canvas, outside this window.
+            // Flushing here draws them into the window and empties the queue
+            // before BC gets to it.
+            DrawProcessHoverElements();
         } catch (e) {
             err("Modal render failed:", e);
         } finally {
@@ -178,6 +196,16 @@ export class ModalHost {
             MainCanvas = prevMainCanvas;
             MouseX = prevMouseX;
             MouseY = prevMouseY;
+        }
+    }
+
+    /** Whether a canvas-repainting theme mod (e.g. Themed) is loaded. */
+    private themeModPresent(): boolean {
+        try {
+            const sdk = (window as { bcModSdk?: { getModsInfo?: () => { name: string }[] } }).bcModSdk;
+            return (sdk?.getModsInfo?.() ?? []).some((mod) => /theme/i.test(mod.name));
+        } catch {
+            return false;
         }
     }
 
