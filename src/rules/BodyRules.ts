@@ -157,6 +157,151 @@ export const ForceKneeling: RuleDefinition = {
     },
 };
 
+const POSITION_CHECK_MS = 4000;
+
+/** Selectable position per body area; "Any" leaves that area free. */
+interface PositionOption {
+    label: string;
+    pose: AssetPoseName | null;
+}
+
+const ARMS_POSITIONS: readonly PositionOption[] = [
+    { label: "Any", pose: null },
+    { label: "Free", pose: "BaseUpper" },
+    { label: "Hands behind back", pose: "BackBoxTie" },
+    { label: "Elbows behind back", pose: "BackElbowTouch" },
+    { label: "Wrists behind back", pose: "BackCuffs" },
+    { label: "Yoked", pose: "Yoked" },
+    { label: "Arms overhead", pose: "OverTheHead" },
+];
+
+const LEGS_POSITIONS: readonly PositionOption[] = [
+    { label: "Any", pose: null },
+    { label: "Standing", pose: "BaseLower" },
+    { label: "Legs closed", pose: "LegsClosed" },
+    { label: "Legs spread", pose: "Spread" },
+    { label: "Kneeling", pose: "Kneel" },
+    { label: "Kneeling spread", pose: "KneelingSpread" },
+];
+
+const FULL_POSITIONS: readonly PositionOption[] = [
+    { label: "Any", pose: null },
+    { label: "Hogtied", pose: "Hogtied" },
+    { label: "All fours", pose: "AllFours" },
+];
+
+/** The pose category each forcible pose lives in (mirrors BC's PoseFemale3DCG). */
+const POSE_CATEGORY: Partial<Record<string, AssetPoseCategory>> = {
+    BaseUpper: "BodyUpper", BackBoxTie: "BodyUpper", BackElbowTouch: "BodyUpper",
+    BackCuffs: "BodyUpper", Yoked: "BodyUpper", OverTheHead: "BodyUpper",
+    BaseLower: "BodyLower", LegsClosed: "BodyLower", Spread: "BodyLower",
+    Kneel: "BodyLower", KneelingSpread: "BodyLower",
+    Hogtied: "BodyFull", AllFours: "BodyFull",
+};
+
+/** Forced position: pins arms and/or legs (or the whole body) to chosen poses. */
+export const ForcedPosition: RuleDefinition = {
+    id: "body.forcedPosition",
+    name: "Forced position",
+    description: "The player is held in a chosen position: pick an arms pose, a legs pose, or "
+        + "both (e.g. hands behind back with legs spread), or a full-body position (hogtied or "
+        + "all fours) that overrides the other two. Changing away is blocked and any deviation "
+        + "is corrected. Poses held by restraints are left alone rather than fought.",
+    category: "Body",
+    announceViolation: "{Name} is put back into the required position.",
+    settings: [
+        {
+            type: "option",
+            name: "fullPose",
+            label: "Full body (overrides arms/legs)",
+            options: FULL_POSITIONS.map((o) => o.label),
+            default: "Any",
+        },
+        {
+            type: "option",
+            name: "armsPose",
+            label: "Arms",
+            options: ARMS_POSITIONS.map((o) => o.label),
+            default: "Any",
+        },
+        {
+            type: "option",
+            name: "legsPose",
+            label: "Legs",
+            options: LEGS_POSITIONS.map((o) => o.label),
+            default: "Any",
+        },
+    ],
+    load(ctx) {
+        // The poses currently being pinned (none when everything is "Any")
+        const targets = (): AssetPoseName[] => {
+            const pick = (options: readonly PositionOption[], setting: string): AssetPoseName | null =>
+                options.find((o) => o.label === ctx.setting<string>(setting))?.pose ?? null;
+            const full = pick(FULL_POSITIONS, "fullPose");
+            if (full) {
+                return [full];
+            }
+            return [pick(ARMS_POSITIONS, "armsPose"), pick(LEGS_POSITIONS, "legsPose")]
+                .filter((p): p is AssetPoseName => p !== null);
+        };
+
+        // A pose selection is blocked when it would move a pinned body area
+        // away from its target (a full-body pin controls every area)
+        const blocked = (poseName: string): boolean => {
+            const pinned = targets();
+            if (pinned.length === 0 || pinned.includes(poseName as AssetPoseName)) {
+                return false;
+            }
+            const category = POSE_CATEGORY[poseName];
+            if (!category) {
+                return false;
+            }
+            return pinned.some((t) => POSE_CATEGORY[t] === "BodyFull" || POSE_CATEGORY[t] === category);
+        };
+
+        addPoseClickStatus(ctx, "BCPlus_body.forcedPosition", (C, pose) =>
+            ctx.isEnforced() && C.IsPlayer() && blocked(pose.Name)
+                ? 'Blocked by BC+ rule: "Forced position"'
+                : null);
+        ctx.hook("PoseCanChangeUnaidedStatus", 0, (args, next) => {
+            const status = next(args) as PoseChangeStatus;
+            const [C, poseName] = args as unknown as [Character, string];
+            if (ctx.isEnforced() && C?.IsPlayer() && blocked(poseName)) {
+                return Math.min(status, PoseChangeStatus.NEVER_WITHOUT_AID) as PoseChangeStatus;
+            }
+            return status;
+        });
+
+        ctx.interval(() => {
+            if (!ctx.isEnforced() || typeof Player === "undefined" || !Player.MemberNumber
+                || !ServerIsConnected) {
+                return;
+            }
+            let corrected = false;
+            for (const pose of targets()) {
+                const category = POSE_CATEGORY[pose]!;
+                if (Player.PoseMapping?.[category] === pose) {
+                    continue;
+                }
+                // Only correct what the player could correct themselves - a
+                // pose held by restraints/items is not theirs to change (or ours)
+                if (!PoseCanChangeUnaided(Player, pose)) {
+                    continue;
+                }
+                PoseSetActive(Player, pose, true);
+                corrected = true;
+            }
+            if (corrected) {
+                if (ServerPlayerIsInChatRoom()) {
+                    ChatRoomCharacterUpdate(Player);
+                }
+                ctx.trigger();
+                ctx.notify("A rule forces you back into position.");
+            }
+        }, POSITION_CHECK_MS);
+    },
+};
+
 /** Orgasm control: edge, ruin, or no resisting - mirrors BCX's approach. */
 export const ControlOrgasms: RuleDefinition = {
     id: "body.controlOrgasms",
