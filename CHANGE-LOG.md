@@ -4,7 +4,7 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.8.1] - 2026-08-15
 
 ### Changed
 - Picking a rule in the "Add rule" catalog no longer activates it - it just opens the rule's configuration page, and nothing turns on until "Rule is active" is ticked there. Several people activated rules by accident while only browsing what a rule does; viewing is now also possible without edit permission (activating still requires it).
