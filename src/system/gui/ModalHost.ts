@@ -155,6 +155,11 @@ export class ModalHost {
             this.ctx.fillStyle = darkTheme ? "#1f1f24" : "#ffffff";
             this.ctx.fillRect(0, 0, 2000, 1000);
             subscreen.render();
+            // Button tooltips are QUEUED by DrawButton and flushed later by
+            // BC's main loop - onto the real canvas, outside this window.
+            // Flushing here draws them into the window and empties the queue
+            // before BC gets to it.
+            DrawProcessHoverElements();
         } catch (e) {
             err("Modal render failed:", e);
         } finally {

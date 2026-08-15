@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Fixed
+- Button hover tooltips in the BC+ floating window drew onto the club screen underneath instead of inside the window. They now appear in the window, next to the button, like everywhere else.
 - Closing the BC+ floating window with its X button while on a page with text fields (rule settings, punishment or contract editors) left those fields stranded on the screen. Closing now runs the page's cleanup, and the window sweeps up any leftover BC+ fields as a safety net.
 
 ## [0.7.0] - 2026-08-15
