@@ -523,10 +523,21 @@ export default class Rules extends ModuleInstance {
         // Incoming remote edits: validate permission and value here - the
         // requester's UI is never trusted.
         this.addSyncListener("RuleCommand", (sender, content) => this.onRuleCommand(sender, content));
+        this.addSyncListener("RuleCommandBatch", (sender, content) => this.onRuleCommandBatch(sender, content));
         this.addSyncListener("RuleCommandResult", (sender, content) => {
             if (content.ok === false) {
                 BCPNotifyPlayer(`${sender.Name} rejected the rule change${typeof content.reason === "string" ? `: ${content.reason}` : "."}`);
                 // Our optimistic mirror is wrong - ask for a fresh sync
+                this.ModuleManager.getModule<DataSync>("data-sync")?.settingSync(true, sender.MemberNumber);
+            }
+        });
+        this.addSyncListener("RuleCommandBatchResult", (sender, content) => {
+            const failures = Array.isArray(content.failures) ? content.failures : [];
+            if (content.ok === false && failures.length > 0) {
+                const first = failures[0] as { reason?: string } | undefined;
+                BCPNotifyPlayer(`${sender.Name} rejected ${failures.length} of your rule change${failures.length === 1 ? "" : "s"}`
+                    + `${typeof first?.reason === "string" ? ` (${first.reason})` : ""}.`);
+                // Some optimistic mirror edits are wrong - ask for a fresh sync
                 this.ModuleManager.getModule<DataSync>("data-sync")?.settingSync(true, sender.MemberNumber);
             }
         });
@@ -642,15 +653,13 @@ export default class Rules extends ModuleInstance {
         SendAction(template.replace(/\{Name\}/g, Player.Nickname || Player.Name));
     }
 
-    private onRuleCommand(sender: Character, content: BCPMessageContent): void {
-        const senderNumber = sender.MemberNumber;
-        if (typeof senderNumber !== "number") {
-            return;
-        }
-        const reject = (reason: string): void => {
-            SendBCPMessage({ message: "RuleCommandResult", ok: false, rule: content.rule, reason }, senderNumber);
-        };
-
+    /**
+     * Validates and applies one remote command - permission, preset and lock
+     * checks included - WITHOUT any notification, reply or sync (the single
+     * and batched entry points add their own).
+     */
+    private applyRemoteCommand(sender: Character, senderNumber: number, content: BCPMessageContent):
+        { ok: true; notify: string; log: string; label: string } | { ok: false; reason: string } {
         const { action, rule, name, value } = content;
         const authority = this.ModuleManager.getModule<Authority>("authority");
 
@@ -658,53 +667,44 @@ export default class Rules extends ModuleInstance {
         // grant is not enough - the scope below only matches full grants
         if (action === "setGlobalConditions") {
             if (!authority?.hasPermission(senderNumber, "rules.edit", "_global_")) {
-                reject("no permission for the global conditions");
-                return;
+                return { ok: false, reason: "no permission for the global conditions" };
             }
             if (this.Preset === "Dominant") {
-                reject("their Dominant preset does not accept rules");
-                return;
+                return { ok: false, reason: "their Dominant preset does not accept rules" };
             }
             if (!this.setGlobalConditions(value ?? {})) {
-                reject("invalid command");
-                return;
+                return { ok: false, reason: "invalid command" };
             }
-            BCPNotifyPlayer(`${sender.Name} (#${senderNumber}) changed your global rule conditions.`);
-            this.ModuleManager.getModule<Logging>("logging")
-                ?.log("rule", `${sender.Name} (#${senderNumber}) changed the global rule conditions`);
-            SendBCPMessage({ message: "RuleCommandResult", ok: true, rule }, senderNumber);
-            this.ModuleManager.getModule<DataSync>("data-sync")?.categorySync(this, senderNumber);
-            return;
+            return {
+                ok: true,
+                notify: "changed your global rule conditions",
+                log: "changed the global rule conditions",
+                label: "global conditions",
+            };
         }
 
         if (typeof rule !== "string" || !this.registry.has(rule)) {
-            reject("unknown rule");
-            return;
+            return { ok: false, reason: "unknown rule" };
         }
         if (!authority?.hasPermission(senderNumber, "rules.edit", rule)) {
-            reject("no permission for this rule");
-            return;
+            return { ok: false, reason: "no permission for this rule" };
         }
         if (this.Preset === "Dominant") {
-            reject("their Dominant preset does not accept rules");
-            return;
+            return { ok: false, reason: "their Dominant preset does not accept rules" };
         }
         // Log/announce stay adjustable; everything that could weaken the
         // rule is sealed while the collar is welded
         if (this.isRuleWeldLocked(rule) && action !== "setLog" && action !== "setAnnounce") {
-            reject("this rule is locked by a welded collar");
-            return;
+            return { ok: false, reason: "this rule is locked by a welded collar" };
         }
         if (this.isRulePunishmentForced(rule) && value === false
             && (action === "setActive" || action === "setEnforce")) {
-            reject("this rule is currently enforced as a punishment");
-            return;
+            return { ok: false, reason: "this rule is currently enforced as a punishment" };
         }
         // Contract-bound rules are sealed for everyone until the contract
         // ends - the author amends by releasing and re-offering
         if (this.isRuleContractBound(rule) && action !== "setLog" && action !== "setAnnounce") {
-            reject("this rule is bound by a signed contract");
-            return;
+            return { ok: false, reason: "this rule is bound by a signed contract" };
         }
 
         let applied = false;
@@ -741,15 +741,74 @@ export default class Rules extends ModuleInstance {
         }
 
         if (!applied) {
-            reject("invalid command");
+            return { ok: false, reason: "invalid command" };
+        }
+        const definition = this.registry.get(rule)!;
+        return {
+            ok: true,
+            notify: `${verb} your rule "${definition.name}"`,
+            log: `${verb} rule "${definition.name}"`,
+            label: definition.name,
+        };
+    }
+
+    private onRuleCommand(sender: Character, content: BCPMessageContent): void {
+        const senderNumber = sender.MemberNumber;
+        if (typeof senderNumber !== "number") {
             return;
         }
-
-        const definition = this.registry.get(rule)!;
-        BCPNotifyPlayer(`${sender.Name} (#${senderNumber}) ${verb} your rule "${definition.name}".`);
+        const result = this.applyRemoteCommand(sender, senderNumber, content);
+        if (!result.ok) {
+            SendBCPMessage({ message: "RuleCommandResult", ok: false, rule: content.rule, reason: result.reason }, senderNumber);
+            return;
+        }
+        BCPNotifyPlayer(`${sender.Name} (#${senderNumber}) ${result.notify}.`);
         this.ModuleManager.getModule<Logging>("logging")
-            ?.log("rule", `${sender.Name} (#${senderNumber}) ${verb} rule "${definition.name}"`);
-        SendBCPMessage({ message: "RuleCommandResult", ok: true, rule }, senderNumber);
+            ?.log("rule", `${sender.Name} (#${senderNumber}) ${result.log}`);
+        SendBCPMessage({ message: "RuleCommandResult", ok: true, rule: content.rule }, senderNumber);
         this.ModuleManager.getModule<DataSync>("data-sync")?.categorySync(this, senderNumber);
+    }
+
+    /**
+     * A saved batch of edits: every command is validated and applied exactly
+     * like a single RuleCommand, but the whole batch produces ONE
+     * notification, ONE log entry, ONE reply and ONE data sync - the
+     * per-click message flood was noticeably laggy for both sides.
+     */
+    private onRuleCommandBatch(sender: Character, content: BCPMessageContent): void {
+        const senderNumber = sender.MemberNumber;
+        if (typeof senderNumber !== "number" || !Array.isArray(content.commands)) {
+            return;
+        }
+        const commands = content.commands.slice(0, 100);
+        let applied = 0;
+        const touched: string[] = [];
+        const failures: { rule: unknown; reason: string }[] = [];
+        for (const raw of commands) {
+            if (typeof raw !== "object" || raw === null) {
+                continue;
+            }
+            const command = raw as BCPMessageContent;
+            const result = this.applyRemoteCommand(sender, senderNumber, command);
+            if (result.ok) {
+                applied++;
+                if (!touched.includes(result.label)) {
+                    touched.push(result.label);
+                }
+            } else {
+                failures.push({ rule: command.rule, reason: result.reason });
+            }
+        }
+        if (applied > 0) {
+            const shown = touched.slice(0, 4).join(", ");
+            const more = touched.length > 4 ? ` +${touched.length - 4} more` : "";
+            BCPNotifyPlayer(`${sender.Name} (#${senderNumber}) changed your rules: ${shown}${more}.`);
+            this.ModuleManager.getModule<Logging>("logging")
+                ?.log("rule", `${sender.Name} (#${senderNumber}) changed ${applied} rule setting${applied === 1 ? "" : "s"} (${shown}${more})`);
+        }
+        SendBCPMessage({ message: "RuleCommandBatchResult", ok: failures.length === 0, applied, failures }, senderNumber);
+        if (applied > 0) {
+            this.ModuleManager.getModule<DataSync>("data-sync")?.categorySync(this, senderNumber);
+        }
     }
 }
