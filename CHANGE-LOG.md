@@ -4,6 +4,11 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Leaving someone's rules with unsaved changes now asks first: a Save / Discard / Stay dialog appears when backing out of their rules list or closing the BC+ floating window mid-edit, so pending changes can no longer be forgotten unsent. (They were never lost before - just quietly kept - but the view made them look applied.)
+
 ## [0.8.0] - 2026-08-15
 
 ### Added

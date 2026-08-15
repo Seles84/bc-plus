@@ -215,6 +215,15 @@ export abstract class GUIScreen {
         this.module.ModuleManager.getModule<GUI>("gui")?.backSubscreen();
     }
 
+    /**
+     * Asked before an outside action closes this screen together with
+     * everything under it (e.g. the floating window's X button). Screens with
+     * unsaved work override this to confirm; resolve false to stay open.
+     */
+    confirmClose(): Promise<boolean> {
+        return Promise.resolve(true);
+    }
+
     /** @internal Called by the GUI module when the screen is replaced. */
     async destroy(): Promise<void> {
         this.queueTransition(() => this.destroyCreatedPage());

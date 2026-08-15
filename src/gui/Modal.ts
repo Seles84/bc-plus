@@ -114,6 +114,11 @@ export function modalPrompt(text: string, value = "", maxLength = 300): Promise<
         .then((r) => (r.button === "OK" ? r.value : null));
 }
 
+/** Multi-button choice; resolves to the clicked label (Escape picks the last). */
+export function modalChoice(text: string, buttons: string[]): Promise<string> {
+    return showModal({ text, buttons }).then((r) => r.button);
+}
+
 export interface ListEditorOptions {
     title: string;
     entries: string[];

@@ -241,8 +241,14 @@ export class ModalHost {
         closeButton.textContent = "✕";
         closeButton.title = "Close";
         closeButton.addEventListener("click", () => {
-            this.gui.closeSubscreen();
-            this.close();
+            // Screens with unsaved work (remote rule edits) get to confirm first
+            const subscreen = this.gui.CurrentSubscreen;
+            void (subscreen?.confirmClose() ?? Promise.resolve(true)).then((close) => {
+                if (close) {
+                    this.gui.closeSubscreen();
+                    this.close();
+                }
+            });
         });
         header.append(title, minButton, closeButton);
 

@@ -4,7 +4,7 @@ import { LocalRuleAccess, RemoteRuleAccess, RuleAccess } from "@/system/rules/Ru
 import { ButtonActionWidget, DrawInfoPanel } from "@/system/gui/Widgets";
 import { ConditionsScreen } from "@/gui/ConditionsScreen";
 import { MembersSelectScreen } from "@/gui/MembersSelectScreen";
-import { modalListEditor } from "@/gui/Modal";
+import { modalChoice, modalListEditor } from "@/gui/Modal";
 import { membersValue, stringListValue } from "@/system/gui/Settings";
 import { RuleCatalogScreen, CATEGORY_ORDER } from "@/gui/RuleCatalogScreen";
 import { describeConditions } from "@/system/conditions/Conditions";
@@ -38,6 +38,33 @@ function buildAccess(rules: Rules, character: BCPlusCharacter | null): RuleAcces
     return new LocalRuleAccess(rules);
 }
 
+/**
+ * Save/Discard/Stay dialog for unsent remote edits; resolves whether leaving
+ * may proceed. Instantly true when nothing is pending (always the case for
+ * own rules and contract drafts).
+ */
+function resolveUnsavedEdits(access: RuleAccess, character: BCPlusCharacter | null): Promise<boolean> {
+    const pending = access.pendingCount();
+    if (pending === 0) {
+        return Promise.resolve(true);
+    }
+    return modalChoice(
+        `${pending} unsaved rule change${pending === 1 ? "" : "s"} for ${character?.Nickname ?? "this character"}.`
+            + "\nSave them before leaving?",
+        ["Save", "Discard", "Stay"],
+    ).then((choice) => {
+        if (choice === "Save") {
+            access.save();
+            return true;
+        }
+        if (choice === "Discard") {
+            access.discard();
+            return true;
+        }
+        return false;
+    });
+}
+
 export class RulesListScreen extends GUIScreen {
 
     readonly access: RuleAccess;
@@ -51,6 +78,19 @@ export class RulesListScreen extends GUIScreen {
         return this.Character && !this.Character.isPlayer()
             ? `Rules - ${this.Character.Nickname}`
             : "Rules";
+    }
+
+    /** Leaving the rules area with unsent remote edits asks Save/Discard/Stay first. */
+    override exit(): void {
+        void resolveUnsavedEdits(this.access, this.Character).then((leave) => {
+            if (leave) {
+                super.exit();
+            }
+        });
+    }
+
+    override confirmClose(): Promise<boolean> {
+        return resolveUnsavedEdits(this.access, this.Character);
     }
 
     protected buildPages(): GUIPage[] {
@@ -354,6 +394,12 @@ export class RuleConfigScreen extends GUIScreen {
 
     get Title(): string {
         return this.isDraft ? `Contract rule - ${this.definition.name}` : `Rule - ${this.definition.name}`;
+    }
+
+    // Backing out only returns to the rules list (still inside the editing
+    // area, no warning) - but a full close (window X) confirms unsaved edits
+    override confirmClose(): Promise<boolean> {
+        return resolveUnsavedEdits(this.access, this.Character);
     }
 
     get Definition(): RuleDefinition {
