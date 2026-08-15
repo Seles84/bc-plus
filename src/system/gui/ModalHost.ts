@@ -40,6 +40,7 @@ export class ModalHost {
         this.panel!.style.display = "flex";
         this.pill!.style.display = "none";
         this.minimized = false;
+        this.applySize();
         document.body.classList.add("BCP-modal-open");
         if (this.frame === null) {
             const loop = (): void => {
@@ -92,6 +93,21 @@ export class ModalHost {
         element.style.height = `${height}px`;
         element.style.fontSize = `${Math.max(10, Math.round(height * 0.55))}px`;
         element.style.zIndex = String(Z_INDEX + 10);
+    }
+
+    /**
+     * Sizes the window explicitly: CSS aspect-ratio proved unreliable inside
+     * BC's page (other stylesheets interfere), so the canvas gets fixed pixel
+     * dimensions at a strict 2:1, fitted to the viewport.
+     */
+    private applySize(): void {
+        if (!this.canvas || !this.panel) {
+            return;
+        }
+        const width = Math.min(1300, Math.floor(window.innerWidth * 0.94), Math.floor((window.innerHeight - 90) * 2));
+        this.panel.style.width = `${width}px`;
+        this.canvas.style.width = `${width}px`;
+        this.canvas.style.height = `${Math.floor(width / 2)}px`;
     }
 
     private minimize(): void {
@@ -266,6 +282,12 @@ export class ModalHost {
             event.stopPropagation();
         }, true);
 
+        window.addEventListener("resize", () => {
+            if (this.Active && !this.minimized) {
+                this.applySize();
+            }
+        });
+
         const pill = document.createElement("div");
         pill.id = PILL_ID;
         pill.innerHTML = "<span class='BCP-modal-pill-dash'></span> BC+";
@@ -286,7 +308,7 @@ export class ModalHost {
         const style = document.createElement("style");
         style.id = STYLE_ID;
         style.textContent = `
-#${PANEL_ID}{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:min(1300px,94vw);
+#${PANEL_ID}{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
   background:#1e1730;border:2px solid #8469b6;border-radius:12px;box-shadow:0 12px 60px rgba(0,0,0,.7);
   z-index:${Z_INDEX};display:none;flex-direction:column;overflow:hidden;}
 #${PANEL_ID} .BCP-modal-header{display:flex;align-items:center;gap:8px;padding:6px 14px;cursor:move;
@@ -296,7 +318,7 @@ export class ModalHost {
 #${PANEL_ID} .BCP-modal-hbtn{width:26px;height:26px;border-radius:50%;background:#2a2048;border:1px solid #8469b6;
   color:#c8b2e8;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;line-height:1;}
 #${PANEL_ID} .BCP-modal-hbtn:hover{background:#3b2e52;color:#f2eefa;}
-#${PANEL_ID} .BCP-modal-canvas{display:block;width:100%;aspect-ratio:2/1;cursor:default;}
+#${PANEL_ID} .BCP-modal-canvas{display:block;cursor:default;flex-shrink:0;}
 #${PILL_ID}{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);height:36px;padding:0 18px;
   background:#1e1730;border:2px solid #8469b6;border-radius:18px;display:none;align-items:center;gap:8px;
   cursor:pointer;z-index:${Z_INDEX};color:#b794e6;font-weight:700;font-size:12px;letter-spacing:1.5px;
