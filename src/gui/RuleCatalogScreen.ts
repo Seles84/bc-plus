@@ -9,7 +9,7 @@ import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Rules from "@/modules/Rules";
 
 const SEARCH_INPUT = "BCP_ruleSearch";
-export const CATEGORY_ORDER: readonly RuleCategory[] = ["Speech", "Social", "Body", "Items", "Protection", "Sensory", "Rooms", "Other"];
+export const CATEGORY_ORDER: readonly RuleCategory[] = ["Speech", "Social", "Body", "Items", "Protection", "Sensory", "Rooms", "Settings", "Other"];
 
 const PER_PAGE = 14;
 const ROWS_PER_COL = PER_PAGE / 2;
@@ -115,20 +115,24 @@ class RuleCatalogPage extends GUIPage {
             this.pageIndex = 0;
         }
 
-        // Category filter row
+        // Category filter row - sized to the category count so it always ends
+        // clear of the corner buttons (a fixed 200px pitch ran "Other" off
+        // screen when the Settings category arrived)
         MainCanvas.textAlign = "center";
         const options: (RuleCategory | null)[] = [null, ...CATEGORY_ORDER];
+        const pitch = Math.floor(1780 / options.length);
+        const width = pitch - 10;
         options.forEach((category, i) => {
-            const x = 125 + i * 200;
+            const x = 125 + i * pitch;
             const selected = this.filterCategory === category;
             // The selected label is drawn manually in dark text: theme mods
             // repaint button labels white, unreadable on the light highlight
-            DrawButton(x, 160, 190, 52, selected ? "" : (category ?? "All"), selected ? "#d0c3ea" : "White");
+            DrawButton(x, 160, width, 52, selected ? "" : (category ?? "All"), selected ? "#d0c3ea" : "White");
             if (selected) {
-                DrawTextFit(category ?? "All", x + 95, 186, 180, "#2c2140");
+                DrawTextFit(category ?? "All", x + width / 2, 186, width - 10, "#2c2140");
             }
             this.addClickHandler(() => {
-                if (MouseIn(x, 160, 190, 52)) {
+                if (MouseIn(x, 160, width, 52)) {
                     this.filterCategory = category;
                     this.pageIndex = 0;
                 }
