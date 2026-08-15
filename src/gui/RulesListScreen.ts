@@ -185,6 +185,32 @@ class RulesListPage extends GUIPage {
             },
         ));
 
+        // Remote edits queue until saved (each immediate command made the
+        // target notify/log/sync per click, which lagged both sides)
+        const pending = access.pendingCount();
+        if (pending > 0) {
+            MainCanvas.textAlign = "left";
+            DrawText(`${pending} unsaved`, 530, 877, "#A05000");
+            MainCanvas.textAlign = "center";
+            this.addClickHandler(ButtonActionWidget(
+                { Left: 720, Top: 845, Width: 200, Height: 64 },
+                { Name: "Save", HoverText: "Send every pending change in one batch" },
+                () => {
+                    access.save();
+                    this.Screen.reopen();
+                },
+            ));
+            this.addClickHandler(ButtonActionWidget(
+                { Left: 940, Top: 845, Width: 200, Height: 64 },
+                { Name: "Discard", HoverText: "Drop the pending changes without sending them" },
+                () => {
+                    access.discard();
+                    this.Screen.reopen();
+                },
+            ));
+            MainCanvas.textAlign = "left";
+        }
+
         // Sorting is the list owner's preference; there is no remote command
         // for it, so the toggle only shows on the own view
         if (local) {
@@ -438,6 +464,23 @@ class RuleConfigPage extends GUIPage {
         const weldLocked = !draft && access.weldLocked(definition.id);
         const contractBound = !draft && local && (this.screen.Module as Rules).isRuleContractBound(definition.id);
 
+        // Unsent remote edits save from here too (Discard lives on the list)
+        const pending = access.pendingCount();
+        if (pending > 0) {
+            MainCanvas.textAlign = "center";
+            this.addClickHandler(ButtonActionWidget(
+                { Left: 1450, Top: 84, Width: 240, Height: 56 },
+                {
+                    Name: `Save (${pending})`,
+                    HoverText: "Send every pending change in one batch - discard from the rules list",
+                },
+                () => {
+                    access.save();
+                    this.Screen.reopen();
+                },
+            ));
+        }
+
         MainCanvas.textAlign = "left";
         if (draft) {
             DrawText("Contract draft - this configures what signing will apply, nothing changes yet.", 150, 200, "#6A3FA0");
@@ -557,14 +600,20 @@ class RuleConfigPage extends GUIPage {
         }
         const settings = definition.settings ?? [];
         settings.forEach((setting, i) => {
-            const y = 660 + i * 80;
+            // The left column fits four rows; further settings flow into the
+            // right column below the punishments block (rules with 5+ settings
+            // previously ran off the bottom of the canvas)
+            const right = i >= 4;
+            const y = right ? 790 + (i - 4) * 80 : 660 + i * 80;
+            const labelX = right ? 1250 : 150;
+            const controlX = right ? 1600 : 850;
             const active = canEdit && (setting.active?.() ?? true);
             switch (setting.type) {
                 case "checkbox": {
                     const checked = state.settings[setting.name] as boolean;
-                    DrawCheckbox(150, y, 64, 64, setting.label, checked, !active);
+                    DrawCheckbox(labelX, y, 64, 64, setting.label, checked, !active);
                     this.addClickHandler(() => {
-                        if (active && MouseIn(150, y, 64, 64)) {
+                        if (active && MouseIn(labelX, y, 64, 64)) {
                             access.setSetting(definition.id, setting.name, !checked);
                         }
                     });
@@ -572,23 +621,23 @@ class RuleConfigPage extends GUIPage {
                 }
                 case "option": {
                     const value = state.settings[setting.name] as string;
-                    DrawText(setting.label, 150, y + 32, "Black");
+                    DrawText(setting.label, labelX, y + 32, "Black");
                     MainCanvas.textAlign = "center";
-                    DrawBackNextButton(850, y, 350, 64, value, active ? "White" : "#ddd", "", () => "", () => "", !active);
+                    DrawBackNextButton(controlX, y, 350, 64, value, active ? "White" : "#ddd", "", () => "", () => "", !active);
                     MainCanvas.textAlign = "left";
                     this.addClickHandler(() => {
-                        if (!active || !MouseIn(850, y, 350, 64)) {
+                        if (!active || !MouseIn(controlX, y, 350, 64)) {
                             return;
                         }
                         const index = setting.options.indexOf(value);
-                        const direction = MouseX < 850 + 175 ? -1 : 1;
+                        const direction = MouseX < controlX + 175 ? -1 : 1;
                         const next = setting.options[(index + direction + setting.options.length) % setting.options.length]!;
                         access.setSetting(definition.id, setting.name, next);
                     });
                     break;
                 }
                 case "text": {
-                    DrawText(setting.label, 150, y + 32, "Black");
+                    DrawText(setting.label, labelX, y + 32, "Black");
                     const id = this.inputs.get(setting.name);
                     if (id) {
                         const element = document.getElementById(id) as HTMLInputElement | null;
@@ -596,19 +645,20 @@ class RuleConfigPage extends GUIPage {
                             element.disabled = !active;
                         }
                         // DOM inputs float above the canvas-drawn help box.
-                        // Aligned with the other setting controls (left edge
-                        // 850) and kept clear of the right column at 1400
+                        // Left rows align with the other setting controls (left
+                        // edge 850, clear of the right column at 1400); right
+                        // rows sit right of their label
                         ElementSetVisible(id, !this.screen.HelpVisible);
-                        ElementPosition(id, 1110, y + 27, 520, 60);
+                        ElementPosition(id, right ? 1770 : 1110, y + 27, right ? 340 : 520, 60);
                     }
                     break;
                 }
                 case "members": {
                     const selected = membersValue(state.settings[setting.name]);
-                    DrawText(setting.label, 150, y + 32, "Black");
+                    DrawText(setting.label, labelX, y + 32, "Black");
                     MainCanvas.textAlign = "center";
                     this.addClickHandler(ButtonActionWidget(
-                        { Left: 850, Top: y, Width: 350, Height: 64 },
+                        { Left: controlX, Top: y, Width: 350, Height: 64 },
                         { Name: `${selected.length} selected`, Active: active, HoverText: "Browse and pick members" },
                         () => {
                             this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(new MembersSelectScreen(
@@ -628,10 +678,10 @@ class RuleConfigPage extends GUIPage {
                 }
                 case "stringList": {
                     const entries = stringListValue(state.settings[setting.name], setting.legacySeparator);
-                    DrawText(setting.label, 150, y + 32, "Black");
+                    DrawText(setting.label, labelX, y + 32, "Black");
                     MainCanvas.textAlign = "center";
                     this.addClickHandler(ButtonActionWidget(
-                        { Left: 850, Top: y, Width: 350, Height: 64 },
+                        { Left: controlX, Top: y, Width: 350, Height: 64 },
                         { Name: `${entries.length} entr${entries.length === 1 ? "y" : "ies"}...`, HoverText: "Edit the list" },
                         () => {
                             void modalListEditor({

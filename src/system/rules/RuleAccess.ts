@@ -1,6 +1,7 @@
 import { RuleDefinition, RuleStateData, defaultRuleState } from "@/system/rules/RuleTypes";
 import { WELD_LOCKED_RULES } from "@/modules/Welding";
 import { SendBCPMessage } from "@/utils/Messaging";
+import { jsonClone } from "@/utils/BCUtils";
 import type { ConditionData } from "@/system/conditions/Conditions";
 import type { RulePunishConfig } from "@/system/punishments/PunishmentTypes";
 import type Rules from "@/modules/Rules";
@@ -39,6 +40,12 @@ export interface RuleAccess {
      * for the own view, the synced coverage map for remote characters.
      */
     bcxStatus(id: string): BCXEquivalentStatus;
+    /** Queued-but-unsent remote edits (always 0 for local and draft access). */
+    pendingCount(): number;
+    /** Sends every queued edit to the target. No-op for local and draft access. */
+    save(): void;
+    /** Drops every queued edit without sending. No-op for local and draft access. */
+    discard(): void;
 }
 
 /** Direct access to the player's own rules. */
@@ -113,13 +120,63 @@ export class LocalRuleAccess implements RuleAccess {
     bcxStatus(id: string): BCXEquivalentStatus {
         return this.rules.bcxEquivalentStatus(id);
     }
+
+    // Local edits apply directly - nothing ever queues
+    pendingCount(): number {
+        return 0;
+    }
+
+    save(): void {}
+
+    discard(): void {}
+}
+
+interface PendingRuleEdit {
+    action: string;
+    rule: string;
+    name?: string;
+    value: unknown;
+}
+
+/**
+ * Unsent remote rule edits, keyed by target member number. Module-scoped so
+ * every screen editing the same character (list, config, conditions editor)
+ * shares one batch; it survives navigation until saved or discarded.
+ */
+const pendingRuleEdits = new Map<number, PendingRuleEdit[]>();
+
+/** Applies one queued edit onto a rule state (shared by the read overlay and the optimistic save). */
+function applyEditToState(state: RuleStateData, edit: PendingRuleEdit): void {
+    switch (edit.action) {
+        case "setActive": state.active = edit.value === true; break;
+        case "setEnforce": state.enforce = edit.value === true; break;
+        case "setLog": state.log = edit.value === true; break;
+        case "setAnnounce": state.announce = edit.value === true; break;
+        case "setUseGlobal": state.useGlobal = edit.value === true; break;
+        case "setSetting":
+            if (typeof edit.name === "string") {
+                state.settings[edit.name] = edit.value;
+            }
+            break;
+        case "setConditions": state.conditions = edit.value as ConditionData; break;
+        case "setPunish": {
+            const config = edit.value as RulePunishConfig | undefined;
+            if (!config || config.punishments.length === 0) {
+                delete state.punish;
+            } else {
+                state.punish = config;
+            }
+            break;
+        }
+    }
 }
 
 /**
  * Access to another character's rules: reads the mirror synced via DataSync,
- * writes by sending RuleCommand messages that the target's client validates
- * and applies (or rejects). Mirror updates are optimistic; the target's
- * CategorySync reply is the authoritative correction.
+ * overlaid with the local batch of unsent edits. Writes only queue - the
+ * editor keeps working against the overlay lag-free - until save() sends the
+ * whole batch for the target's client to validate and apply (or reject).
+ * The target's CategorySync reply is the authoritative correction.
  */
 export class RemoteRuleAccess implements RuleAccess {
 
@@ -135,11 +192,20 @@ export class RemoteRuleAccess implements RuleAccess {
 
     state(id: string): RuleStateData {
         const stored = this.mirror()?.[id];
-        if (stored) {
-            return stored;
-        }
         const definition = this.rules.getDefinition(id);
-        return definition ? defaultRuleState(definition) : { active: false, enforce: false, log: false, announce: false, settings: {} };
+        const base = stored
+            ?? (definition ? defaultRuleState(definition) : { active: false, enforce: false, log: false, announce: false, settings: {} });
+        // Unsent edits overlay the mirror at read time, so the view shows
+        // them even after a fresh sync from the target replaces the mirror
+        const edits = this.pending.filter((e) => e.rule === id);
+        if (edits.length === 0) {
+            return base;
+        }
+        const overlaid = jsonClone(base);
+        for (const edit of edits) {
+            applyEditToState(overlaid, edit);
+        }
+        return overlaid;
     }
 
     order(): string[] {
@@ -157,50 +223,44 @@ export class RemoteRuleAccess implements RuleAccess {
     }
 
     setActive(id: string, value: boolean): void {
-        this.send("setActive", id, undefined, value);
-        this.ensureMirror(id).active = value;
+        this.queue("setActive", id, undefined, value);
     }
 
     setEnforce(id: string, value: boolean): void {
-        this.send("setEnforce", id, undefined, value);
-        this.ensureMirror(id).enforce = value;
+        this.queue("setEnforce", id, undefined, value);
     }
 
     setLog(id: string, value: boolean): void {
-        this.send("setLog", id, undefined, value);
-        this.ensureMirror(id).log = value;
+        this.queue("setLog", id, undefined, value);
     }
 
     setAnnounce(id: string, value: boolean): void {
-        this.send("setAnnounce", id, undefined, value);
-        this.ensureMirror(id).announce = value;
+        this.queue("setAnnounce", id, undefined, value);
     }
 
     setSetting(id: string, name: string, value: unknown): void {
-        this.send("setSetting", id, name, value);
-        this.ensureMirror(id).settings[name] = value;
+        this.queue("setSetting", id, name, value);
     }
 
     setConditions(id: string, conditions: ConditionData): void {
-        this.send("setConditions", id, undefined, conditions);
-        this.ensureMirror(id).conditions = conditions;
+        this.queue("setConditions", id, undefined, conditions);
     }
 
     globalConditions(): ConditionData {
+        const pendingGlobal = [...this.pending].reverse().find((e) => e.action === "setGlobalConditions");
+        if (pendingGlobal) {
+            return pendingGlobal.value as ConditionData;
+        }
         const raw = this.character.BCPData?.["rules"]?.["globalConditions"];
         return (typeof raw === "object" && raw !== null ? raw : {}) as ConditionData;
     }
 
     setGlobalConditions(conditions: ConditionData): void {
-        this.send("setGlobalConditions", "", undefined, conditions);
-        this.character.BCPData ??= {};
-        const moduleData = (this.character.BCPData["rules"] ??= { rules: {} });
-        moduleData["globalConditions"] = conditions;
+        this.queue("setGlobalConditions", "", undefined, conditions);
     }
 
     setUseGlobal(id: string, value: boolean): void {
-        this.send("setUseGlobal", id, undefined, value);
-        this.ensureMirror(id).useGlobal = value;
+        this.queue("setUseGlobal", id, undefined, value);
     }
 
     weldLocked(id: string): boolean {
@@ -208,12 +268,7 @@ export class RemoteRuleAccess implements RuleAccess {
     }
 
     setPunish(id: string, config: RulePunishConfig): void {
-        this.send("setPunish", id, undefined, config);
-        if (config.punishments.length === 0) {
-            delete this.ensureMirror(id).punish;
-        } else {
-            this.ensureMirror(id).punish = config;
-        }
+        this.queue("setPunish", id, undefined, config);
     }
 
     /** The target's synced BCX coverage map (published by their client; older versions lack it). */
@@ -221,6 +276,73 @@ export class RemoteRuleAccess implements RuleAccess {
         const raw = this.character.BCPData?.["rules"]?.["bcxRules"];
         const value = typeof raw === "object" && raw !== null ? (raw as Record<string, unknown>)[id] : undefined;
         return value === "inEffect" || value === "active" ? value : "none";
+    }
+
+    pendingCount(): number {
+        return this.pending.length;
+    }
+
+    /**
+     * Sends every queued edit. Targets on this version get one
+     * RuleCommandBatch (one validation pass, one notification, one reply,
+     * one data sync); older targets get the edits as individual commands.
+     * The mirror is updated optimistically so the view holds until the
+     * target's authoritative sync arrives.
+     */
+    save(): void {
+        const edits = this.pending;
+        if (edits.length === 0) {
+            return;
+        }
+        pendingRuleEdits.delete(this.character.MemberNumber);
+        for (const edit of edits) {
+            this.applyToMirror(edit);
+        }
+        if (this.supportsBatch()) {
+            SendBCPMessage({ message: "RuleCommandBatch", commands: edits }, this.character.MemberNumber);
+        } else {
+            for (const edit of edits) {
+                this.send(edit.action, edit.rule, edit.name, edit.value);
+            }
+        }
+    }
+
+    discard(): void {
+        pendingRuleEdits.delete(this.character.MemberNumber);
+    }
+
+    private get pending(): PendingRuleEdit[] {
+        return pendingRuleEdits.get(this.character.MemberNumber) ?? [];
+    }
+
+    /** Queues an edit, replacing an earlier queued edit of the same field. */
+    private queue(action: string, rule: string, name: string | undefined, value: unknown): void {
+        const edits = pendingRuleEdits.get(this.character.MemberNumber) ?? [];
+        const replaced = edits.findIndex((e) => e.action === action && e.rule === rule && e.name === name);
+        if (replaced >= 0) {
+            edits.splice(replaced, 1);
+        }
+        edits.push({ action, rule, name, value });
+        pendingRuleEdits.set(this.character.MemberNumber, edits);
+    }
+
+    /**
+     * Batched commands shipped in the same release as the synced BCX coverage
+     * map - its presence in the mirror is the capability probe (the key
+     * exists, possibly empty, on every client of that version).
+     */
+    private supportsBatch(): boolean {
+        return this.character.BCPData?.["rules"]?.["bcxRules"] !== undefined;
+    }
+
+    private applyToMirror(edit: PendingRuleEdit): void {
+        if (edit.action === "setGlobalConditions") {
+            this.character.BCPData ??= {};
+            const moduleData = (this.character.BCPData["rules"] ??= { rules: {} });
+            moduleData["globalConditions"] = edit.value;
+            return;
+        }
+        applyEditToState(this.ensureMirror(edit.rule), edit);
     }
 
     private mirror(): Record<string, RuleStateData> | undefined {

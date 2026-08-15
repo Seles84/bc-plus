@@ -131,6 +131,15 @@ export class DraftRuleAccess implements RuleAccess {
         return "none";
     }
 
+    // Draft edits write into the draft directly - nothing ever queues
+    pendingCount(): number {
+        return 0;
+    }
+
+    save(): void {}
+
+    discard(): void {}
+
     setPunish(_id: string, _config: RulePunishConfig): void {
         // Punishment attachments reference the signer's punishment
         // definitions, which a draft cannot know - not supported (v1)
