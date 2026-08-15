@@ -7,6 +7,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Time-of-day condition: rules, global conditions and curses can now be limited to a daily time window (e.g. quiet hours from 22:00 to 07:00 - windows may wrap past midnight). The window follows the affected player's local clock and re-activates automatically every day. Setting it remotely requires both sides on this version; older clients ignore the window.
+- Condition presets: the conditions editor gained a "Presets..." button - save the currently configured conditions under a name, then apply any saved preset from any conditions editor (rules, global conditions, curses, own or remote). Presets are your personal library (up to 20, stored privately, never shared); applying one replaces the configured conditions but keeps a running timer, and presets themselves never store timers.
 - Social and body rules batch (3 new rules, 58 total): **Forbid sending beeps** blocks all beeps - plain or with a message - while hidden mod-to-mod beeps (leashes, summons, BCX) keep working, with a list of members who may still be beeped; **Forbid friend-list changes** blocks adding and/or removing BC friends (each direction toggleable) across the friend list screen and in-room dialogs; **Forced AFK behavior** applies configured behaviors when the player goes idle - the Afk emoticon, closed eyes, kneeling (never fighting restraints), and an automatic OOC whisper reply with custom text (at most one reply per person every 5 minutes). Emoticon and eyes are restored the moment the player is back.
 
 ### Fixed

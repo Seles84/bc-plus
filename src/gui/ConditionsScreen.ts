@@ -1,6 +1,7 @@
 import { GUIPage, GUIScreen, PageOptions } from "@/system/gui/GUIScreen";
 import { ButtonActionWidget } from "@/system/gui/Widgets";
-import { ConditionData, formatDuration, parseMembers } from "@/system/conditions/Conditions";
+import { ConditionData, formatDuration, formatTimeOfDay, parseMembers } from "@/system/conditions/Conditions";
+import { ConditionPresetsScreen } from "@/gui/ConditionPresetsScreen";
 import { MembersSelectScreen } from "@/gui/MembersSelectScreen";
 import { Role, RoleNames } from "@/system/Roles";
 import { ElementSetVisible, jsonClone } from "@/utils/BCUtils";
@@ -56,7 +57,10 @@ class ConditionsPage extends GUIPage {
             showHelp: true,
             helpText: "Conditions restrict when this is in effect: all configured requirements must "
                 + "hold at the same time. The timer additionally ends it when it runs out. "
-                + "Requirements that need a room never hold outside chat rooms.",
+                + "Requirements that need a room never hold outside chat rooms. The time-of-day "
+                + "window follows this character's local clock and may wrap past midnight "
+                + "(22:00 to 07:00 covers the night). Presets store a conditions set under a "
+                + "name for reuse anywhere conditions are edited.",
         };
     }
 
@@ -267,14 +271,66 @@ class ConditionsPage extends GUIPage {
             }
         });
 
+        // --- Time of day (the wearer's local clock; wraps midnight) ---
+        const hasTime = typeof conditions.timeStart === "number" && typeof conditions.timeEnd === "number";
+        DrawText("Time of day:", LABEL_X, 812, "Black");
+        MainCanvas.textAlign = "center";
+        if (hasTime) {
+            DrawBackNextButton(CONTROL_X, 780, 350, 64, `From ${formatTimeOfDay(conditions.timeStart!)}`, canEdit ? "White" : "#ddd", "", () => "", () => "", !canEdit);
+            DrawBackNextButton(CONTROL_X + 380, 780, 350, 64, `To ${formatTimeOfDay(conditions.timeEnd!)}`, canEdit ? "White" : "#ddd", "", () => "", () => "", !canEdit);
+        }
+        DrawBackNextButton(MODE_X, 780, MODE_W, 64, hasTime ? "In window" : "Ignored", canEdit ? "White" : "#ddd", "", () => "", () => "", !canEdit);
+        MainCanvas.textAlign = "left";
+        const STEP = 30;
+        const shiftTime = (key: "timeStart" | "timeEnd", direction: -1 | 1): void => {
+            this.update((c) => {
+                const current = typeof c[key] === "number" ? c[key]! : 0;
+                c[key] = (current + direction * STEP + 1440) % 1440;
+            });
+        };
+        this.addClickHandler(() => {
+            if (!canEdit) {
+                return;
+            }
+            if (hasTime && MouseIn(CONTROL_X, 780, 350, 64)) {
+                shiftTime("timeStart", MouseX < CONTROL_X + 175 ? -1 : 1);
+            }
+            if (hasTime && MouseIn(CONTROL_X + 380, 780, 350, 64)) {
+                shiftTime("timeEnd", MouseX < CONTROL_X + 380 + 175 ? -1 : 1);
+            }
+            if (MouseIn(MODE_X, 780, MODE_W, 64)) {
+                this.update((c) => {
+                    if (typeof c.timeStart === "number") {
+                        delete c.timeStart;
+                        delete c.timeEnd;
+                    } else {
+                        // Default to classic quiet hours
+                        c.timeStart = 22 * 60;
+                        c.timeEnd = 7 * 60;
+                    }
+                });
+            }
+        });
+
+        MainCanvas.textAlign = "center";
         if (canEdit) {
-            MainCanvas.textAlign = "center";
             this.addClickHandler(ButtonActionWidget(
-                { Left: 150, Top: 830, Width: 300, Height: 70 },
+                { Left: 150, Top: 880, Width: 300, Height: 70 },
                 { Name: "Clear all", HoverText: "Remove every condition" },
                 () => this.target.set({}),
             ));
-            MainCanvas.textAlign = "left";
         }
+        this.addClickHandler(ButtonActionWidget(
+            { Left: 480, Top: 880, Width: 300, Height: 70 },
+            { Name: "Presets...", HoverText: "Save these conditions as a reusable preset, or apply one" },
+            () => {
+                this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(new ConditionPresetsScreen(
+                    this.screen.Module,
+                    this.Character,
+                    this.target,
+                ));
+            },
+        ));
+        MainCanvas.textAlign = "left";
     }
 }

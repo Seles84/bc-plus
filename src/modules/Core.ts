@@ -46,6 +46,7 @@ export default class Core extends ModuleInstance {
             firstRun: true,
             presetLocked: false,
             knownMembers: {},
+            conditionPresets: [],
         };
     }
 
