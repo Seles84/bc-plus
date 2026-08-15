@@ -181,9 +181,14 @@ export default class Rules extends ModuleInstance {
         return authority?.hasPermission(Player.MemberNumber ?? -1, "rules.edit") ?? false;
     }
 
-    /** Shareable code containing every rule's state and settings. */
+    /** Shareable code containing every rule's state, settings and the shared global conditions. */
     exportCode(): string {
-        return encodeExport("rules", jsonClone(this.Data.rules));
+        return encodeExport("rules", this.exportPayload());
+    }
+
+    /** The rules export payload; also embedded as-is in the "everything" code. */
+    exportPayload(): unknown {
+        return jsonClone({ rules: this.Data.rules, globalConditions: this.Data.globalConditions });
     }
 
     /** Applies a rules code; returns how many rules were imported. */
@@ -192,8 +197,18 @@ export default class Rules extends ModuleInstance {
         if (typeof payload !== "object" || payload === null) {
             return 0;
         }
+        // Current codes wrap the rules record together with globalConditions;
+        // older codes are the bare record ("rules" is never a rule id)
+        let rulesRecord = payload as Record<string, unknown>;
+        const wrapped = rulesRecord.rules;
+        if (typeof wrapped === "object" && wrapped !== null) {
+            if (rulesRecord.globalConditions !== undefined) {
+                this.setGlobalConditions(rulesRecord.globalConditions);
+            }
+            rulesRecord = wrapped as Record<string, unknown>;
+        }
         let applied = 0;
-        for (const [id, raw] of Object.entries(payload as Record<string, unknown>)) {
+        for (const [id, raw] of Object.entries(rulesRecord)) {
             if (!this.registry.has(id) || typeof raw !== "object" || raw === null) {
                 continue;
             }

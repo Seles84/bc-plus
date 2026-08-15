@@ -81,7 +81,7 @@ class ExportImportPage extends GUIPage {
             rules !== undefined && curses !== undefined && relationships !== undefined,
             (rules?.canEdit() ?? false) && (curses?.canEdit() ?? false) && (relationships?.canEdit() ?? false),
             () => copyExportCode(encodeExport("all", {
-                rules: jsonClone(rules!.Data.rules),
+                rules: rules!.exportPayload(),
                 curses: jsonClone(curses!.Data.slots),
                 relationships: jsonClone(relationships!.Data.entries),
             })),

@@ -69,6 +69,8 @@ import {
     LockProfileDescription,
     RestrictLeashing,
 } from "@/rules/ControlRules";
+import { ForbidBeeps, ForbidFriendListChanges } from "@/rules/SocialRules";
+import { ForcedAfkBehavior } from "@/rules/ForcedAfk";
 
 /** Every rule BC+ ships, in display order. */
 export const RULE_DEFINITIONS: readonly RuleDefinition[] = [
@@ -84,6 +86,8 @@ export const RULE_DEFINITIONS: readonly RuleDefinition[] = [
     ForbidShouting,
     ForbidEmotes,
     ForbidBeepMessages,
+    ForbidBeeps,
+    ForbidFriendListChanges,
     ForbidLeaving,
     ForbidCreatingRooms,
     RestrictRoomEntry,
@@ -120,6 +124,7 @@ export const RULE_DEFINITIONS: readonly RuleDefinition[] = [
     ForbidPoseChanges,
     ForbiddenPoses,
     ForceKneeling,
+    ForcedAfkBehavior,
     ControlOrgasms,
     SecretOrgasms,
     ForbidDifficultyChange,
