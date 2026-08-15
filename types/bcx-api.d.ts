@@ -92,12 +92,30 @@ interface BCXEventEmitter<T extends BCXEvent> {
     onAny(listener: (value: BCXAnyEvent<T>) => void): () => void;
 }
 
+interface BCX_CurseInfo {
+    /** Whether the curse is active or disabled */
+    readonly active: boolean;
+    /** The group this info is for */
+    readonly group: AssetGroupName;
+    /** BC asset the curse keeps, or `null` if the group is cursed to be empty */
+    readonly asset: Asset | null;
+    /** What color the item is cursed with */
+    readonly color?: ItemColor;
+    /** Whether properties are cursed (if set, `property` is enforced, otherwise only applied on item re-apply) */
+    readonly curseProperty: boolean;
+    /** The properties that are enforced */
+    readonly property?: ItemProperties;
+}
+
 interface BCX_ModAPI extends BCXEventEmitter<BCX_Events> {
     /** Name of the mod this API was requested for */
     readonly modName: string;
 
     /** Returns state handler for a rule or `null` for unknown rule */
     getRuleState(rule: BCX_Rule): BCX_RuleStateAPI | null;
+
+    /** Returns info about how a slot is cursed */
+    getCurseInfo(group: AssetGroupName): BCX_CurseInfo | null;
 }
 
 interface BCX_ConsoleInterface {

@@ -1,8 +1,10 @@
 import { GUIPage, GUIScreen, PageOptions } from "@/system/gui/GUIScreen";
 import { ButtonActionWidget } from "@/system/gui/Widgets";
+import { MigrationScreen } from "@/gui/MigrationScreen";
 import { copyExportCode, decodeExport, encodeExport, promptImportCode } from "@/utils/ExportImport";
 import { BCPNotifyPlayer } from "@/utils/Messaging";
 import { jsonClone } from "@/utils/BCUtils";
+import type { GUI } from "@/modules/GUI";
 import type Rules from "@/modules/Rules";
 import type Curses from "@/modules/Curses";
 import type Relationships from "@/modules/Relationships";
@@ -87,6 +89,24 @@ class ExportImportPage extends GUIPage {
             })),
             (code) => this.importAll(code),
             "item");
+
+        // Tandem mode: copy the whole BCX configuration into BC+
+        if (this.Screen.Module.SDK.bcxInstalled()) {
+            MainCanvas.textAlign = "left";
+            DrawText("Migrate from BCX", 150, 842, "Black");
+            DrawText("copy your BCX rules and curses into BC+", 150, 880, "Gray");
+            MainCanvas.textAlign = "center";
+            this.addClickHandler(ButtonActionWidget(
+                { Left: 600, Top: 810, Width: 220, Height: 64 },
+                { Name: "Open...", HoverText: "Review and apply everything configured in your BCX" },
+                () => {
+                    this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(
+                        new MigrationScreen(this.Screen.Module, this.Character),
+                    );
+                },
+            ));
+            MainCanvas.textAlign = "left";
+        }
     }
 
     private section(
