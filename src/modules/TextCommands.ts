@@ -11,6 +11,7 @@ import type Logging from "@/modules/Logging";
 import type DataSync from "@/modules/DataSync";
 import type Core from "@/modules/Core";
 import type Welding from "@/modules/Welding";
+import type { GUI as GUIModule } from "@/modules/GUI";
 
 const COMMAND_TAG = "bcp";
 
@@ -133,6 +134,20 @@ export default class TextCommands extends ModuleInstance {
                     `Newest ${entries.length} log entr${entries.length === 1 ? "y" : "ies"} (of max ${LOG_MAX_ENTRIES}):`,
                     ...entries.map((e) => `- ${formatLogTime(e.time)} [${e.category}] ${escapeHtml(e.message)}`),
                 ].join("<br>"));
+            },
+        },
+        {
+            name: "menu",
+            description: "Open the BC+ window (modal mode)",
+            handler: () => {
+                const gui = this.ModuleManager.getModule<GUIModule>("gui");
+                if (gui?.modalModeEnabled() !== true) {
+                    this.reply("Modal mode is off - enable \"Open BC+ in a floating window\" on the BC+ General page first.");
+                    return;
+                }
+                if (!gui.openModalMenu()) {
+                    this.reply("Could not open the BC+ window.");
+                }
             },
         },
         {

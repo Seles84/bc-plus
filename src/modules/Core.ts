@@ -89,6 +89,15 @@ export default class Core extends ModuleInstance {
             },
             {
                 type: "checkbox",
+                name: "modalMode",
+                label: "Open BC+ in a floating window (modal mode)",
+                hoverText: "Opens the BC+ menus in a draggable window on top of the club instead "
+                    + "of taking over the screen - you can keep reading and using chat while "
+                    + "configuring. /bcp menu opens it directly from a room.",
+                default: false,
+            },
+            {
+                type: "checkbox",
                 name: "roomIcons",
                 label: "Show the BC+ icon above BC+ users in the room",
                 hoverText: "Draws the BC+ logo next to BC's status icons above every character "
