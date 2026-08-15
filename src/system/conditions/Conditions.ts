@@ -25,6 +25,26 @@ export interface ConditionData {
     members?: string;
     /** ...one of whom must be present/absent */
     membersMode?: "present" | "absent";
+    /** Local-time window start, minutes of day 0-1439 (evaluated on the wearer's clock)... */
+    timeStart?: number;
+    /** ...and end; the window wraps midnight when end < start */
+    timeEnd?: number;
+}
+
+/** Whether minute-of-day `minute` falls inside [start, end), wrapping midnight. */
+export function timeWindowContains(start: number, end: number, minute: number): boolean {
+    if (start === end) {
+        // Degenerate window: treat as covering the whole day
+        return true;
+    }
+    return start < end ? (minute >= start && minute < end) : (minute >= start || minute < end);
+}
+
+/** "22:00" style display of a minutes-of-day value. */
+export function formatTimeOfDay(minutes: number): string {
+    const h = Math.floor(minutes / 60) % 24;
+    const m = minutes % 60;
+    return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
 }
 
 /** Member numbers from the comma-string form conditions use. */
@@ -47,6 +67,14 @@ export function conditionsMet(c: ConditionData | undefined, roles: Roles | undef
     }
     if (conditionsExpired(c)) {
         return false;
+    }
+
+    // The time window follows the wearer's local clock and needs no room
+    if (typeof c.timeStart === "number" && typeof c.timeEnd === "number") {
+        const now = new Date();
+        if (!timeWindowContains(c.timeStart, c.timeEnd, now.getHours() * 60 + now.getMinutes())) {
+            return false;
+        }
     }
 
     const needsRoom = c.roomType !== undefined || c.roomNamesMode !== undefined
@@ -127,6 +155,11 @@ export function sanitizeConditions(raw: unknown): ConditionData | null {
         result.membersMode = c.membersMode;
         result.members = c.members.slice(0, 300);
     }
+    if (Number.isInteger(c.timeStart) && Number.isInteger(c.timeEnd)
+        && c.timeStart! >= 0 && c.timeStart! < 1440 && c.timeEnd! >= 0 && c.timeEnd! < 1440) {
+        result.timeStart = c.timeStart;
+        result.timeEnd = c.timeEnd;
+    }
     return result;
 }
 
@@ -147,6 +180,9 @@ export function describeConditions(c: ConditionData | undefined): string {
     }
     if (c.membersMode !== undefined && (c.members ?? "").trim().length > 0) {
         parts.push(`While listed members ${c.membersMode}`);
+    }
+    if (typeof c.timeStart === "number" && typeof c.timeEnd === "number") {
+        parts.push(`${formatTimeOfDay(c.timeStart)}-${formatTimeOfDay(c.timeEnd)}`);
     }
     if (typeof c.timerEnd === "number") {
         const remaining = c.timerEnd - Date.now();
