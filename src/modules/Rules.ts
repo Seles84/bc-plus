@@ -631,6 +631,20 @@ export default class Rules extends ModuleInstance {
                 const roles = this.ModuleManager.getModule<Roles>("roles");
                 return roles?.highestRole(memberNumber) ?? Role.Public;
             },
+            getInternal: <T>(name: string): T | undefined => state().internal?.[name] as T | undefined,
+            setInternal: (name: string, value: unknown) => {
+                const s = state();
+                if (value === undefined) {
+                    if (s.internal) {
+                        delete s.internal[name];
+                        if (Object.keys(s.internal).length === 0) {
+                            delete s.internal;
+                        }
+                    }
+                } else {
+                    (s.internal ??= {})[name] = value;
+                }
+            },
         };
     }
 

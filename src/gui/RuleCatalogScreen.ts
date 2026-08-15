@@ -9,7 +9,7 @@ import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Rules from "@/modules/Rules";
 
 const SEARCH_INPUT = "BCP_ruleSearch";
-export const CATEGORY_ORDER: readonly RuleCategory[] = ["Speech", "Social", "Body", "Items", "Protection", "Sensory", "Rooms", "Other"];
+export const CATEGORY_ORDER: readonly RuleCategory[] = ["Speech", "Social", "Body", "Items", "Protection", "Sensory", "Rooms", "Settings", "Other"];
 
 const PER_PAGE = 14;
 const ROWS_PER_COL = PER_PAGE / 2;

@@ -72,6 +72,7 @@ import {
 } from "@/rules/ControlRules";
 import { ForbidBeeps, ForbidFriendListChanges } from "@/rules/SocialRules";
 import { ForcedAfkBehavior } from "@/rules/ForcedAfk";
+import { SETTING_RULES } from "@/rules/SettingRules";
 
 /** Every rule BC+ ships, in display order. */
 export const RULE_DEFINITIONS: readonly RuleDefinition[] = [
@@ -135,4 +136,5 @@ export const RULE_DEFINITIONS: readonly RuleDefinition[] = [
     RestrictLeashing,
     ControlNickname,
     LockProfileDescription,
+    ...SETTING_RULES,
 ];

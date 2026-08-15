@@ -2,7 +2,7 @@ import { GetDotedPathType, PatchHook } from "bondage-club-mod-sdk";
 import { AnySetting } from "@/system/gui/Settings";
 import { Role } from "@/system/Roles";
 
-export type RuleCategory = "Speech" | "Social" | "Body" | "Items" | "Protection" | "Sensory" | "Rooms" | "Other";
+export type RuleCategory = "Speech" | "Social" | "Body" | "Items" | "Protection" | "Sensory" | "Rooms" | "Settings" | "Other";
 
 /** Facilities available to a rule while it is active. */
 export interface RuleContext {
@@ -49,6 +49,16 @@ export interface RuleContext {
 
     /** The highest BC+ role the member holds toward the player. */
     highestRoleOf(memberNumber: number): Role;
+
+    /**
+     * Persisted per-rule internal value (survives relog) - NOT a setting:
+     * never rendered, never remotely editable. Used for snapshots like
+     * "the value this setting had before the rule pinned it".
+     */
+    getInternal<T>(name: string): T | undefined;
+
+    /** Stores an internal value; `undefined` deletes it. */
+    setInternal(name: string, value: unknown): void;
 }
 
 export interface RuleDefinition {
@@ -95,6 +105,8 @@ export interface RuleStateData {
     conditions?: ConditionData;
     /** Who activated the rule (cleared on deactivation) */
     addedBy?: Originator;
+    /** Rule-internal persisted values (snapshots etc.) - see RuleContext.getInternal */
+    internal?: Record<string, unknown>;
 }
 
 export function defaultRuleState(definition: RuleDefinition): RuleStateData {

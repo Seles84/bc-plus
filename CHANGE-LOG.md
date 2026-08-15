@@ -4,6 +4,11 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Forced BC settings (20 new rules, 80 total; new "Settings" category): each rule pins one base-game preference to a configured value - item permission, lockpicking on self, single-player room lock, safeword availability, arousal meter mode, arousal stuttering, advanced vibe modes, AFK bubble, full-appearance access, cosplay item protection, sensory deprivation level, hide-non-adjacent, blind room garbling, relog keeps restraints, leashed room dragging, return-to-room on relog, plug/vibe events, tint effects, blur effects, and upside-down view flip. Changes to a pinned setting snap back within seconds no matter where they were made, and each rule has a "restore the previous value when the rule ends" option (the snapshot survives relogs). Corrections are logged but never announced in chat. All 20 defer to their BCX equivalents in tandem mode.
+
 ## [0.8.1] - 2026-08-15
 
 ### Changed
