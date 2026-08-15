@@ -59,6 +59,7 @@ import {
     ForbidPoseChanges,
     ForbiddenPoses,
     ForceKneeling,
+    ForcedPosition,
     SecretOrgasms,
 } from "@/rules/BodyRules";
 import {
@@ -124,6 +125,7 @@ export const RULE_DEFINITIONS: readonly RuleDefinition[] = [
     ForbidPoseChanges,
     ForbiddenPoses,
     ForceKneeling,
+    ForcedPosition,
     ForcedAfkBehavior,
     ControlOrgasms,
     SecretOrgasms,
