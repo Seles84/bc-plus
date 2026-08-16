@@ -30,6 +30,12 @@ const SUSPEND_MS = 60_000;
 /** How long a cursed slot is asked to yield while an item punishment owns it. */
 const CURSE_YIELD_MS = 10_000;
 
+/** Message fragments gathered across one trigger's punishments, so the caller sends one combined notify/announcement. */
+interface AnnounceCollector {
+    player: string[];
+    room: string[];
+}
+
 /**
  * Automatic punishments: definitions of what can happen when a rule is
  * broken (an item forced on, or another rule forced active for a while),
@@ -255,20 +261,33 @@ export default class Punishments extends ModuleInstance {
             return;
         }
         this.violations.set(rule, []);
+        // A rule with several punishments attached announces once, listing
+        // them all - one chat line per punishment was spam
+        const collect: AnnounceCollector = { player: [], room: [] };
         for (const id of punish.punishments) {
             try {
-                this.applyPunishment(id, rule, punish.repeat);
+                this.applyPunishment(id, rule, punish.repeat, undefined, collect);
             } catch (e) {
                 err(`Failed to apply punishment ${id}:`, e);
             }
+        }
+        const ruleName = rules.getDefinition(rule)?.name ?? rule;
+        if (collect.player.length > 0) {
+            BCPNotifyPlayer(`You are being punished for breaking "${ruleName}": ${collect.player.join("; ")}.`);
+        }
+        if (collect.room.length > 0 && ServerPlayerIsInChatRoom()) {
+            const name = Player.Nickname || Player.Name;
+            SendAction(`${name} broke the rule "${ruleName}" and is being punished: ${collect.room.join(", ")}.`);
         }
     }
 
     /**
      * Starts (or per repeat policy extends) a punishment. `sourceRule` is the
-     * violated rule id, or "manual" when someone applies it directly.
+     * violated rule id, or "manual" when someone applies it directly. With
+     * `collect`, message fragments are gathered there instead of notifying and
+     * announcing per punishment (the caller sends one combined message).
      */
-    applyPunishment(id: string, sourceRule: string, repeat: "restart" | "stack" | "ignore" = "stack", byName?: string): boolean {
+    applyPunishment(id: string, sourceRule: string, repeat: "restart" | "stack" | "ignore" = "stack", byName?: string, collect?: AnnounceCollector): boolean {
         const definition = this.Definitions[id];
         if (!definition || this.Preset === "Dominant") {
             return false;
@@ -289,9 +308,15 @@ export default class Punishments extends ModuleInstance {
                 ? Date.now() + extension
                 : existing.until + extension;
             existing.sourceRule = sourceRule;
-            BCPNotifyPlayer(repeat === "restart"
-                ? `Your punishment "${definition.name}" restarted at ${describeDuration(definition.durationMin)}.`
-                : `Your punishment "${definition.name}" was extended by ${describeDuration(definition.durationMin)}.`);
+            if (collect) {
+                collect.player.push(repeat === "restart"
+                    ? `"${definition.name}" restarted at ${describeDuration(definition.durationMin)}`
+                    : `"${definition.name}" extended by ${describeDuration(definition.durationMin)}`);
+            } else {
+                BCPNotifyPlayer(repeat === "restart"
+                    ? `Your punishment "${definition.name}" restarted at ${describeDuration(definition.durationMin)}.`
+                    : `Your punishment "${definition.name}" was extended by ${describeDuration(definition.durationMin)}.`);
+            }
             this.log(`Punishment "${definition.name}" ${repeat === "restart" ? "restarted" : "extended"}`
                 + `${ruleName ? ` for breaking "${ruleName}"` : ""}`);
             return true;
@@ -332,17 +357,24 @@ export default class Punishments extends ModuleInstance {
         }
 
         const durationText = definition.durationMin > 0 ? ` for ${describeDuration(definition.durationMin)}` : " until lifted";
-        const cause = byName
-            ? `${byName} punished you`
-            : `You are being punished${ruleName ? ` for breaking "${ruleName}"` : ""}`;
-        BCPNotifyPlayer(`${cause}: ${definition.name}${durationText}.`);
         this.log(`Punishment applied: "${definition.name}"${durationText}`
             + `${ruleName ? ` (broke "${ruleName}")` : byName ? ` (by ${byName})` : ""}`);
-        if (definition.announce && ServerPlayerIsInChatRoom()) {
-            const name = Player.Nickname || Player.Name;
-            SendAction(ruleName
-                ? `${name} broke the rule "${ruleName}" and is being punished: ${definition.name}${durationText}.`
-                : `${name} is being punished: ${definition.name}${durationText}.`);
+        if (collect) {
+            collect.player.push(`${definition.name}${durationText}`);
+            if (definition.announce) {
+                collect.room.push(`${definition.name}${durationText}`);
+            }
+        } else {
+            const cause = byName
+                ? `${byName} punished you`
+                : `You are being punished${ruleName ? ` for breaking "${ruleName}"` : ""}`;
+            BCPNotifyPlayer(`${cause}: ${definition.name}${durationText}.`);
+            if (definition.announce && ServerPlayerIsInChatRoom()) {
+                const name = Player.Nickname || Player.Name;
+                SendAction(ruleName
+                    ? `${name} broke the rule "${ruleName}" and is being punished: ${definition.name}${durationText}.`
+                    : `${name} is being punished: ${definition.name}${durationText}.`);
+            }
         }
         return true;
     }
