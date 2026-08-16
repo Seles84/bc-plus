@@ -24,6 +24,9 @@ function preferenceSync(): void {
     });
 }
 
+/** Label<->value choices per setting rule id, for the BCX migration translator. */
+export const SETTING_RULE_CHOICES: Record<string, readonly { label: string; value: unknown }[]> = {};
+
 interface ForcedSettingSpec<T> {
     id: string;
     /** The BC setting's name as the player knows it (rule shows as "Force '<name>'") */
@@ -39,6 +42,7 @@ interface ForcedSettingSpec<T> {
 }
 
 function forcedSettingRule<T>(spec: ForcedSettingSpec<T>): RuleDefinition {
+    SETTING_RULE_CHOICES[spec.id] = spec.choices;
     return {
         id: spec.id,
         name: `Force '${spec.setting}'`,
