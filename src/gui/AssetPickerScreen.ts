@@ -122,10 +122,18 @@ class AssetPickerPage extends GUIPage {
         this.pageIndex = Math.min(this.pageIndex, pageCount - 1);
         const pageItems = matches.slice(this.pageIndex * PER_PAGE, (this.pageIndex + 1) * PER_PAGE);
 
+        // BC's preview boxes draw their labels centered-relative - in the
+        // framework's left-aligned mode they start mid-cell and spill over
+        // their neighbors, so the grid runs in centered mode
+        MainCanvas.textAlign = "center";
+        let hovered: Asset | null = null;
         pageItems.forEach((asset, i) => {
             const x = GRID_LEFT + (i % COLS) * PITCH_X;
             const y = GRID_TOP + Math.floor(i / COLS) * PITCH_Y;
             DrawAssetPreview(x, y, asset, { Width: CELL_W, Height: CELL_H, Border: true, Hover: true });
+            if (MouseIn(x, y, CELL_W, CELL_H)) {
+                hovered = asset;
+            }
             this.addClickHandler(() => {
                 if (MouseIn(x, y, CELL_W, CELL_H)) {
                     this.screen.target.pick(asset);
@@ -133,11 +141,18 @@ class AssetPickerPage extends GUIPage {
                 }
             });
         });
+        MainCanvas.textAlign = "left";
 
         if (matches.length === 0) {
             DrawText("No items match the search.", GRID_LEFT, GRID_TOP + 40, "Gray");
         }
         DrawText(`${matches.length} item${matches.length === 1 ? "" : "s"}`, GRID_LEFT, 925, "Gray");
+        if (hovered !== null) {
+            // Long names shrink tiny inside the cells - spell the hovered one out
+            MainCanvas.textAlign = "center";
+            DrawTextFit((hovered as Asset).Description, 900, 925, 700, "Gray");
+            MainCanvas.textAlign = "left";
+        }
 
         // Self-managed pager: the screen has a single framework page, so the
         // chrome never draws one
