@@ -216,7 +216,9 @@ class ConditionsPage extends GUIPage {
         MainCanvas.textAlign = "center";
         this.addClickHandler(ButtonActionWidget(
             { Left: CONTROL_X, Top: 580, Width: 350, Height: 64 },
-            { Name: `${selected.length} selected`, Active: canEdit, HoverText: "Browse and pick members" },
+            // Always clickable so the list stays viewable without edit
+            // permission; the picker itself renders read-only then
+            { Name: `${selected.length} selected`, HoverText: canEdit ? "Browse and pick members" : "View the members" },
             () => {
                 this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(new MembersSelectScreen(
                     this.screen.Module,
