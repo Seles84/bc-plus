@@ -117,8 +117,13 @@ class MembersSelectPage extends GUIPage {
             });
         });
 
-        // Manual entry for members not in any browse source
-        ElementSetVisible(ADD_INPUT, !this.Screen.HelpVisible);
+        // Manual entry for members not in any browse source (hidden entirely
+        // in read-only mode - a dead input row just invites confusion)
+        ElementSetVisible(ADD_INPUT, canEdit && !this.Screen.HelpVisible);
+        if (!canEdit) {
+            DrawText("View only - you lack permission to change this list.", 150, 880, "Gray");
+            return;
+        }
         DrawText("Member number:", 150, 880, "Black");
         ElementPosition(ADD_INPUT, 650, 875, 400, 60);
         const input = document.getElementById(ADD_INPUT) as HTMLInputElement | null;

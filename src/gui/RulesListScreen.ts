@@ -728,9 +728,11 @@ class RuleConfigPage extends GUIPage {
                     const selected = membersValue(state.settings[setting.name]);
                     DrawText(setting.label, labelX, y + 32, "Black");
                     MainCanvas.textAlign = "center";
+                    // Always clickable so the list stays viewable without edit
+                    // permission; the picker itself renders read-only then
                     this.addClickHandler(ButtonActionWidget(
                         { Left: controlX, Top: y, Width: 350, Height: 64 },
-                        { Name: `${selected.length} selected`, Active: active, HoverText: "Browse and pick members" },
+                        { Name: `${selected.length} selected`, HoverText: active ? "Browse and pick members" : "View the members" },
                         () => {
                             this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(new MembersSelectScreen(
                                 this.screen.Module,
