@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+- A rule with several punishments attached now announces them in one chat message ("... is being punished: Restrained speech for 5 min, Forbid wardrobe use on self for 1 h, Forced position for 10 min.") instead of one line per punishment, and the player gets one combined notification too. Punishments set not to announce are simply left out of the room message; a single punishment reads exactly as before.
+
 ### Fixed
 - Member lists are viewable again without edit permission: the "N selected" buttons on rule settings (e.g. who may summon you) and on the members condition now always open the member list, read-only when you cannot edit - previously the button was simply disabled, hiding who was on the list. In read-only view the checkboxes are locked and the add-member row is hidden.
 
