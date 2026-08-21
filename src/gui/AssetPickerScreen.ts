@@ -5,7 +5,7 @@ import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 
 const SEARCH_INPUT = "BCP_assetSearch";
 
-const COLS = 10;
+const COLS = 9;
 const ROWS = 3;
 const PER_PAGE = COLS * ROWS;
 const CELL_W = 160;
