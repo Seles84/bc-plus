@@ -2,6 +2,7 @@ import { GUIPage, GUIScreen, PageOptions } from "@/system/gui/GUIScreen";
 import { ButtonActionWidget } from "@/system/gui/Widgets";
 import { CurseAccess, LocalCurseAccess, RemoteCurseAccess } from "@/system/curses/CurseAccess";
 import { CurseSlotData } from "@/system/curses/CurseTypes";
+import { AssetPickerScreen } from "@/gui/AssetPickerScreen";
 import { ConditionsScreen } from "@/gui/ConditionsScreen";
 import { describeConditions } from "@/system/conditions/Conditions";
 import type { GUI } from "@/modules/GUI";
@@ -335,7 +336,13 @@ class CurseSlotPage extends GUIPage {
         if (slot.items.length === 0) {
             DrawText("None - the slot is cursed empty.", 150, 460, "Gray");
         }
-        slot.items.forEach((spec, i) => {
+        // The area holds 4 rows before the bottom buttons; the catalog makes
+        // longer lists easy to build, so overflow gets a note instead of
+        // drawing over the buttons
+        if (slot.items.length > 4) {
+            DrawText(`...and ${slot.items.length - 4} more (remove one above to see the next).`, 180, 782, "Gray");
+        }
+        slot.items.slice(0, 4).forEach((spec, i) => {
             const y = 430 + i * 80;
             DrawText(spec.name, 180, y + 32, "Black");
             DrawCheckbox(900, y, 64, 64, "Strict (exact state)", spec.strict, !canEdit);
@@ -359,14 +366,34 @@ class CurseSlotPage extends GUIPage {
         if (canEdit) {
             MainCanvas.textAlign = "center";
             this.addClickHandler(ButtonActionWidget(
-                { Left: 150, Top: 790, Width: 520, Height: 80 },
+                { Left: 150, Top: 790, Width: 480, Height: 80 },
                 { Name: "Allow currently worn item", HoverText: "Adds what is worn in this slot to the allowed list" },
                 () => {
                     access.addCurrentItem(slot.group);
                 },
             ));
             this.addClickHandler(ButtonActionWidget(
-                { Left: 720, Top: 790, Width: 400, Height: 80 },
+                { Left: 660, Top: 790, Width: 420, Height: 80 },
+                { Name: "Add from catalog...", HoverText: "Browse every item for this slot - nothing has to be worn" },
+                () => {
+                    const group = slot.group;
+                    this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(new AssetPickerScreen(
+                        this.screen.Module,
+                        this.Character,
+                        {
+                            title: `Add item - ${groupLabel(this.curses, group)}`,
+                            group,
+                            helpText: "Click an item to allow it under this curse. Catalog picks are loose: "
+                                + "any color or configuration of the item passes. For an exact captured state "
+                                + "(color, type, crafting), wear and configure the item, then use 'Allow "
+                                + "currently worn item' instead and keep it strict.",
+                            pick: (asset) => this.screen.access.addCatalogItem(group, asset.Name),
+                        },
+                    ));
+                },
+            ));
+            this.addClickHandler(ButtonActionWidget(
+                { Left: 1110, Top: 790, Width: 400, Height: 80 },
                 { Name: "Remove this curse", HoverText: "Lifts the curse from this slot entirely" },
                 () => {
                     access.removeCurse(slot.group);

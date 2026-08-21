@@ -256,6 +256,23 @@ export default class Curses extends ModuleInstance {
         this.Slots[group]?.items.splice(index, 1);
     }
 
+    /**
+     * Adds a catalog-picked item to a cursed slot's allowed list - loose by
+     * nature (there is no worn state to capture), so any color/type passes.
+     */
+    addCatalogItem(group: string, assetName: string): boolean {
+        const slot = this.Slots[group];
+        const asset = AssetGet(Player.AssetFamily, group as AssetGroupName, assetName);
+        if (!slot || !asset || !asset.Wear || asset.IsLock || slot.items.length >= 12) {
+            return false;
+        }
+        if (slot.items.some((s) => s.asset === asset.Name)) {
+            return false;
+        }
+        slot.items.push({ asset: asset.Name, name: asset.Description, strict: false });
+        return true;
+    }
+
     override get CanDisable(): boolean {
         return true;
     }
@@ -335,6 +352,9 @@ export default class Curses extends ModuleInstance {
         } else if (action === "addCurrentItem" && this.Slots[group]) {
             applied = this.addCurrentItem(group);
             verb = "allowed your current item under the curse on";
+        } else if (action === "addCatalogItem" && typeof value === "string" && this.Slots[group]) {
+            applied = this.addCatalogItem(group, value);
+            verb = "allowed an item under the curse on";
         } else if (action === "setConditions" && this.Slots[group]) {
             applied = this.setCurseConditions(group, value ?? {});
             verb = "changed the conditions of the curse on";

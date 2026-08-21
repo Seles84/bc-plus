@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- Item catalog browser: curses and item punishments no longer require the item to be worn first. A cursed slot's config gained "Add from catalog..." and the punishments page gained "New from catalog..." - both open a visual, searchable browser over every item wearable in the slot (using the game's own preview images). Catalog picks are loose by nature: any color or configuration of the item passes a curse, and a catalog punishment applies the item with its defaults. For an exact captured state (color, type, crafting), the wear-and-capture flow is unchanged and remains the way to get strict items. Works remotely too - the other side's client validates the pick as always.
+
 ### Changed
 - A rule with several punishments attached now announces them in one chat message ("... is being punished: Restrained speech for 5 min, Forbid wardrobe use on self for 1 h, Forced position for 10 min.") instead of one line per punishment, and the player gets one combined notification too. Punishments set not to announce are simply left out of the room message; a single punishment reads exactly as before.
 

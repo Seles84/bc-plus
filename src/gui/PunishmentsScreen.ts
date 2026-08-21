@@ -1,4 +1,5 @@
 import { GUIPage, GUIScreen, PageOptions } from "@/system/gui/GUIScreen";
+import { AssetPickerScreen } from "@/gui/AssetPickerScreen";
 import { ButtonActionWidget } from "@/system/gui/Widgets";
 import { LocalPunishmentAccess, PunishmentAccess, RemotePunishmentAccess } from "@/system/punishments/PunishmentAccess";
 import {
@@ -175,12 +176,21 @@ class PunishmentsListPage extends GUIPage {
                 { Name: "New from worn item...", HoverText: "Turn an item currently worn into a punishment" },
                 () => {
                     this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(
-                        new AddPunishmentItemScreen(this.punishments, this.Character),
+                        new AddPunishmentItemScreen(this.punishments, this.Character, "worn"),
                     );
                 },
             ));
             this.addClickHandler(ButtonActionWidget(
                 { Left: 650, Top: 880, Width: 450, Height: 70 },
+                { Name: "New from catalog...", HoverText: "Pick any item as a punishment - nothing has to be worn" },
+                () => {
+                    this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(
+                        new AddPunishmentItemScreen(this.punishments, this.Character, "catalog"),
+                    );
+                },
+            ));
+            this.addClickHandler(ButtonActionWidget(
+                { Left: 1150, Top: 880, Width: 450, Height: 70 },
                 { Name: "New rule punishment...", HoverText: "A punishment that forces another rule for a while" },
                 () => {
                     this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(
@@ -207,7 +217,11 @@ export class AddPunishmentItemScreen extends GUIScreen {
 
     readonly access: PunishmentAccess;
 
-    constructor(module: Punishments, character: BCPlusCharacter | null) {
+    constructor(
+        module: Punishments,
+        character: BCPlusCharacter | null,
+        readonly mode: "worn" | "catalog" = "worn",
+    ) {
         super(module, character);
         this.access = buildAccess(module, character);
     }
@@ -248,7 +262,11 @@ class PunishmentSlotGridPage extends GUIPage {
             showTitle: true,
             showBack: true,
             showHelp: true,
-            helpText: "Click a slot to capture the item currently worn there as a punishment - wear "
+            helpText: this.screen.mode === "catalog"
+                ? "Click a slot, then pick any item for it from the catalog - nothing has to be "
+                + "worn. Catalog punishments apply the item in its default color and configuration. "
+                + "Use the page arrows to switch between item and clothing slots."
+                : "Click a slot to capture the item currently worn there as a punishment - wear "
                 + "and configure the item (color, type, crafting) the way the punishment should apply "
                 + "it first. Empty slots cannot become punishments. Use the page arrows to switch "
                 + "between item and clothing slots.",
@@ -256,6 +274,14 @@ class PunishmentSlotGridPage extends GUIPage {
     }
 
     render(): void {
+        if (this.screen.mode === "catalog") {
+            this.renderCatalogGrid();
+        } else {
+            this.renderWornGrid();
+        }
+    }
+
+    private renderWornGrid(): void {
         const access = this.screen.access;
         MainCanvas.textAlign = "center";
         this.groups.forEach((group, i) => {
@@ -275,6 +301,32 @@ class PunishmentSlotGridPage extends GUIPage {
                 if (worn && MouseIn(x, y, GRID_BUTTON_W, GRID_BUTTON_H)) {
                     access.createFromWorn(group.Name);
                     this.Screen.exit();
+                }
+            });
+        });
+        MainCanvas.textAlign = "left";
+    }
+
+    private renderCatalogGrid(): void {
+        MainCanvas.textAlign = "center";
+        this.groups.forEach((group, i) => {
+            const x = GRID_LEFT + (i % GRID_COLS) * GRID_CELL_W;
+            const y = GRID_TOP + Math.floor(i / GRID_COLS) * GRID_CELL_H;
+            DrawButton(x, y, GRID_BUTTON_W, GRID_BUTTON_H, group.Description, "White", "", "Browse items for this slot");
+            this.addClickHandler(() => {
+                if (MouseIn(x, y, GRID_BUTTON_W, GRID_BUTTON_H)) {
+                    this.Core.ModuleManager.getModule<GUI>("gui")?.pushSubscreen(new AssetPickerScreen(
+                        this.screen.Module,
+                        this.Character,
+                        {
+                            title: `New punishment - ${group.Description}`,
+                            group: group.Name,
+                            helpText: "Click an item to create a punishment applying it. Catalog picks "
+                                + "apply the item in its default color and configuration; to punish with "
+                                + "an exactly configured item, wear it and use 'New from worn item' instead.",
+                            pick: (asset) => this.screen.access.createFromCatalog(group.Name, asset.Name),
+                        },
+                    ));
                 }
             });
         });

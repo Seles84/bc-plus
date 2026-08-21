@@ -22,6 +22,8 @@ export interface CurseAccess {
     setStrict(group: string, index: number, value: boolean): void;
     removeItem(group: string, index: number): void;
     addCurrentItem(group: string): void;
+    /** Adds a catalog-picked item (always loose) to the allowed list. */
+    addCatalogItem(group: string, asset: string): void;
     setConditions(group: string, conditions: ConditionData): void;
 }
 
@@ -71,6 +73,10 @@ export class LocalCurseAccess implements CurseAccess {
 
     addCurrentItem(group: string): void {
         this.curses.addCurrentItem(group);
+    }
+
+    addCatalogItem(group: string, asset: string): void {
+        this.curses.addCatalogItem(group, asset);
     }
 
     setConditions(group: string, conditions: ConditionData): void {
@@ -135,6 +141,10 @@ export class RemoteCurseAccess implements CurseAccess {
 
     addCurrentItem(group: string): void {
         this.send("addCurrentItem", group);
+    }
+
+    addCatalogItem(group: string, asset: string): void {
+        this.send("addCatalogItem", group, { value: asset });
     }
 
     setConditions(group: string, conditions: ConditionData): void {

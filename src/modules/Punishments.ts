@@ -160,6 +160,31 @@ export default class Punishments extends ModuleInstance {
         return definition;
     }
 
+    /**
+     * Creates an item punishment from a catalog pick. The spec is loose by
+     * nature (there is no worn state to capture): any color/type of the asset
+     * satisfies enforcement, which re-applies at asset level anyway.
+     */
+    createFromCatalog(group: AssetGroupName, assetName: string, by?: Originator): PunishmentDefinition | null {
+        const asset = AssetGet(Player.AssetFamily, group, assetName);
+        if (!asset || !asset.Wear || asset.IsLock) {
+            return null;
+        }
+        const definition: PunishmentDefinition = {
+            id: this.generateId(),
+            name: asset.Description.slice(0, 40),
+            kind: "item",
+            durationMin: 10,
+            announce: true,
+            group,
+            item: { asset: asset.Name, name: asset.Description, strict: false },
+            lock: "",
+            addedBy: by ?? { member: Player.MemberNumber ?? -1, name: Player.Nickname || Player.Name },
+        };
+        this.Definitions[definition.id] = definition;
+        return definition;
+    }
+
     /** Creates a punishment that forces another rule for the duration. */
     createRulePunishment(ruleId: string, by?: Originator): PunishmentDefinition | null {
         const rules = this.ModuleManager.getModule<Rules>("rules");
@@ -576,6 +601,12 @@ export default class Punishments extends ModuleInstance {
         if (action === "createFromWorn" && typeof value === "string") {
             applied = this.createFromWorn(value as AssetGroupName, by) !== null;
             verb = "created a punishment from your worn item";
+        } else if (action === "createFromCatalog" && typeof value === "object" && value !== null) {
+            const { group, asset } = value as { group?: unknown; asset?: unknown };
+            if (typeof group === "string" && typeof asset === "string") {
+                applied = this.createFromCatalog(group as AssetGroupName, asset, by) !== null;
+                verb = "created an item punishment";
+            }
         } else if (action === "createRule" && typeof value === "string") {
             applied = this.createRulePunishment(value, by) !== null;
             verb = "created a rule punishment";

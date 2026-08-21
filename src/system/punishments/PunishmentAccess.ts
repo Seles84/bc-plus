@@ -16,6 +16,8 @@ export interface PunishmentAccess {
     /** The character whose appearance is consulted (for worn-item display) */
     subject(): Character;
     createFromWorn(group: AssetGroupName): void;
+    /** Creates an item punishment from a catalog pick (always loose). */
+    createFromCatalog(group: AssetGroupName, asset: string): void;
     createRule(rule: string): void;
     remove(id: string): void;
     setName(id: string, value: string): void;
@@ -52,6 +54,10 @@ export class LocalPunishmentAccess implements PunishmentAccess {
 
     createFromWorn(group: AssetGroupName): void {
         this.punishments.createFromWorn(group);
+    }
+
+    createFromCatalog(group: AssetGroupName, asset: string): void {
+        this.punishments.createFromCatalog(group, asset);
     }
 
     createRule(rule: string): void {
@@ -124,6 +130,10 @@ export class RemotePunishmentAccess implements PunishmentAccess {
 
     createFromWorn(group: AssetGroupName): void {
         this.send("createFromWorn", undefined, group);
+    }
+
+    createFromCatalog(group: AssetGroupName, asset: string): void {
+        this.send("createFromCatalog", undefined, { group, asset });
     }
 
     createRule(rule: string): void {
