@@ -12,6 +12,7 @@ import {
 } from "@/utils/Messaging";
 import type Authority from "@/modules/Authority";
 import type Logging from "@/modules/Logging";
+import type Core from "@/modules/Core";
 import { getChatroomCharacter } from "@/utils/BCPlusCharacter";
 import { jsonClone } from "@/utils/BCUtils";
 
@@ -171,6 +172,11 @@ export default class DataSync extends ModuleInstance {
             SendBCPMessage({ message: "SettingCommandResult", ok: false, reason }, senderNumber);
         };
 
+        const hardcore = this.ModuleManager.getModule<Core>("core")?.hardcoreSenderBlock(senderNumber);
+        if (hardcore) {
+            reject(hardcore);
+            return;
+        }
         const { module: slug, name, value } = content;
         const module = typeof slug === "string" ? this.ModuleManager.getModule(slug) : undefined;
         const permission = module?.EditPermission;

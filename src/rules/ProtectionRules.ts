@@ -148,6 +148,21 @@ export const ForbidDisowning: RuleDefinition = {
     },
 };
 
+export const HardcoreMode: RuleDefinition = {
+    id: "protect.hardcore",
+    name: "Hardcore Mode",
+    description: "Forces both hardcore options from the General page on while this rule is in "
+        + "effect, locked: the player cannot open their own BC+ while their hands are bound, and "
+        + "people whose hands are bound are refused when they try to change anything in the "
+        + "player's BC+. The player's own choice of the two options is untouched underneath and "
+        + "returns the moment the rule ends. Requires enforcement to have any effect.",
+    category: "Protection",
+    load() {
+        // No hooks: Core reads this rule's in-effect state wherever the two
+        // hardcore options are consulted (menu opening, /bcp, remote commands)
+    },
+};
+
 const PROTECT_ROLE_OPTIONS = RoleNames.slice(0, 6) as string[]; // BC Owner .. Friend
 
 export const PreventBlacklisting: RuleDefinition = {

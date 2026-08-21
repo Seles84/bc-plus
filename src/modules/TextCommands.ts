@@ -303,11 +303,20 @@ export default class TextCommands extends ModuleInstance {
         super.Unload();
     }
 
+    /** Commands that stay usable under the hardcore self-block: reading what
+     * BC+ is, and answering welding consent - never configuration. */
+    private static readonly HARDCORE_ALLOWED = ["help", "version", "accept", "decline"];
+
     private dispatch(args: string[]): void {
         const sub = (args[0] ?? "help").toLocaleLowerCase();
         const command = this.commands.find((c) => c.name === sub);
         if (!command) {
             this.reply(`Unknown command "${escapeHtml(sub)}" - try /bcp help.`);
+            return;
+        }
+        if (!TextCommands.HARDCORE_ALLOWED.includes(sub)
+            && this.ModuleManager.getModule<Core>("core")?.hardcoreSelfBlocked() === true) {
+            this.reply("Your hands are bound - BC+ commands are unavailable (hardcore).");
             return;
         }
         command.handler(args.slice(1));

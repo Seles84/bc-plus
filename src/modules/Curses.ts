@@ -316,6 +316,11 @@ export default class Curses extends ModuleInstance {
             reject("invalid command");
             return;
         }
+        const hardcore = this.ModuleManager.getModule<Core>("core")?.hardcoreSenderBlock(senderNumber);
+        if (hardcore) {
+            reject(hardcore);
+            return;
+        }
         const authority = this.ModuleManager.getModule<Authority>("authority");
         if (!authority?.hasPermission(senderNumber, "curses.edit", group)) {
             reject("no permission for this slot");

@@ -7,6 +7,7 @@ import { ModalHost } from "@/system/gui/ModalHost";
 import { MainMenu } from "@/gui/MainMenu";
 import { WelcomeScreen } from "@/gui/WelcomeScreen";
 import { BCPlusCharacter, getChatroomCharacter } from "@/utils/BCPlusCharacter";
+import { BCPNotifyPlayer } from "@/utils/Messaging";
 import { debug } from "@/system/Console";
 import type Authority from "@/modules/Authority";
 import type Core from "@/modules/Core";
@@ -79,12 +80,35 @@ export class GUI extends ModuleInstance {
 
     /** Opens the main menu in the floating window, for /bcp menu. */
     openModalMenu(): boolean {
+        if (this.hardcoreSelfBlocked()) {
+            return false;
+        }
         const character = getChatroomCharacter(Player.MemberNumber ?? -1);
         if (!character) {
             return false;
         }
         this.openModal(new MainMenu(this, character));
         return true;
+    }
+
+    /** Hardcore option 1: the player's own BC+ refuses to open while bound. */
+    private hardcoreSelfBlocked(): boolean {
+        return this.ModuleManager.getModule<Core>("core")?.hardcoreSelfBlocked() === true;
+    }
+
+    /**
+     * Getting tied with an own-view screen open must close it, or "open BC+
+     * before the scene" would sidestep the hardcore block. Remote views stay
+     * open - it is the other side's client that guards their BC+.
+     */
+    private hardcoreSweep(): void {
+        const screen = this.currentSubscreen;
+        if (!screen || !this.hardcoreSelfBlocked() || screen.Character?.isPlayer() === false) {
+            return;
+        }
+        this.modalHost?.close();
+        this.closeSubscreen();
+        BCPNotifyPlayer("Your hands are bound - BC+ closed (hardcore).");
     }
 
     private screenStack: GUIScreen[] = [];
@@ -225,9 +249,16 @@ export class GUI extends ModuleInstance {
         });
 
         document.addEventListener("keydown", this.escapeHandler, true);
+        this.hardcoreTimer = setInterval(() => this.hardcoreSweep(), 2000);
     }
 
+    private hardcoreTimer: ReturnType<typeof setInterval> | null = null;
+
     override Unload(): void {
+        if (this.hardcoreTimer !== null) {
+            clearInterval(this.hardcoreTimer);
+            this.hardcoreTimer = null;
+        }
         document.removeEventListener("keydown", this.escapeHandler, true);
         this.modalHost?.destroy();
         this.modalHost = null;
@@ -248,17 +279,17 @@ export class GUI extends ModuleInstance {
             "White",
             appLogo,
             character.isPlayer()
-                ? `${BCPLUS_SHORT_NAME} Settings`
+                ? `${BCPLUS_SHORT_NAME} Settings${canOpen ? "" : " - your hands are bound"}`
                 : `${character.Nickname} runs ${BCPLUS_SHORT_NAME} v${character.BCPVersion}`
                     + (canOpen ? "" : " - no permission to view"),
             !canOpen,
         );
     }
 
-    /** Own menu always opens; others' when they run BC+ and their settings permit viewing. */
+    /** Own menu opens unless hardcore blocks it; others' when they run BC+ and permit viewing. */
     private canOpenMenuFor(character: BCPlusCharacter): boolean {
         if (character.isPlayer()) {
-            return true;
+            return !this.hardcoreSelfBlocked();
         }
         if (character.BCPVersion === null) {
             return false;
