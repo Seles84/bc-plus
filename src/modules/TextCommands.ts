@@ -2,12 +2,14 @@ import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { ModuleConfig } from "@/system/module/ModuleTypes";
 import { BCPLUS_APP_NAME, BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
 import { LOG_MAX_ENTRIES, formatLogTime } from "@/system/logging/LogTypes";
+import { STATE_LABELS, formatStatDuration } from "@/system/statistics/StatTypes";
 import { ListSyncListeners, NotifyPlayer } from "@/utils/Messaging";
 import { getAllCharactersInRoom } from "@/utils/BCPlusCharacter";
 import { parseBCPVersion } from "@/utils/Version";
 import type Rules from "@/modules/Rules";
 import type Curses from "@/modules/Curses";
 import type Logging from "@/modules/Logging";
+import type Statistics from "@/modules/Statistics";
 import type DataSync from "@/modules/DataSync";
 import type Core from "@/modules/Core";
 import type Welding from "@/modules/Welding";
@@ -134,6 +136,35 @@ export default class TextCommands extends ModuleInstance {
                     `Newest ${entries.length} log entr${entries.length === 1 ? "y" : "ies"} (of max ${LOG_MAX_ENTRIES}):`,
                     ...entries.map((e) => `- ${formatLogTime(e.time)} [${e.category}] ${escapeHtml(e.message)}`),
                 ].join("<br>"));
+            },
+        },
+        {
+            name: "stats",
+            description: "Show a quick statistics summary",
+            handler: () => {
+                const statistics = this.ModuleManager.getModule<Statistics>("statistics");
+                if (!statistics || !statistics.Config.Active) {
+                    this.reply("The Statistics module is off.");
+                    return;
+                }
+                if (!statistics.canView()) {
+                    this.reply("You are not permitted to view your own statistics.");
+                    return;
+                }
+                const stats = statistics.snapshot();
+                const topStates = STATE_LABELS
+                    .map((state) => ({ label: state.label, ms: stats.states[state.id] ?? 0 }))
+                    .filter((state) => state.ms > 0)
+                    .sort((a, b) => b.ms - a.ms)
+                    .slice(0, 3);
+                const lines = [
+                    `Statistics since ${new Date(stats.since).toLocaleDateString()}:`,
+                    `- Play time: ${formatStatDuration(stats.play)}`,
+                    ...topStates.map((state) => `- ${state.label}: ${formatStatDuration(state.ms)}`),
+                    `- Rules violated: ${stats.counters.violations ?? 0} (plus ${stats.counters.blocked ?? 0} blocked attempts)`,
+                    "See the BC+ Statistics page for everything else.",
+                ];
+                this.reply(lines.join("<br>"));
             },
         },
         {
