@@ -13,6 +13,7 @@ import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Authority from "@/modules/Authority";
 import type Rules from "@/modules/Rules";
 import type Curses from "@/modules/Curses";
+import type Core from "@/modules/Core";
 
 /**
  * The behavior log: records rule violations, curse triggers, and remote
@@ -268,6 +269,11 @@ export default class Logging extends ModuleInstance {
             if (typeof senderNumber !== "number") {
                 return;
             }
+            const hardcoreClear = this.ModuleManager.getModule<Core>("core")?.hardcoreSenderBlock(senderNumber);
+            if (hardcoreClear) {
+                SendBCPMessage({ message: "LogClearResult", ok: false, reason: hardcoreClear }, senderNumber);
+                return;
+            }
             const authority = this.ModuleManager.getModule<Authority>("authority");
             if (!authority?.hasPermission(senderNumber, "log.delete")) {
                 SendBCPMessage({ message: "LogClearResult", ok: false, reason: "no permission" }, senderNumber);
@@ -299,6 +305,11 @@ export default class Logging extends ModuleInstance {
             };
             if (this.Preset === "Dominant") {
                 reject("their Dominant preset keeps no log");
+                return;
+            }
+            const hardcore = this.ModuleManager.getModule<Core>("core")?.hardcoreSenderBlock(senderNumber);
+            if (hardcore) {
+                reject(hardcore);
                 return;
             }
             const kind = content.kind;

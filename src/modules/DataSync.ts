@@ -12,6 +12,7 @@ import {
 } from "@/utils/Messaging";
 import type Authority from "@/modules/Authority";
 import type Logging from "@/modules/Logging";
+import type Core from "@/modules/Core";
 import { getChatroomCharacter } from "@/utils/BCPlusCharacter";
 import { jsonClone } from "@/utils/BCUtils";
 
@@ -53,6 +54,18 @@ export default class DataSync extends ModuleInstance {
         }, target);
     }
 
+    /**
+     * Synthetic public category "hardcore": the EFFECTIVE hardcore-others flag
+     * (personal setting or the Hardcore Mode rule). Core's data is private, but
+     * viewers need this one bit to gray out the BC+ button for bound people -
+     * a courtesy mirror of the real target-side wall, never trusted for
+     * enforcement.
+     */
+    private hardcoreCategory(): Record<string, unknown> {
+        const core = this.ModuleManager.getModule<Core>("core");
+        return { others: core?.getSetting<boolean>("hardcoreOthers") === true };
+    }
+
     /** Broadcasts any public module whose data changed since it was last shared. */
     private broadcastChangedCategories(): void {
         if (!ServerPlayerIsInChatRoom()) {
@@ -67,6 +80,16 @@ export default class DataSync extends ModuleInstance {
                 this.lastBroadcast.set(module.Slug, snapshot);
                 this.categorySync(module);
             }
+        }
+        const hardcore = JSON.stringify(this.hardcoreCategory());
+        if (this.lastBroadcast.get("hardcore") !== hardcore) {
+            this.lastBroadcast.set("hardcore", hardcore);
+            SendBCPMessage({
+                message: "CategorySync",
+                version: BCPLUS_VERSION,
+                category: "hardcore",
+                value: this.hardcoreCategory(),
+            });
         }
     }
 
@@ -130,6 +153,21 @@ export default class DataSync extends ModuleInstance {
         // any public module whose data changed (e.g. a role assignment made
         // after the join handshake).
         this.Events.on("saveSynced", () => this.broadcastChangedCategories());
+
+        // The hardcore flag can flip without any data write (the Hardcore
+        // Mode rule's conditions coming and going), so also compare on a slow
+        // tick - it only sends when a snapshot actually changed
+        this.freshnessTimer = setInterval(() => this.broadcastChangedCategories(), 10_000);
+    }
+
+    private freshnessTimer: ReturnType<typeof setInterval> | null = null;
+
+    override Unload(): void {
+        if (this.freshnessTimer !== null) {
+            clearInterval(this.freshnessTimer);
+            this.freshnessTimer = null;
+        }
+        super.Unload();
     }
 
     private onSettingSync(sender: Character, content: BCPMessageContent): void {
@@ -171,6 +209,11 @@ export default class DataSync extends ModuleInstance {
             SendBCPMessage({ message: "SettingCommandResult", ok: false, reason }, senderNumber);
         };
 
+        const hardcore = this.ModuleManager.getModule<Core>("core")?.hardcoreSenderBlock(senderNumber);
+        if (hardcore) {
+            reject(hardcore);
+            return;
+        }
         const { module: slug, name, value } = content;
         const module = typeof slug === "string" ? this.ModuleManager.getModule(slug) : undefined;
         const permission = module?.EditPermission;
@@ -269,6 +312,7 @@ export default class DataSync extends ModuleInstance {
                 result[module.Slug] = jsonClone(module.Data);
             }
         }
+        result["hardcore"] = this.hardcoreCategory();
         return result;
     }
 

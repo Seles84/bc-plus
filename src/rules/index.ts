@@ -22,6 +22,7 @@ import {
     ForbidNewLovers,
     ForbidNewSubmissives,
     ForbidOwnerChanges,
+    HardcoreMode,
     PreventBlacklisting,
     PreventWhitelisting,
 } from "@/rules/ProtectionRules";
@@ -105,6 +106,7 @@ export const RULE_DEFINITIONS: readonly RuleDefinition[] = [
     ForbidDisowning,
     PreventBlacklisting,
     PreventWhitelisting,
+    HardcoreMode,
     ForbidTyingSelf,
     ForbidTyingOthers,
     ForbidFreeingSelf,

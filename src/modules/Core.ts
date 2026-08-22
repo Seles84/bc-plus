@@ -14,9 +14,15 @@ import appLogo from "@/images/icon90.png";
 import { Role, RoleNames } from "@/system/Roles";
 import type Authority from "@/modules/Authority";
 import type Welding from "@/modules/Welding";
+import type Rules from "@/modules/Rules";
 
 export type BCPPreset = "Dominant" | "Switch" | "Submissive" | "Slave";
 export const PRESETS: readonly BCPPreset[] = ["Dominant", "Switch", "Submissive", "Slave"];
+
+/** The Protection rule that forces both hardcore options on while in effect. */
+export const HARDCORE_RULE = "protect.hardcore";
+/** The two hardcore options; personal Core settings, never editable remotely. */
+const HARDCORE_SETTINGS = ["hardcoreSelf", "hardcoreOthers"] as const;
 
 /** Permissions the Slave preset removes self-access to. */
 const SLAVE_SELF_LOCKED = ["rules.edit", "curses.edit", "punishments.edit", "punishments.lift", "authority.edit", "roles.assign", "roles.revoke", "relationships.edit", "log.delete", "core.modules"];
@@ -106,6 +112,29 @@ export default class Core extends ModuleInstance {
                     + "icon means their permissions give you no access.",
                 default: true,
             },
+            {
+                type: "checkbox",
+                name: "hardcoreSelf",
+                label: "Hardcore: block access to my BC+ while I am bound",
+                hoverText: "While your hands are bound, your own BC+ menus and /bcp commands "
+                    + "refuse to open - no reconfiguring your way out of a scene. Others' remote "
+                    + "access to your BC+ keeps working. This is your personal choice: nobody can "
+                    + "change it remotely, but the Hardcore Mode rule forces it on while in effect.",
+                default: false,
+                active: () => !this.hardcoreRuleForced(),
+            },
+            {
+                type: "checkbox",
+                name: "hardcoreOthers",
+                label: "Hardcore: block bound people from using my BC+",
+                hoverText: "Anyone whose hands are bound is refused when they try to change "
+                    + "anything in your BC+ (rules, curses, punishments, roles, commands, ...) - "
+                    + "helpless people should not be configuring anyone. This is your personal "
+                    + "choice: nobody can change it remotely, but the Hardcore Mode rule forces "
+                    + "it on while in effect.",
+                default: false,
+                active: () => !this.hardcoreRuleForced(),
+            },
             ...(this.bcxInstalled() ? [{
                 type: "checkbox" as const,
                 name: "tandemDefer",
@@ -172,6 +201,53 @@ export default class Core extends ModuleInstance {
             this.Events.emit("moduleUnloaded", { slug });
         }
         BCPNotifyPlayer(`The ${module.Config.MenuString || module.Config.Name} module is now ${enabled ? "enabled" : "disabled"}.`);
+    }
+
+    /**
+     * The Hardcore Mode rule overrides the two hardcore options at READ time
+     * (never writing them): lifting the rule restores the player's own stored
+     * choices exactly, with no snapshot to lose or forge.
+     */
+    override getSetting<T>(name: string): T {
+        if ((HARDCORE_SETTINGS as readonly string[]).includes(name) && this.hardcoreRuleForced()) {
+            return true as T;
+        }
+        return super.getSetting(name);
+    }
+
+    /** Whether the Hardcore Mode rule currently forces both hardcore options on. */
+    hardcoreRuleForced(): boolean {
+        const rules = this.ModuleManager.getModule<Rules>("rules");
+        if (!rules?.Config.Active || !this.isModuleEnabled("rules")) {
+            return false;
+        }
+        try {
+            return rules.ruleState(HARDCORE_RULE).enforce && rules.ruleInEffect(HARDCORE_RULE);
+        } catch {
+            return false;
+        }
+    }
+
+    /** Hardcore option 1: the player's own BC+ is off-limits right now. */
+    hardcoreSelfBlocked(): boolean {
+        return this.getSetting<boolean>("hardcoreSelf") === true && !Player.CanInteract();
+    }
+
+    /**
+     * Hardcore option 2: the reason a remote command from this sender must be
+     * refused, or null when it may proceed. Commands travel as chat-room
+     * messages, so the sender is in the room and their restraints are visible;
+     * an unknown sender is let through (nothing to judge them by).
+     */
+    hardcoreSenderBlock(senderNumber: number): string | null {
+        if (this.getSetting<boolean>("hardcoreOthers") !== true) {
+            return null;
+        }
+        const character = (ChatRoomCharacter ?? []).find((c) => c.MemberNumber === senderNumber);
+        if (character && !character.CanInteract()) {
+            return "your hands are bound (hardcore mode)";
+        }
+        return null;
     }
 
     /** The player's current preset. */

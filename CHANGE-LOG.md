@@ -4,6 +4,11 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Hardcore Mode: two new personal options on the General page - "block access to my BC+ while I am bound" (your own BC+ menus and /bcp commands refuse to open while your hands are bound, and an open menu closes if you get tied; others' remote access to you keeps working, and /bcp help, version, accept and decline stay available) and "block bound people from using my BC+" (anyone whose hands are bound is refused when they try to change your rules, curses, punishments, roles, relationships, settings, log or use commands on you - your client checks their visible restraints). Both are strictly your own decision: they live outside every permission and remote-edit path, so nobody can flip them for you. For those who want to hand that decision over, a new **Hardcore Mode** rule (Protection category, 81 rules total) forces both options on and locked while it is in effect - with everything a rule brings (a dom setting it, conditions, timers, attaching it as a punishment). The rule never touches your stored choices; lifting it restores them exactly. The block is visible from the other side too: a bound person sees your BC+ button grayed out ("your hands are bound") instead of errors after opening, and a view of your BC+ they already have open closes within seconds when they get tied - or when their view permission is revoked. The gray-out is a courtesy on their client; your client still validates every incoming command regardless.
+
 ## [0.8.2] - 2026-08-21
 
 ### Added

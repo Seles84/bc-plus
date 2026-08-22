@@ -7,6 +7,7 @@ import { ModalHost } from "@/system/gui/ModalHost";
 import { MainMenu } from "@/gui/MainMenu";
 import { WelcomeScreen } from "@/gui/WelcomeScreen";
 import { BCPlusCharacter, getChatroomCharacter } from "@/utils/BCPlusCharacter";
+import { BCPNotifyPlayer } from "@/utils/Messaging";
 import { debug } from "@/system/Console";
 import type Authority from "@/modules/Authority";
 import type Core from "@/modules/Core";
@@ -79,12 +80,61 @@ export class GUI extends ModuleInstance {
 
     /** Opens the main menu in the floating window, for /bcp menu. */
     openModalMenu(): boolean {
+        if (this.hardcoreSelfBlocked()) {
+            return false;
+        }
         const character = getChatroomCharacter(Player.MemberNumber ?? -1);
         if (!character) {
             return false;
         }
         this.openModal(new MainMenu(this, character));
         return true;
+    }
+
+    /** Hardcore option 1: the player's own BC+ refuses to open while bound. */
+    private hardcoreSelfBlocked(): boolean {
+        return this.ModuleManager.getModule<Core>("core")?.hardcoreSelfBlocked() === true;
+    }
+
+    /**
+     * Why a remote character's BC+ may not be opened (or stay open) right
+     * now, or null. The hardcore part is a courtesy: it reads the target's
+     * broadcast effective flag so bound people see a locked door instead of
+     * NACKs - the real wall is the target-side command validation.
+     */
+    private remoteViewBlockReason(character: BCPlusCharacter): string | null {
+        if (character.BCPData?.["hardcore"]?.["others"] === true && !Player.CanInteract()) {
+            return "your hands are bound";
+        }
+        const authority = this.ModuleManager.getModule<Authority>("authority");
+        if (!(authority?.remoteHasPermission(character, "gui.view") ?? false)) {
+            return "no permission to view";
+        }
+        return null;
+    }
+
+    /**
+     * Live re-check of the open screen: getting tied with your own view open
+     * must close it (or "open BC+ before the scene" would sidestep the
+     * hardcore block), and a remote view closes when access is lost mid-look
+     * (you got bound under their hardcore setting, or your view permission
+     * was revoked).
+     */
+    private hardcoreSweep(): void {
+        const screen = this.currentSubscreen;
+        if (!screen) {
+            return;
+        }
+        const character = screen.Character;
+        const reason = !character || character.isPlayer()
+            ? (this.hardcoreSelfBlocked() ? "your hands are bound" : null)
+            : this.remoteViewBlockReason(character);
+        if (reason === null) {
+            return;
+        }
+        this.modalHost?.close();
+        this.closeSubscreen();
+        BCPNotifyPlayer(`BC+ closed - ${reason}.`);
     }
 
     private screenStack: GUIScreen[] = [];
@@ -225,9 +275,16 @@ export class GUI extends ModuleInstance {
         });
 
         document.addEventListener("keydown", this.escapeHandler, true);
+        this.hardcoreTimer = setInterval(() => this.hardcoreSweep(), 2000);
     }
 
+    private hardcoreTimer: ReturnType<typeof setInterval> | null = null;
+
     override Unload(): void {
+        if (this.hardcoreTimer !== null) {
+            clearInterval(this.hardcoreTimer);
+            this.hardcoreTimer = null;
+        }
         document.removeEventListener("keydown", this.escapeHandler, true);
         this.modalHost?.destroy();
         this.modalHost = null;
@@ -248,23 +305,22 @@ export class GUI extends ModuleInstance {
             "White",
             appLogo,
             character.isPlayer()
-                ? `${BCPLUS_SHORT_NAME} Settings`
+                ? `${BCPLUS_SHORT_NAME} Settings${canOpen ? "" : " - your hands are bound"}`
                 : `${character.Nickname} runs ${BCPLUS_SHORT_NAME} v${character.BCPVersion}`
-                    + (canOpen ? "" : " - no permission to view"),
+                    + (canOpen ? "" : ` - ${this.remoteViewBlockReason(character) ?? "no permission to view"}`),
             !canOpen,
         );
     }
 
-    /** Own menu always opens; others' when they run BC+ and their settings permit viewing. */
+    /** Own menu opens unless hardcore blocks it; others' when they run BC+ and permit viewing. */
     private canOpenMenuFor(character: BCPlusCharacter): boolean {
         if (character.isPlayer()) {
-            return true;
+            return !this.hardcoreSelfBlocked();
         }
         if (character.BCPVersion === null) {
             return false;
         }
-        const authority = this.ModuleManager.getModule<Authority>("authority");
-        return authority?.remoteHasPermission(character, "gui.view") ?? false;
+        return this.remoteViewBlockReason(character) === null;
     }
 
     /** The BC+ button shows on your own sheet, and on others' once DataSync detects BC+ on them. */

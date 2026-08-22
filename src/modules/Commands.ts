@@ -13,6 +13,7 @@ import { WELD_WHISPER_COMMANDS } from "@/modules/Welding";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Authority from "@/modules/Authority";
 import type Logging from "@/modules/Logging";
+import type Core from "@/modules/Core";
 
 /** One-shot orders executed on the target's client after validation. */
 export default class Commands extends ModuleInstance {
@@ -150,6 +151,10 @@ export default class Commands extends ModuleInstance {
 
     /** Shared validation + execution for menu (CommandInvoke) and whisper commands. */
     private executeValidated(senderNumber: number, senderName: string, definition: CommandDefinition, rawArgument: string): true | string {
+        const hardcore = this.ModuleManager.getModule<Core>("core")?.hardcoreSenderBlock(senderNumber);
+        if (hardcore) {
+            return hardcore;
+        }
         const authority = this.ModuleManager.getModule<Authority>("authority");
         if (!authority?.hasPermission(senderNumber, "commands.use", definition.id)) {
             return "no permission for this command";

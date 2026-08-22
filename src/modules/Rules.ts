@@ -677,6 +677,11 @@ export default class Rules extends ModuleInstance {
         const { action, rule, name, value } = content;
         const authority = this.ModuleManager.getModule<Authority>("authority");
 
+        const hardcore = this.ModuleManager.getModule<Core>("core")?.hardcoreSenderBlock(senderNumber);
+        if (hardcore) {
+            return { ok: false, reason: hardcore };
+        }
+
         // Global conditions affect every following rule, so a rule-scoped
         // grant is not enough - the scope below only matches full grants
         if (action === "setGlobalConditions") {

@@ -18,6 +18,7 @@ import type Curses from "@/modules/Curses";
 import type DataSync from "@/modules/DataSync";
 import type Logging from "@/modules/Logging";
 import type Rules from "@/modules/Rules";
+import type Core from "@/modules/Core";
 
 const TICK_MS = 1500;
 /** Minimum time between re-applications of the same punishment (fight-loop guard). */
@@ -583,6 +584,11 @@ export default class Punishments extends ModuleInstance {
             SendBCPMessage({ message: "PunishmentCommandResult", ok: false, reason }, senderNumber);
         };
 
+        const hardcore = this.ModuleManager.getModule<Core>("core")?.hardcoreSenderBlock(senderNumber);
+        if (hardcore) {
+            reject(hardcore);
+            return;
+        }
         const { action, id, value } = content;
         const authority = this.ModuleManager.getModule<Authority>("authority");
         const needed = action === "lift" ? "punishments.lift" : "punishments.edit";

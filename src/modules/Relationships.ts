@@ -12,6 +12,7 @@ import { debug } from "@/system/Console";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Authority from "@/modules/Authority";
 import type Logging from "@/modules/Logging";
+import type Core from "@/modules/Core";
 
 export interface RelationshipEntry {
     /** The name the player uses for this person (replaces their name for the player). */
@@ -227,6 +228,11 @@ export default class Relationships extends ModuleInstance {
             const reject = (reason: string): void => {
                 SendBCPMessage({ message: "RelationshipCommandResult", ok: false, reason }, senderNumber);
             };
+            const hardcore = this.ModuleManager.getModule<Core>("core")?.hardcoreSenderBlock(senderNumber);
+            if (hardcore) {
+                reject(hardcore);
+                return;
+            }
             const { action, member } = content;
             if ((action !== "set" && action !== "remove") || typeof member !== "number"
                 || !Number.isInteger(member) || member < 0) {

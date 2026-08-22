@@ -9,6 +9,7 @@ import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Authority from "@/modules/Authority";
 import type Logging from "@/modules/Logging";
 import type DataSync from "@/modules/DataSync";
+import type Core from "@/modules/Core";
 
 /** Storage keys for the manually assigned role lists. BC Owner and Lover are never manual. */
 export const MANUAL_ROLE_KEYS = {
@@ -222,6 +223,11 @@ export default class Roles extends ModuleInstance {
                 SendBCPMessage({ message: "RoleCommandResult", ok: false, reason }, senderNumber);
             };
 
+            const hardcore = this.ModuleManager.getModule<Core>("core")?.hardcoreSenderBlock(senderNumber);
+            if (hardcore) {
+                reject(hardcore);
+                return;
+            }
             const { action, role, member } = content;
             if ((action !== "assign" && action !== "revoke") || typeof role !== "string"
                 || typeof member !== "number" || !Number.isInteger(member) || member < 0) {
