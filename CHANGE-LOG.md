@@ -4,6 +4,11 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Periodic update checks: BC+ now re-reads the release manifest while you stay logged in, so long sessions still hear about new versions instead of only checking at login. A new "Re-check for updates every" option on the General page picks the interval (30 minutes / 1 hour, the default / 3 hours / 6 hours / login only). A found update is announced once per session at most - and a second release landing mid-session still gets its own notice. `/bcp updates` (without on/off) now also reports the configured interval.
+
 ## [0.8.3] - 2026-08-22
 
 ### Added
