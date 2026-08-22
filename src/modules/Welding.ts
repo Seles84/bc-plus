@@ -25,6 +25,26 @@ export const WELD_WHISPER_COMMANDS: readonly string[] = ["weld", "accept", "decl
 const CEREMONY_MS = 10 * 60_000;
 /** Consecutive ticks without the welded owner before the weld dissolves (guards against transient BC state). */
 const DISSOLVE_TICKS = 3;
+const DAY_MS = 86_400_000;
+
+/**
+ * The "welded by" profile line for a weld data record - the module's own Data
+ * or a remote character's synced mirror (same keys either way). Null when not
+ * welded or the sub switched the line off.
+ */
+export function describeWeldLine(data: Record<string, unknown> | undefined | null): string | null {
+    if (!data || data["welded"] !== true || data["showWeldInfo"] === false) {
+        return null;
+    }
+    const ownerName = String(data["weldOwnerName"] ?? "?");
+    const weldedAt = typeof data["weldedAt"] === "number" ? data["weldedAt"] : 0;
+    if (weldedAt <= 0) {
+        return `Collar welded shut by ${ownerName}`;
+    }
+    // BC states ownership as "for N days" - the weld line speaks the same way
+    const days = Math.max(0, Math.floor((Date.now() - weldedAt) / DAY_MS));
+    return `Collar welded shut by ${ownerName} for ${days} day${days === 1 ? "" : "s"}`;
+}
 
 /** The in-progress three-way vetting, stored (publicly synced) until it completes or fails. */
 export interface WeldCeremony {
@@ -76,6 +96,9 @@ export default class Welding extends ModuleInstance {
             weldWitnessName: null,
             weldedAt: null,
             ceremony: null,
+            showWeldInfo: true,
+            announceAnniversary: true,
+            anniversaryYears: 0,
         };
     }
 
@@ -259,6 +282,7 @@ export default class Welding extends ModuleInstance {
         this.inviteParticipant(member, `${ceremony.subName} asks you to witness the welding of their collar. `
             + `Accept within the time window by whispering "!bcp accept" to ${ceremony.subName}.`);
         BCPNotifyPlayer(`${character.Name} (#${member}) has been asked to witness the welding.`);
+        this.log(`${character.Name} (#${member}) was chosen as the welding witness`);
         return true;
     }
 
@@ -282,6 +306,7 @@ export default class Welding extends ModuleInstance {
         const name = member === ceremony.owner ? ceremony.ownerName
             : member === ceremony.sub ? ceremony.subName : (ceremony.witnessName ?? "?");
         BCPNotifyPlayer(`${name} (#${member}) accepted the welding (${ceremony.accepted.length}/3).`);
+        this.log(`${name} (#${member}) accepted the welding (${ceremony.accepted.length}/3)`);
         this.tryComplete();
         return true;
     }
@@ -377,6 +402,7 @@ export default class Welding extends ModuleInstance {
         this.Data.weldWitnessName = ceremony.witnessName;
         this.Data.weldedAt = Date.now();
         this.Data.ceremony = null;
+        this.Data.anniversaryYears = 0;
         this.dissolveCount = 0;
         this.enforceWeldLocks();
 
@@ -406,6 +432,16 @@ export default class Welding extends ModuleInstance {
         }
     }
 
+    /** DEV builds only: backdates the weld so anniversaries and the day count can be tested. */
+    devSetWeldAge(days: number): boolean {
+        if (!BCP_DEV_ENV || !this.isWelded()) {
+            return false;
+        }
+        this.Data.weldedAt = Date.now() - days * DAY_MS;
+        this.Data.anniversaryYears = 0;
+        return true;
+    }
+
     /** DEV builds only: breaks the weld directly, for testing the full cycle. */
     devUnweld(): boolean {
         if (!BCP_DEV_ENV || !this.isWelded()) {
@@ -424,6 +460,7 @@ export default class Welding extends ModuleInstance {
         this.Data.weldWitness = null;
         this.Data.weldWitnessName = null;
         this.Data.weldedAt = null;
+        this.Data.anniversaryYears = 0;
         BCPNotifyPlayer(`${ownerName} has released you - the weld on your collar is undone. `
             + "The owner-protection rule stays active but is no longer locked.");
         this.log(`The weld dissolved - released by ${ownerName}`);
@@ -451,7 +488,58 @@ export default class Welding extends ModuleInstance {
                 this.dissolveCount = 0;
                 this.dissolveWeld();
             }
+            if (this.isWelded()) {
+                this.checkAnniversary();
+            }
         }
+    }
+
+    /**
+     * Yearly weld anniversary. On the day itself it waits for the sub to be
+     * in a chat room, then celebrates publicly; a day missed entirely (the
+     * sub never logged in) gets a quiet private note instead - a "today
+     * marks" announcement days after the fact would just read as wrong.
+     */
+    private checkAnniversary(): void {
+        const weldedAt = typeof this.Data.weldedAt === "number" ? this.Data.weldedAt : 0;
+        if (weldedAt <= 0) {
+            return;
+        }
+        const now = new Date();
+        const weld = new Date(weldedAt);
+        let years = now.getFullYear() - weld.getFullYear();
+        const anniversary = new Date(weldedAt);
+        anniversary.setFullYear(weld.getFullYear() + years);
+        if (anniversary.getTime() > now.getTime()) {
+            years -= 1;
+            anniversary.setFullYear(weld.getFullYear() + years);
+        }
+        const announced = typeof this.Data.anniversaryYears === "number" ? this.Data.anniversaryYears : 0;
+        if (years < 1 || years <= announced) {
+            return;
+        }
+        // Switched off: still advance the counter, so re-enabling later does
+        // not dump a years-old "anniversary passed" note out of nowhere
+        if (this.Data.announceAnniversary === false) {
+            this.Data.anniversaryYears = years;
+            return;
+        }
+        const ownerName = String(this.Data.weldOwnerName ?? "their owner");
+        const label = `${years} year${years === 1 ? "" : "s"}`;
+        if (anniversary.toDateString() === now.toDateString()) {
+            if (!ServerPlayerIsInChatRoom()) {
+                return;
+            }
+            this.Data.anniversaryYears = years;
+            SendAction(`Today marks ${label} since ${Player.Nickname || Player.Name}'s collar `
+                + `was welded shut by ${ownerName}.`);
+            BCPNotifyPlayer(`Weld anniversary: ${label} today. The room has been told.`);
+        } else {
+            this.Data.anniversaryYears = years;
+            BCPNotifyPlayer(`Your weld anniversary passed on ${anniversary.toLocaleDateString()} - `
+                + `${label} welded to ${ownerName}.`);
+        }
+        this.log(`Weld anniversary: ${label} since the collar was welded by ${ownerName}`);
     }
 
     // --- Remote interfaces ---
@@ -534,6 +622,6 @@ export default class Welding extends ModuleInstance {
     }
 
     private log(message: string): void {
-        this.ModuleManager.getModule<Logging>("logging")?.log("other", message);
+        this.ModuleManager.getModule<Logging>("logging")?.log("welding", message);
     }
 }

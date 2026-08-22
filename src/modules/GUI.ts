@@ -11,6 +11,8 @@ import { BCPNotifyPlayer } from "@/utils/Messaging";
 import { debug } from "@/system/Console";
 import type Authority from "@/modules/Authority";
 import type Core from "@/modules/Core";
+import type Welding from "@/modules/Welding";
+import { describeWeldLine } from "@/modules/Welding";
 import appLogo from "@/images/icon90.png";
 
 /**
@@ -310,6 +312,25 @@ export class GUI extends ModuleInstance {
                     + (canOpen ? "" : ` - ${this.remoteViewBlockReason(character) ?? "no permission to view"}`),
             !canOpen,
         );
+        this.drawWeldLine(character);
+    }
+
+    /**
+     * The optional "welded by" line on the information sheet. The bottom-right
+     * strip is free of BC, BCX and BC+ elements in both button layouts.
+     */
+    private drawWeldLine(character: BCPlusCharacter): void {
+        const data = character.isPlayer()
+            ? this.ModuleManager.getModule<Welding>("welding")?.Data
+            : character.BCPData?.["welding"];
+        const line = describeWeldLine(data);
+        if (!line) {
+            return;
+        }
+        const prevAlign = MainCanvas.textAlign;
+        MainCanvas.textAlign = "center";
+        DrawTextFit(line, 1500, 955, 880, "#A00000");
+        MainCanvas.textAlign = prevAlign;
     }
 
     /** Own menu opens unless hardcore blocks it; others' when they run BC+ and permit viewing. */
