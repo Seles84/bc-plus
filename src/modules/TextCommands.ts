@@ -199,7 +199,9 @@ export default class TextCommands extends ModuleInstance {
                 }
                 const value = (args[0] ?? "").toLowerCase();
                 if (value !== "on" && value !== "off") {
-                    this.reply(`Update notifications are ${core.getSetting<boolean>("updateNotify") !== false ? "on" : "off"}. Usage: /bcp updates on|off`);
+                    this.reply(`Update notifications are ${core.getSetting<boolean>("updateNotify") !== false ? "on" : "off"}, `
+                        + `re-checking every ${core.getSetting<string>("updateCheckInterval")?.toLowerCase() ?? "1 hour"} `
+                        + "(configurable on the General page). Usage: /bcp updates on|off");
                     return;
                 }
                 core.setSetting("updateNotify", value === "on");
@@ -300,6 +302,13 @@ export default class TextCommands extends ModuleInstance {
                 this.reply(done
                     ? `The weld now dates back ${days} days (dev override).`
                     : "Usage: weldage <days> - and your collar must be welded.");
+            },
+        }, {
+            name: "checkupdate",
+            description: "DEV: force an immediate update-manifest fetch",
+            handler: () => {
+                this.ModuleManager.getModule<Core>("core")?.devForceUpdateCheck();
+                this.reply("Update check sent - watch for the notice (or nothing if you are current).");
             },
         }] : []),
         {
