@@ -98,6 +98,7 @@ class WeldingPage extends GUIPage {
         const info = welding.WeldInfo;
         if (info) {
             this.renderWeldedStatus(info.ownerName, info.owner, info.witnessName, info.weldedAt);
+            this.renderWeldPreferences();
             return;
         }
         const ceremony = welding.Ceremony;
@@ -193,6 +194,23 @@ class WeldingPage extends GUIPage {
             { Name: "Decline / cancel", Active: participant },
             () => this.sendOrRun(ceremony, "decline"),
         ));
+    }
+
+    /** Personal display/announcement choices - only on the sub's own welded view. */
+    private renderWeldPreferences(): void {
+        const data = this.welding.Data;
+        const announce = data.announceAnniversary !== false;
+        const show = data.showWeldInfo !== false;
+        MainCanvas.textAlign = "left";
+        DrawCheckbox(1150, 660, 64, 64, "Announce weld anniversaries in the room", announce);
+        DrawCheckbox(1150, 740, 64, 64, "Show the welded-by line on my profile", show);
+        this.addClickHandler(() => {
+            if (MouseIn(1150, 660, 64, 64)) {
+                data.announceAnniversary = !announce;
+            } else if (MouseIn(1150, 740, 64, 64)) {
+                data.showWeldInfo = !show;
+            }
+        });
     }
 
     private renderWeldedStatus(ownerName: string, owner: number, witnessName: string, weldedAt: number): void {

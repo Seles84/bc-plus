@@ -93,6 +93,7 @@ export default class Logging extends ModuleInstance {
             { type: "checkbox", name: "record.authority", label: "Record permission changes", default: true },
             { type: "checkbox", name: "record.role", label: "Record role changes", default: true },
             { type: "checkbox", name: "record.relationship", label: "Record relationship changes", default: true },
+            { type: "checkbox", name: "record.welding", label: "Record welding ceremonies and events", default: true },
             { type: "checkbox", name: "record.other", label: "Record commands and other events", default: true },
         ];
     }

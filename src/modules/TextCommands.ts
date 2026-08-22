@@ -259,6 +259,17 @@ export default class TextCommands extends ModuleInstance {
                     ? "The weld has been broken (dev override)."
                     : "Your collar is not welded.");
             },
+        }, {
+            name: "weldage",
+            description: "DEV: backdate the weld (weldage <days>) to test anniversaries",
+            handler: (args: string[]) => {
+                const days = Number(args[0]);
+                const done = Number.isFinite(days) && days >= 0
+                    && this.ModuleManager.getModule<Welding>("welding")?.devSetWeldAge(days) === true;
+                this.reply(done
+                    ? `The weld now dates back ${days} days (dev override).`
+                    : "Usage: weldage <days> - and your collar must be welded.");
+            },
         }] : []),
         {
             name: "debug",
