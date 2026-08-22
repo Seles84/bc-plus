@@ -316,8 +316,8 @@ export class GUI extends ModuleInstance {
     }
 
     /**
-     * The optional "welded by" line on the information sheet. The bottom-right
-     * strip is free of BC, BCX and BC+ elements in both button layouts.
+     * The optional "welded by" line on the information sheet, drawn like one
+     * of BC's own lines in the next slot under the ownership block.
      */
     private drawWeldLine(character: BCPlusCharacter): void {
         const data = character.isPlayer()
@@ -328,9 +328,42 @@ export class GUI extends ModuleInstance {
             return;
         }
         const prevAlign = MainCanvas.textAlign;
-        MainCanvas.textAlign = "center";
-        DrawTextFit(line, 1500, 955, 880, "#A00000");
+        MainCanvas.textAlign = "left";
+        DrawTextFit(line, 550, this.weldLineY(character.Character), 450, "Black", "Gray");
         MainCanvas.textAlign = prevAlign;
+    }
+
+    /**
+     * The y of the free line slot under BC's ownership block - replicates the
+     * currentY flow of InformationSheetRun (R131: spacing 55/75 from y 125),
+     * since BC keeps no cursor we could read back.
+     */
+    private weldLineY(C: Character): number {
+        const spacing = 55;
+        let y = 125 + spacing; // Name
+        if (C.Name !== CharacterNickname(C)) {
+            y += spacing;
+        }
+        if (TitleGet(C) !== "None") {
+            y += spacing;
+        }
+        if (C.MemberNumber != null) {
+            y += spacing;
+        }
+        y += 75; // Pronouns line + large gap
+        if ((C.IsPlayer() || C.IsOnline()) && C.Creation !== undefined) {
+            y += spacing; // "Member for ..."
+        }
+        if (C.IsPlayer()) {
+            y += spacing; // Money
+        }
+        y += 75; // large gap
+        y += spacing; // Difficulty
+        y += spacing; // "Collared by ..." (or "Unowned")
+        if (C.IsOwned() && C.IsOwned() !== "ggts" && C.OwnedSinceMs() > 0) {
+            y += spacing; // "for N day(s)"
+        }
+        return y;
     }
 
     /** Own menu opens unless hardcore blocks it; others' when they run BC+ and permit viewing. */
