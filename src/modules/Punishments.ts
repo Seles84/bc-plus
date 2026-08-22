@@ -378,6 +378,7 @@ export default class Punishments extends ModuleInstance {
         }
 
         this.Active[id] = active;
+        this.Events.emit("punishmentStarted", { punishment: id });
         if (definition.kind === "item") {
             this.enforceItem(active);
         }
@@ -426,6 +427,7 @@ export default class Punishments extends ModuleInstance {
                 rules.setRuleActive(active.forcedRule, active.priorActive === true);
             }
         }
+        this.Events.emit("punishmentEnded", { punishment: id, how });
 
         const message = how === "lifted"
             ? `${byName ?? "Someone"} lifted your punishment "${active.name}".`

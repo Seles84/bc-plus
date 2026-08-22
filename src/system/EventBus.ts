@@ -17,8 +17,14 @@ export interface BCPlusEvents {
     curseTriggered: { group: string; action: "add" | "remove" | "swap" | "update" };
     /** Fired when a curse is created, removed, or (de)activated. */
     curseChanged: { group: string; active: boolean };
+    /** Fired when a punishment newly starts (not on extensions of a running one). */
+    punishmentStarted: { punishment: string };
+    /** Fired when a punishment ends. */
+    punishmentEnded: { punishment: string; how: "expired" | "lifted" };
     /** Fired when a requested remote log (or denial) arrives. */
     logReceived: { memberNumber: number };
+    /** Fired when requested remote statistics (or a denial) arrive. */
+    statsReceived: { memberNumber: number };
     /** Fired when a requested remote relationship list (or denial) arrives. */
     relationshipsReceived: { memberNumber: number };
     /** Fired after the save file has been persisted (any data change). */

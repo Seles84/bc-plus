@@ -12,6 +12,7 @@ import Punishments from "@/modules/Punishments";
 import Relationships from "@/modules/Relationships";
 import Roles from "@/modules/Roles";
 import Rules from "@/modules/Rules";
+import Statistics from "@/modules/Statistics";
 import TextCommands from "@/modules/TextCommands";
 import Welding from "@/modules/Welding";
 import { GUI } from "@/modules/GUI";
@@ -33,6 +34,7 @@ export default class ModuleManager {
             new Commands(parent),
             new Relationships(parent),
             new Welding(parent),
+            new Statistics(parent),
             new Logging(parent),
             new TextCommands(parent),
             new GUI(parent),
