@@ -4,7 +4,7 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.8.3] - 2026-08-22
 
 ### Added
 - Statistics page (new module on the main menu): BC+ now keeps fun numbers about your play. Time spent in a chat room, unable to use your hands, restrained, gagged, blindfolded, deafened, in chastity, plugged, kneeling, suspended, enclosed, kept on edge, collar welded and under punishment - each with its share of your total play time - plus how long you have worn every individual item. Event counters track rules violated, attempts blocked, curse enforcements, punishments received, orgasms (ruined ones counted separately), and chat messages, whispers and emotes sent. Per-rule violation counts get their own pages. Others can view your statistics from their BC+ view of you if you allow it (new "View my statistics" permission, Mistress and yourself by default), and resetting is its own permission ("Reset my statistics", Owner and yourself by default) - remotely too, with your client validating as always. `/bcp stats` prints a quick summary. The module can be switched off on the General page; time is collected in ten-second ticks and written to your save every few minutes, so it adds no chatter to the server.
