@@ -4,6 +4,11 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- The BC+ button on the information sheet now sits in the top slot of the bottom-right button area when BCX is not running - the same spot BCX's own button occupies in tandem mode (the game's next-page arrow moves down slightly to make room, exactly as BCX does it). In tandem mode nothing changes: BCX keeps its slot and BC+ sits directly left of it.
+
 ## [0.8.3] - 2026-08-22
 
 ### Added
