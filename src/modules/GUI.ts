@@ -25,7 +25,7 @@ export class GUI extends ModuleInstance {
 
     private modalHost: ModalHost | null = null;
     private currentSubscreen: GUIScreen | null = null;
-    private bcPlusButton: [number, number, number, number] = [1600, 800, 90, 90];
+    private bcPlusButton: [number, number, number, number] = [1815, 685, 90, 90];
     private readonly escapeHandler = (event: KeyboardEvent): void => {
         if ((event.key === "Escape" || event.key === "Esc") && this.currentSubscreen && CurrentScreen === "InformationSheet") {
             this.currentSubscreen.exit();
@@ -211,8 +211,20 @@ export class GUI extends ModuleInstance {
     }
 
     override Load(): void {
-        // Avoid overlapping BCX's information sheet button in tandem mode
-        this.bcPlusButton = this.bcxInstalled() ? [1700, 685, 90, 90] : [1600, 800, 90, 90];
+        if (this.bcxInstalled()) {
+            // Tandem: BCX owns its usual slot, sit directly left of it
+            this.bcPlusButton = [1700, 685, 90, 90];
+        } else {
+            // Control: take the slot BCX would occupy. Like BCX, nudge BC's
+            // next-page arrow (natively at y765, 10px into this slot) down.
+            this.bcPlusButton = [1815, 685, 90, 90];
+            this.patchFunction("InformationSheetRun", {
+                "DrawButton(1815, 765, 90, 90,": "DrawButton(1815, 800, 90, 90,",
+            });
+            this.patchFunction("InformationSheetClick", {
+                "MouseIn(1815, 765, 90, 90)": "MouseIn(1815, 800, 90, 90)",
+            });
+        }
 
         this.addHook("InformationSheetRun", 14, (args, next) => {
             if (window.bcx?.inBcxSubscreen()) {
