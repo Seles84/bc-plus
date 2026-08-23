@@ -1,7 +1,7 @@
 import { GUIPage, GUIScreen, PageOptions } from "@/system/gui/GUIScreen";
 import { ButtonActionWidget } from "@/system/gui/Widgets";
 import { CurseAccess, LocalCurseAccess, RemoteCurseAccess } from "@/system/curses/CurseAccess";
-import { CurseSlotData } from "@/system/curses/CurseTypes";
+import { CURSE_LOCKS, CurseSlotData, lockApplicableFor } from "@/system/curses/CurseTypes";
 import { AssetPickerScreen } from "@/gui/AssetPickerScreen";
 import { ConditionsScreen } from "@/gui/ConditionsScreen";
 import { describeConditions } from "@/system/conditions/Conditions";
@@ -100,9 +100,11 @@ class CursesListPage extends GUIPage {
         }
         this.slots.forEach((slot, i) => {
             const y = 220 + i * 110;
+            const lockLabel = CURSE_LOCKS.find((l) => l.asset !== "" && l.asset === slot.lock)?.label;
             const summary = slot.items.length === 0
                 ? (slot.allowEmpty ? "Cursed empty" : "Empty (inactive)")
-                : `${slot.items.length} allowed item${slot.items.length === 1 ? "" : "s"}${slot.allowEmpty ? ", may be empty" : ""}`;
+                : `${slot.items.length} allowed item${slot.items.length === 1 ? "" : "s"}${slot.allowEmpty ? ", may be empty" : ""}`
+                    + (lockLabel ? `, ${lockLabel.toLocaleLowerCase()}` : "");
             this.addClickHandler(ButtonActionWidget(
                 { Left: 150, Top: y, Width: 1100, Height: 90 },
                 { Name: groupLabel(this.curses, slot.group), HoverText: "Configure this curse" },
@@ -305,6 +307,26 @@ class CurseSlotPage extends GUIPage {
             if (canEdit && MouseIn(150, 280, 64, 64)) {
                 access.setAllowEmpty(slot.group, !slot.allowEmpty);
             }
+        });
+
+        // Lock requirement: options that need an owner/lover only show when the
+        // wearer has one - except a lock already stored, which stays visible
+        // (and clearable) even if it no longer applies
+        const lockOptions = CURSE_LOCKS.filter((l) =>
+            l.asset === "" || l.asset === slot.lock || lockApplicableFor(access.subject(), l.asset));
+        const lockIndex = Math.max(0, lockOptions.findIndex((l) => l.asset === (slot.lock ?? "")));
+        DrawText("Lock:", 750, 312, "Black");
+        MainCanvas.textAlign = "center";
+        DrawBackNextButton(880, 280, 400, 64, lockOptions[lockIndex]!.label,
+            canEdit ? "White" : "#ddd", "", () => "", () => "", !canEdit);
+        MainCanvas.textAlign = "left";
+        this.addClickHandler(() => {
+            if (!canEdit || !MouseIn(880, 280, 400, 64)) {
+                return;
+            }
+            const direction = MouseX < 880 + 200 ? -1 : 1;
+            const next = lockOptions[(lockIndex + direction + lockOptions.length) % lockOptions.length]!;
+            access.setLock(slot.group, next.asset);
         });
 
         // Conditions

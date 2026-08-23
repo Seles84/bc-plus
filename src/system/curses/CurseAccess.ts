@@ -24,6 +24,8 @@ export interface CurseAccess {
     addCurrentItem(group: string): void;
     /** Adds a catalog-picked item (always loose) to the allowed list. */
     addCatalogItem(group: string, asset: string): void;
+    /** Sets the padlock the slot enforces ("" = none). */
+    setLock(group: string, lock: string): void;
     setConditions(group: string, conditions: ConditionData): void;
 }
 
@@ -77,6 +79,10 @@ export class LocalCurseAccess implements CurseAccess {
 
     addCatalogItem(group: string, asset: string): void {
         this.curses.addCatalogItem(group, asset);
+    }
+
+    setLock(group: string, lock: string): void {
+        this.curses.setLock(group, lock);
     }
 
     setConditions(group: string, conditions: ConditionData): void {
@@ -145,6 +151,10 @@ export class RemoteCurseAccess implements CurseAccess {
 
     addCatalogItem(group: string, asset: string): void {
         this.send("addCatalogItem", group, { value: asset });
+    }
+
+    setLock(group: string, lock: string): void {
+        this.send("setLock", group, { value: lock });
     }
 
     setConditions(group: string, conditions: ConditionData): void {
