@@ -14,5 +14,8 @@ CLAUDE.md
 .idea/
 .vscode/
 
+# Wrangler local cache (worker deploys)
+.wrangler/
+
 # Logs
 *.log

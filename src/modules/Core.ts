@@ -1,6 +1,6 @@
 import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { ModuleConfig, PermissionDefinition, SettingsFooterRenderer } from "@/system/module/ModuleTypes";
-import { BCPLUS_APP_NAME, BCPLUS_AUTHOR, BCPLUS_REPO, BCPLUS_VERSION, BCPLUS_WEBSITE } from "@/system/Constants";
+import { BCPLUS_APP_NAME, BCPLUS_AUTHOR, BCPLUS_REPO, BCPLUS_VERSION, BCPLUS_VERSION_ENDPOINT, BCPLUS_WEBSITE } from "@/system/Constants";
 import { log, warn } from "@/system/Console";
 import { InfoBeep } from "@/utils/BCUtils";
 import { BCPVersionCompare, parseBCPVersion } from "@/utils/Version";
@@ -93,6 +93,16 @@ export default class Core extends ModuleInstance {
                 default: "Switch",
                 active: () => !this.isPresetLocked(),
                 onSet: (value, prev) => void this.onPresetChanged(value as BCPPreset, prev as BCPPreset),
+            },
+            {
+                type: "checkbox",
+                name: "updateChecks",
+                label: "Check for updates online",
+                hoverText: "Fetches the BC+ release manifest at login and on the re-check interval "
+                    + "below. The request carries only the BC+ version you are running - no member "
+                    + "number, name or anything else - and its count gives the author anonymous "
+                    + "usage numbers. Switch off to stop BC+ from making any update requests at all.",
+                default: true,
             },
             {
                 type: "checkbox",
@@ -431,16 +441,32 @@ export default class Core extends ModuleInstance {
             return;
         }
         if (Date.now() - this.lastUpdateCheck >= ms) {
-            void this.fetchLatestVersion();
+            void this.fetchLatestVersion("interval");
         }
     }
 
-    private async fetchLatestVersion(): Promise<void> {
+    private async fetchLatestVersion(kind: "login" | "interval"): Promise<void> {
         // Stamped even when the fetch fails - being offline must not turn the
         // pacing timer into a once-a-minute retry hammer
         this.lastUpdateCheck = Date.now();
+        if (this.getSetting<boolean>("updateChecks") === false) {
+            return;
+        }
         try {
-            const response = await fetch(`${BCPLUS_WEBSITE}/version.json`, { cache: "no-store" });
+            // The endpoint's request count is the anonymous usage metric; only
+            // the running version and the check kind travel with it. Dev
+            // builds tag themselves so they can be filtered out of the counts.
+            const params = `?v=${encodeURIComponent(BCPLUS_VERSION)}&t=${BCP_DEV_ENV ? "dev" : kind}`;
+            let response: Response | null = null;
+            try {
+                response = await fetch(`${BCPLUS_VERSION_ENDPOINT}${params}`, { cache: "no-store" });
+            } catch {
+                response = null;
+            }
+            if (response === null || !response.ok) {
+                // Metrics endpoint down - update checks fall back to the source
+                response = await fetch(`${BCPLUS_WEBSITE}/version.json`, { cache: "no-store" });
+            }
             if (!response.ok) {
                 return;
             }
@@ -507,7 +533,7 @@ export default class Core extends ModuleInstance {
         if (!BCP_DEV_ENV) {
             return;
         }
-        void this.fetchLatestVersion();
+        void this.fetchLatestVersion("interval");
     }
 
     /** DEV builds only: fakes the latest-version manifest; null re-fetches the real one. */
@@ -517,7 +543,7 @@ export default class Core extends ModuleInstance {
         }
         this.latestVersion = version;
         if (version === null) {
-            void this.fetchLatestVersion();
+            void this.fetchLatestVersion("interval");
         } else {
             this.notifyIfOutdated();
         }
@@ -525,7 +551,7 @@ export default class Core extends ModuleInstance {
 
     override Load(): void {
         this.checkForUpdate();
-        void this.fetchLatestVersion();
+        void this.fetchLatestVersion("login");
         this.updateCheckTimer = setInterval(() => this.maybeRecheckUpdates(), 60_000);
         this.installRoomIcon();
         bindMemberCache(this.Data.knownMembers as Record<string, KnownMember>);

@@ -1,0 +1,10 @@
+name = "bcp-version"
+main = "worker.js"
+compatibility_date = "2026-08-01"
+workers_dev = true
+
+# Request counting - one datapoint per manifest fetch, nothing identifying.
+# The account id and API token come from the environment (never committed).
+[[analytics_engine_datasets]]
+binding = "PINGS"
+dataset = "bcp_pings"
