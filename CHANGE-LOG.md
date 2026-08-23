@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Anonymous usage count via the update check: the release manifest is now fetched from a BC+ endpoint whose request count tells the author roughly how many people use the addon. The request carries only the BC+ version being run and whether it is a login or interval check - no member number, no account data, nothing identifying, and no per-user information is stored (details in the README). A new "Check for updates online" checkbox on the General page switches update checks off entirely - BC+ then makes no update requests at all - and `/bcp updates` reports that state. If the endpoint is unreachable, update checks quietly fall back to the previous direct fetch.
 - Periodic update checks: BC+ now re-reads the release manifest while you stay logged in, so long sessions still hear about new versions instead of only checking at login. A new "Re-check for updates every" option on the General page picks the interval (30 minutes / 1 hour, the default / 3 hours / 6 hours / login only). A found update is announced once per session at most - and a second release landing mid-session still gets its own notice. `/bcp updates` (without on/off) now also reports the configured interval.
 
 ### Changed

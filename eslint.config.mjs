@@ -9,6 +9,8 @@ export default tseslint.config(
             "node_modules/",
             "static-stable/",
             "static-dev/",
+            // Cloudflare worker: different runtime globals, deployed separately
+            "cloudflare/",
         ],
     },
     js.configs.recommended,

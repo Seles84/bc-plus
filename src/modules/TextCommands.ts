@@ -199,6 +199,11 @@ export default class TextCommands extends ModuleInstance {
                 }
                 const value = (args[0] ?? "").toLowerCase();
                 if (value !== "on" && value !== "off") {
+                    if (core.getSetting<boolean>("updateChecks") === false) {
+                        this.reply("Online update checks are switched off entirely - BC+ makes no "
+                            + "update requests at all (checkbox on the General page). Usage: /bcp updates on|off");
+                        return;
+                    }
                     this.reply(`Update notifications are ${core.getSetting<boolean>("updateNotify") !== false ? "on" : "off"}, `
                         + `re-checking every ${core.getSetting<string>("updateCheckInterval")?.toLowerCase() ?? "1 hour"} `
                         + "(configurable on the General page). Usage: /bcp updates on|off");
