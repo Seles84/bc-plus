@@ -2,10 +2,13 @@ import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { ModuleConfig, PermissionDefinition } from "@/system/module/ModuleTypes";
 import { BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
 import { Role } from "@/system/Roles";
-import { CurseItemSpec, CurseSlotData, adoptRestoredState, captureItemSpec, itemMatchesSpec } from "@/system/curses/CurseTypes";
+import {
+    CURSE_LOCKS, CurseItemSpec, CurseSlotData, adoptRestoredState, captureItemSpec, itemMatchesSpec,
+    lockApplicableFor, stripLockState,
+} from "@/system/curses/CurseTypes";
 import { CursesListScreen } from "@/gui/CursesScreen";
 import { GUIScreen } from "@/system/gui/GUIScreen";
-import { BCPMessageContent, BCPNotifyPlayer, SendAction, SendBCPMessage } from "@/utils/Messaging";
+import { BCPMessageContent, BCPNotifyPlayer, MemberNumberToName, SendAction, SendBCPMessage } from "@/utils/Messaging";
 import { decodeExport, encodeExport } from "@/utils/ExportImport";
 import { jsonClone } from "@/utils/BCUtils";
 import { conditionsExpired, conditionsMet, sanitizeConditions } from "@/system/conditions/Conditions";
@@ -43,6 +46,8 @@ export default class Curses extends ModuleInstance {
     private tickRestores: { group: string; itemName: string }[] = [];
     /** Items removed by cursed-empty slots during the current enforcement tick. */
     private tickRemovals: { group: string; itemName: string }[] = [];
+    /** Locks snapped back shut during the current enforcement tick. */
+    private tickRelocks: { group: string; itemName: string }[] = [];
     /** Restores since the slot last checked compliant; guards against fight loops. */
     private readonly consecutiveRestores = new Map<string, number>();
     private readonly suspendedUntil = new Map<string, number>();
@@ -60,7 +65,9 @@ export default class Curses extends ModuleInstance {
         Icon: "Icons/Lock.png",
         HoverText: "A cursed slot only accepts its allowed items. Each allowed item has its own "
             + "rules: strict items restore their exact captured state (color, type, crafting), "
-            + "loose items just have to be the same item. A slot cursed while empty stays empty.",
+            + "loose items just have to be the same item. A slot cursed while empty stays empty. "
+            + "A slot can also demand a padlock: if the worn item is unlocked or carries a "
+            + "different lock, the required lock snaps shut again.",
         PublicData: true,
         Reference: "curses",
         MenuString: "Curses",
@@ -156,10 +163,14 @@ export default class Curses extends ModuleInstance {
                 craft: spec.craft,
             });
         }
+        const lock = typeof candidate.lock === "string"
+            && CURSE_LOCKS.some((l) => l.asset !== "" && l.asset === candidate.lock)
+            ? candidate.lock : undefined;
         return {
             group: group as AssetGroupName,
             active: candidate.active === true,
             allowEmpty: candidate.allowEmpty === true,
+            ...(lock !== undefined ? { lock } : {}),
             items,
         };
     }
@@ -220,6 +231,20 @@ export default class Curses extends ModuleInstance {
         }
     }
 
+    /** Sets the padlock the slot enforces ("" = none). Inapplicable locks (no owner/lover) may be stored; enforcement waits. */
+    setLock(group: string, lock: string): boolean {
+        const slot = this.Slots[group];
+        if (!slot || !CURSE_LOCKS.some((l) => l.asset === lock)) {
+            return false;
+        }
+        if (lock === "") {
+            delete slot.lock;
+        } else {
+            slot.lock = lock;
+        }
+        return true;
+    }
+
     /** Sets a curse's conditions (sanitized); pass null/{} to clear. */
     setCurseConditions(group: string, raw: unknown): boolean {
         const slot = this.Slots[group];
@@ -278,6 +303,7 @@ export default class Curses extends ModuleInstance {
     }
 
     override Load(): void {
+        this.migrateCapturedLocks();
         this.tickTimer = setInterval(() => this.check(), TICK_MS);
 
         // Tandem mode: a BCX curse acting on a group we also curse means both
@@ -300,6 +326,28 @@ export default class Curses extends ModuleInstance {
                 BCPNotifyPlayer(`${sender.Name} rejected the curse change${typeof content.reason === "string" ? `: ${content.reason}` : "."}`);
             }
         });
+    }
+
+    /**
+     * One-time save migration: item specs used to capture the whole property
+     * blob, padlock included, and strict comparison enforced it incidentally.
+     * Lock state now lives in the slot's `lock` setting - seed it from any
+     * captured padlock we can enforce, then strip lock state out of the specs.
+     */
+    private migrateCapturedLocks(): void {
+        for (const slot of Object.values(this.Slots)) {
+            for (const spec of slot.items) {
+                const captured = (spec.property as Record<string, unknown> | undefined)?.["LockedBy"];
+                if (slot.lock === undefined && typeof captured === "string"
+                    && CURSE_LOCKS.some((l) => l.asset !== "" && l.asset === captured)) {
+                    slot.lock = captured;
+                }
+                const stripped = stripLockState(spec.property);
+                if (JSON.stringify(stripped) !== JSON.stringify(spec.property)) {
+                    spec.property = stripped;
+                }
+            }
+        }
     }
 
     private onCurseCommand(sender: Character, content: BCPMessageContent): void {
@@ -360,6 +408,9 @@ export default class Curses extends ModuleInstance {
         } else if (action === "addCatalogItem" && typeof value === "string" && this.Slots[group]) {
             applied = this.addCatalogItem(group, value);
             verb = "allowed an item under the curse on";
+        } else if (action === "setLock" && typeof value === "string" && this.Slots[group]) {
+            applied = this.setLock(group, value);
+            verb = value === "" ? "removed the lock from the curse on" : "changed the lock of the curse on";
         } else if (action === "setConditions" && this.Slots[group]) {
             applied = this.setCurseConditions(group, value ?? {});
             verb = "changed the conditions of the curse on";
@@ -423,6 +474,7 @@ export default class Curses extends ModuleInstance {
         }
         this.tickRestores = [];
         this.tickRemovals = [];
+        this.tickRelocks = [];
         for (const slot of Object.values(this.Slots)) {
             if (slot.active) {
                 try {
@@ -439,9 +491,11 @@ export default class Curses extends ModuleInstance {
     private announceTick(): void {
         const restores = this.tickRestores;
         const removals = this.tickRemovals;
+        const relocks = this.tickRelocks;
         this.tickRestores = [];
         this.tickRemovals = [];
-        if ((restores.length === 0 && removals.length === 0)
+        this.tickRelocks = [];
+        if ((restores.length === 0 && removals.length === 0 && relocks.length === 0)
             || this.Data.announce === false
             || !ServerPlayerIsInChatRoom()
             || Date.now() - this.lastAnnounce < NOTIFY_COOLDOWN_MS) {
@@ -455,8 +509,12 @@ export default class Curses extends ModuleInstance {
             (this.curseableGroups().find((g) => g.Name === group)?.Description ?? group).toLocaleLowerCase();
 
         let text: string;
-        if (restores.length > 0 && removals.length > 0) {
+        if ([restores, removals, relocks].filter((list) => list.length > 0).length > 1) {
             text = `Multiple curses on ${name} have taken effect.`;
+        } else if (relocks.length === 1) {
+            text = `The lock on ${name}'s ${slotName(relocks[0]!.group)} clicks shut again.`;
+        } else if (relocks.length > 1) {
+            text = `The locks on several of ${name}'s cursed items click shut again.`;
         } else if (removals.length === 1) {
             text = `The curse on ${name}'s ${slotName(removals[0]!.group)} causes ${possessive} ${removals[0]!.itemName} to fall off.`;
         } else if (removals.length === 2) {
@@ -535,8 +593,79 @@ export default class Curses extends ModuleInstance {
             return;
         }
 
+        // The right item is worn - now the lock requirement, if any. An
+        // inapplicable lock (Owner/Lover padlock without one) waits quietly.
+        if (slot.lock && worn.Property?.LockedBy !== slot.lock
+            && lockApplicableFor(Player, slot.lock) && InventoryDoesItemAllowLock(worn)) {
+            debug(`Curse violation on ${slot.group}: expected ${slot.lock}, found ${worn.Property?.LockedBy ?? "no lock"}`);
+            this.relock(slot, worn);
+            return;
+        }
+
         // Slot is compliant - the fight (if any) is over
         this.consecutiveRestores.delete(slot.group);
+    }
+
+    /** Snaps the configured padlock back onto a compliant item. Shares the restore guards. */
+    private relock(slot: CurseSlotData, worn: Item): void {
+        const now = Date.now();
+        if (now - (this.lastRestore.get(slot.group) ?? 0) < RESTORE_COOLDOWN_MS) {
+            return;
+        }
+        this.lastRestore.set(slot.group, now);
+
+        const failures = (this.consecutiveRestores.get(slot.group) ?? 0) + 1;
+        this.consecutiveRestores.set(slot.group, failures);
+        if (failures > MAX_CONSECUTIVE_RESTORES) {
+            this.suspendedUntil.set(slot.group, now + SUSPEND_MS);
+            this.consecutiveRestores.delete(slot.group);
+            const groupName = this.curseableGroups().find((g) => g.Name === slot.group)?.Description ?? slot.group;
+            err(`Curse lock on ${slot.group} is not converging (something keeps rejecting the lock) - pausing enforcement for ${SUSPEND_MS / 1000}s`);
+            BCPNotifyPlayer(`The lock on your cursed ${groupName} could not hold and is resting for a minute.`);
+            return;
+        }
+
+        this.applyLock(slot, worn);
+        if (ServerPlayerIsInChatRoom()) {
+            ChatRoomCharacterUpdate(Player);
+        }
+        this.tickRelocks.push({ group: slot.group, itemName: worn.Craft?.Name || worn.Asset.Description });
+        debug(`Curse relocked ${slot.group} with ${slot.lock}`);
+        if (now - (this.lastNotify.get(slot.group) ?? 0) >= NOTIFY_COOLDOWN_MS) {
+            this.lastNotify.set(slot.group, now);
+            const groupName = this.curseableGroups().find((g) => g.Name === slot.group)?.Description ?? slot.group;
+            BCPNotifyPlayer(`The lock on your cursed ${groupName} snapped shut again.`);
+            this.Events.emit("curseTriggered", { group: slot.group, action: "relock" });
+        }
+    }
+
+    /**
+     * Locks the item with the slot's configured padlock. The key holder is the
+     * curse's placer when it was placed remotely, the wearer otherwise - and a
+     * placer who is not in the room still becomes the holder (InventoryLock can
+     * only resolve loaded characters, so the member fields are set by hand).
+     */
+    private applyLock(slot: CurseSlotData, item: Item): void {
+        if (!slot.lock) {
+            return;
+        }
+        if (item.Property?.LockedBy) {
+            InventoryUnlock(Player, item, false);
+        }
+        const holder = slot.addedBy?.member ?? Player.MemberNumber ?? -1;
+        const holderChar = holder === Player.MemberNumber
+            ? Player
+            : Character.find((c) => c.MemberNumber === holder) ?? null;
+        try {
+            InventoryLock(Player, item, slot.lock as AssetLockType, holderChar, true);
+        } catch (e) {
+            debug(`Curse lock ${slot.lock} on ${slot.group} failed:`, e);
+            return;
+        }
+        if (item.Property?.LockedBy === slot.lock && holderChar === null && holder !== -1) {
+            item.Property.LockMemberNumber = holder;
+            item.Property.LockMemberName = slot.addedBy?.name ?? MemberNumberToName(holder);
+        }
     }
 
     private restore(slot: CurseSlotData, spec: CurseItemSpec | null, action: "add" | "remove" | "swap" | "update"): void {
@@ -579,7 +708,9 @@ export default class Curses extends ModuleInstance {
                 true,
             );
             if (item && spec.property !== undefined) {
-                item.Property = jsonClone(spec.property);
+                // Old saves may still carry lock props in the capture - never
+                // resurrect a stale lock, the slot's lock setting owns locks
+                item.Property = stripLockState(jsonClone(spec.property)) ?? {};
                 CharacterRefresh(Player, false);
             }
             // Adopt the as-restored state so the next tick compares equal -
@@ -588,6 +719,9 @@ export default class Curses extends ModuleInstance {
             const worn = InventoryGet(Player, slot.group);
             if (worn && worn.Asset.Name === spec.asset) {
                 adoptRestoredState(spec, worn);
+                if (slot.lock && lockApplicableFor(Player, slot.lock) && InventoryDoesItemAllowLock(worn)) {
+                    this.applyLock(slot, worn);
+                }
             } else {
                 err(`Curse restore on ${slot.group} did not stick: expected ${spec.asset}, slot now has ${worn?.Asset.Name ?? "nothing"}`);
             }
