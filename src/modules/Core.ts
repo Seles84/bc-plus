@@ -27,6 +27,15 @@ const HARDCORE_SETTINGS = ["hardcoreSelf", "hardcoreOthers"] as const;
 /** Permissions the Slave preset removes self-access to. */
 const SLAVE_SELF_LOCKED = ["rules.edit", "curses.edit", "punishments.edit", "punishments.lift", "authority.edit", "roles.assign", "roles.revoke", "relationships.edit", "log.delete", "core.modules"];
 
+/** Update re-check choices; null ms means the login-time check only. */
+const UPDATE_INTERVALS: readonly { label: string; ms: number | null }[] = [
+    { label: "30 minutes", ms: 30 * 60_000 },
+    { label: "1 hour", ms: 60 * 60_000 },
+    { label: "3 hours", ms: 180 * 60_000 },
+    { label: "6 hours", ms: 360 * 60_000 },
+    { label: "Login only", ms: null },
+];
+
 /**
  * Core housekeeping module: run preset, update notifications and, in tandem
  * mode, the BCX connection.
@@ -93,6 +102,17 @@ export default class Core extends ModuleInstance {
                     + "when a newer version is available (a corner beep when you are not in a "
                     + "room). /bcp updates on|off toggles this too.",
                 default: true,
+            },
+            {
+                type: "option",
+                name: "updateCheckInterval",
+                label: "Re-check for updates every",
+                hoverText: "How often BC+ re-reads the release manifest while you stay logged "
+                    + "in, so long sessions still hear about new versions. \"Login only\" checks "
+                    + "once at login. A found update is announced once per session, following "
+                    + "the notification setting above.",
+                options: UPDATE_INTERVALS.map((interval) => interval.label),
+                default: "1 hour",
             },
             {
                 type: "checkbox",
@@ -392,11 +412,33 @@ export default class Core extends ModuleInstance {
     /** Latest released version per the website's version manifest; null until fetched. */
     private latestVersion: string | null = null;
 
+    /** The version already announced this session; re-checks stay quiet about it. */
+    private notifiedVersion: string | null = null;
+
+    /** Pacing for periodic re-checks: one light timer compares elapsed time to the setting. */
+    private updateCheckTimer: ReturnType<typeof setInterval> | null = null;
+    private lastUpdateCheck = 0;
+
     getLatestVersion(): string | null {
         return this.latestVersion;
     }
 
+    /** Fetches the manifest again once the configured re-check interval has elapsed. */
+    private maybeRecheckUpdates(): void {
+        const chosen = UPDATE_INTERVALS.find((interval) => interval.label === this.getSetting<string>("updateCheckInterval"));
+        const ms = chosen !== undefined ? chosen.ms : 60 * 60_000;
+        if (ms === null) {
+            return;
+        }
+        if (Date.now() - this.lastUpdateCheck >= ms) {
+            void this.fetchLatestVersion();
+        }
+    }
+
     private async fetchLatestVersion(): Promise<void> {
+        // Stamped even when the fetch fails - being offline must not turn the
+        // pacing timer into a once-a-minute retry hammer
+        this.lastUpdateCheck = Date.now();
         try {
             const response = await fetch(`${BCPLUS_WEBSITE}/version.json`, { cache: "no-store" });
             if (!response.ok) {
@@ -436,6 +478,11 @@ export default class Core extends ModuleInstance {
             return;
         }
         if (BCPVersionCompare(latest, current) > 0 && this.getSetting<boolean>("updateNotify")) {
+            // Periodic re-checks announce each new version once per session
+            if (this.latestVersion === this.notifiedVersion) {
+                return;
+            }
+            this.notifiedVersion = this.latestVersion;
             this.queueChatNotice([
                 `&#128276; Update available - v${this.latestVersion} is out (you have v${BCPLUS_VERSION}).`,
                 "Reload the page to get the latest version.",
@@ -445,6 +492,22 @@ export default class Core extends ModuleInstance {
                 InfoBeep(`${BCPLUS_APP_NAME} v${this.latestVersion} is available - reload the club to update!`, 8000);
             }
         }
+    }
+
+    override Unload(): void {
+        if (this.updateCheckTimer !== null) {
+            clearInterval(this.updateCheckTimer);
+            this.updateCheckTimer = null;
+        }
+        super.Unload();
+    }
+
+    /** DEV builds only: forces an immediate manifest fetch. */
+    devForceUpdateCheck(): void {
+        if (!BCP_DEV_ENV) {
+            return;
+        }
+        void this.fetchLatestVersion();
     }
 
     /** DEV builds only: fakes the latest-version manifest; null re-fetches the real one. */
@@ -463,6 +526,7 @@ export default class Core extends ModuleInstance {
     override Load(): void {
         this.checkForUpdate();
         void this.fetchLatestVersion();
+        this.updateCheckTimer = setInterval(() => this.maybeRecheckUpdates(), 60_000);
         this.installRoomIcon();
         bindMemberCache(this.Data.knownMembers as Record<string, KnownMember>);
 
