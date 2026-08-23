@@ -4,7 +4,7 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.8.4] - 2026-08-24
 
 ### Added
 - Lock-aware curses: a cursed slot can now demand a padlock. A new "Lock" choice on the slot's config (No lock / Metal / Intricate / Exclusive / Owner / Lover - the last two offered only when the wearer actually has an owner or lover) makes the curse watch the lock as well as the item: if the worn allowed item is unlocked, or carries a different lock, the required padlock snaps shut again within moments ("The lock on X's collar clicks shut again."). This works for loose and catalog items too, which could previously always be unlocked and removed by anyone with BC permission. The key holder is set automatically: whoever placed the curse remotely holds the key (even while not in the room), your own curses leave it with you - which decides who may open an Exclusive padlock. Editable remotely with the usual slot-scoped permission and target-side validation, included in curse export codes, and announced/logged like other curse activity.
