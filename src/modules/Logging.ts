@@ -200,7 +200,7 @@ export default class Logging extends ModuleInstance {
         this.eventUnsubs.push(this.Events.on("curseTriggered", ({ group, action }) => {
             const label = this.ModuleManager.getModule<Curses>("curses")
                 ?.curseableGroups().find((g) => g.Name === group)?.Description ?? group;
-            const verbs = { add: "re-applied the item to", remove: "stripped", swap: "swapped the item on", update: "reset the item on" } as const;
+            const verbs = { add: "re-applied the item to", remove: "stripped", swap: "swapped the item on", update: "reset the item on", relock: "snapped the lock shut on" } as const;
             this.log("curse", `The curse ${verbs[action]} ${label}`);
         }));
 

@@ -14,7 +14,7 @@ export interface BCPlusEvents {
     /** Fired when a rule is activated or deactivated. */
     ruleChanged: { rule: string; active: boolean };
     /** Fired when a curse restores a slot's state. */
-    curseTriggered: { group: string; action: "add" | "remove" | "swap" | "update" };
+    curseTriggered: { group: string; action: "add" | "remove" | "swap" | "update" | "relock" };
     /** Fired when a curse is created, removed, or (de)activated. */
     curseChanged: { group: string; active: boolean };
     /** Fired when a punishment newly starts (not on extensions of a running one). */
