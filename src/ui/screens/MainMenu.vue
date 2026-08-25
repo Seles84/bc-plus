@@ -95,11 +95,11 @@ const updateText = computed(() => {
 
 <template>
     <div class="flex h-full flex-col gap-4">
-        <div class="grid grid-cols-2 gap-3 md:grid-cols-3">
+        <div class="grid grid-cols-2 gap-4 md:grid-cols-3">
             <button
                 v-for="module in modules"
                 :key="module.Slug"
-                class="flex items-center gap-3 rounded-lg bg-surface p-3 text-left hover:bg-surface-hover"
+                class="flex items-center gap-3 rounded-lg bg-surface p-4 text-left hover:bg-surface-hover"
                 style="border: 1px solid var(--bcp-border);"
                 :title="module.Config.HoverText || module.Config.Description"
                 @click="openModule(module)"

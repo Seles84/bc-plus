@@ -4,7 +4,15 @@
  * so every token resolves to Themed's live palette when it runs and to
  * our own fallback otherwise. The fallback set is switchable (dark is
  * the default; the host gets .bcp-light for the light preference).
+ *
+ * Everything here lives in the `base` cascade layer: unlayered rules
+ * would beat Tailwind's layered utilities, so an unlayered reset would
+ * silently kill every padding/background utility in the window.
  */
+@layer properties, theme, base, components, utilities;
+
+@layer base {
+
 :host {
     /* Dark fallback palette */
     --bcp-fb-bg: #16121c;
@@ -72,4 +80,6 @@ input:focus, select:focus {
 * {
     scrollbar-width: thin;
     scrollbar-color: var(--bcp-border) transparent;
+}
+
 }

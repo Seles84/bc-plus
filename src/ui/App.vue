@@ -50,7 +50,7 @@ onMounted(() => {
                 @click="win.close()"
             >&#10005;</button>
         </header>
-        <main v-show="!win.minimized.value" class="min-h-0 flex-1 overflow-y-auto p-4">
+        <main v-show="!win.minimized.value" class="min-h-0 flex-1 overflow-y-auto p-5">
             <component :is="current.component" v-bind="current.props" v-if="current" :key="nav.depth" />
         </main>
     </div>
