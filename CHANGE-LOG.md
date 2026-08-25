@@ -4,7 +4,9 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.11.0] - 2026-08-25
+
+The UI overhaul concludes: remote views moved into the new window, the classic canvas interface is fully retired, and the window gained proper dialogs and wide-screen layouts.
 
 ### Fixed
 - Viewing someone else's BC+ no longer grays out modules that YOU have switched off locally (classic view): the remote menu acts on the target's modules, so having the opt-in Pet module disabled on your side wrongly showed their Pet page as deactivated. The target's client decides whether their side answers, as always.
