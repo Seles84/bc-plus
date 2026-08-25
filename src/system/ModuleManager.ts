@@ -8,6 +8,7 @@ import Core from "@/modules/Core";
 import Curses from "@/modules/Curses";
 import DataSync from "@/modules/DataSync";
 import Logging from "@/modules/Logging";
+import Pet from "@/modules/Pet";
 import Punishments from "@/modules/Punishments";
 import Relationships from "@/modules/Relationships";
 import Roles from "@/modules/Roles";
@@ -33,6 +34,7 @@ export default class ModuleManager {
             new Contracts(parent),
             new Commands(parent),
             new Relationships(parent),
+            new Pet(parent),
             new Welding(parent),
             new Statistics(parent),
             new Logging(parent),

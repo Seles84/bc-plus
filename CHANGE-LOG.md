@@ -4,6 +4,14 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Pet module (inspired by MPA by Maya): become a virtual pet with four needs - food, water, sleep and affection - that slowly drain over configurable spans (from 2 hours to a week per full bar, or Off per need) and show as small colored stat rings under your character in chat rooms (hoverable for exact values, with an optional always-show-percentages mode). What happens while logged out is configurable: needs can pause, or keep draining down to an adjustable floor (default 20%) so an absence never leaves the pet fully starved. The module is strictly opt-in - it ships switched off and is enabled via its checkbox on the General page - and this first version brings the needs, drain settings and HUD; feeding, petting and sleep recovery follow in a later update (a "Refill all stats" button and `/bcp pet refill` top the needs up by hand until then, and `/bcp pet` prints the current levels). A new "Change my pet settings" permission (Owner and yourself by default) will also gate the remote configuration planned for the next phase.
+
+### Changed
+- Switched-off modules no longer appear on the BC+ main menu at all (previously they showed as grayed-out buttons). Re-enabling one on the General page brings its button back immediately. Menus opened on other people are unaffected.
+
 ## [0.8.4] - 2026-08-24
 
 ### Added

@@ -73,6 +73,14 @@ export abstract class ModuleInstance {
     }
 
     /**
+     * Whether a disableable module starts enabled for players who never
+     * touched its toggle. Opt-in modules (e.g. Pet) return false.
+     */
+    get DefaultEnabled(): boolean {
+        return true;
+    }
+
+    /**
      * Permission gating remote edits of this module's plain settings via
      * SettingCommand; null means the settings are never editable remotely.
      */

@@ -29,16 +29,19 @@ class MainMenuPage extends GUIPage {
             showBack: true,
             showHelp: true,
             helpText: "This is the BC+ main menu. Each button opens the settings for one BC+ module. "
-                + "Feature modules (Rules, Curses, Commands, Relationships, Log) can be switched on "
-                + "or off on the General page - a module that is off shows grayed out here and stops "
-                + "doing anything until re-enabled.",
+                + "Feature modules (Rules, Curses, Commands, Relationships, Log, Pet, ...) can be "
+                + "switched on or off on the General page - a module that is off disappears from "
+                + "this menu and stops doing anything until re-enabled.",
         };
     }
 
     override async create(): Promise<void> {
         const remote = this.Character !== null && !this.Character.isPlayer();
+        // Own menu: switched-off modules are hidden entirely (re-enable on the
+        // General page). Remote menus list what can be done to the other
+        // person, so the local module state does not filter them.
         this.menuModules = this.Core.ModuleManager.Modules.filter(
-            (m) => (remote ? m.SupportsRemote : m.HasGUI),
+            (m) => (remote ? m.SupportsRemote : m.HasGUI && m.Config.Active),
         );
     }
 
