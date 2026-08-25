@@ -28,6 +28,10 @@ npm run lint       # ESLint
 
 For local testing, install `static-dev/bcplusLoader.user.js` in Tampermonkey and run `npm run serve` — the club will load your local build on every refresh.
 
+## Credits
+
+The Pet module is inspired by [MPA (Maya's Petplay Additions)](https://github.com/MayaTheFoxy/MPA) by Maya — a fresh implementation on the BC+ framework, with thanks for the original ideas. BC+'s pet stats also recognize MPA's pet-bowl activities, so pets from both mods can share a scene.
+
 ## License
 
 MIT

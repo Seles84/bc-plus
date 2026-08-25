@@ -4,28 +4,56 @@ import { BCPLUS_AUTHOR, BCPLUS_STORAGE, BCPLUS_VERSION } from "@/system/Constant
 import { Role } from "@/system/Roles";
 import { AnySetting } from "@/system/gui/Settings";
 import {
-    DRAIN_CHOICES, OFFLINE_FLOOR_CHOICES, OFFLINE_MODES, OFFLINE_MODE_DRAIN,
-    PET_STATS, PetLevels, PetStatId, clampLevel, drainHoursValue, drainedLevel, offlineFloorValue,
+    AFFECTION_LIKE_ACTIVITIES, AFFECTION_LIKE_GAIN, AFFECTION_LOVE_ACTIVITIES, AFFECTION_LOVE_GAIN,
+    AFFECTION_ROUGH_ACTIVITIES, AFFECTION_ROUGH_LOSS, AFFECTION_ZONE_WEIGHT,
+    BCP_BOWL_DRINK, BCP_BOWL_EAT, BOWL_RECOVERY, DRAIN_CHOICES, FOOD_ACTIVITY_NAMES, ITEM_RECOVERY,
+    OFFLINE_FLOOR_CHOICES, OFFLINE_MODES, OFFLINE_MODE_DRAIN, ORGASM_SLEEP_COST, ORGASM_WATER_COST,
+    PET_STATS, PetLevels, PetStatId, SEX_PET_GAIN, SEX_PET_MODES, SEX_PET_ORAL_ACTIVITIES,
+    SEX_PET_ORGASM_WINDOW_MS, SEX_PET_REGIONS, SEX_PET_THIRST_MULTIPLIER, WATER_ACTIVITY_NAMES,
+    chatDictAttr, clampLevel, coarseLevel, drainHoursValue, drainedLevel, offlineFloorValue, sleepFactor,
 } from "@/system/pet/PetTypes";
+import { drawPetRings } from "@/system/pet/PetHud";
+import { BCP_ACTIVITY_PREFIX, CustomActivityRegistry } from "@/utils/CustomActivities";
+import { SendAction } from "@/utils/Messaging";
 import { debug } from "@/system/Console";
 import type Authority from "@/modules/Authority";
+import type Roles from "@/modules/Roles";
 
 /** How often the last-seen stamp in localStorage is refreshed while playing. */
 const ONLINE_STAMP_MS = 10_000;
+/** How often gains/recovery are persisted (every save syncs to the BC server). */
+const FLUSH_MS = 5 * 60_000;
+/** How often the sleep-state check (appearance scan) is refreshed. */
+const SLEEP_CHECK_MS = 1_000;
 
 /**
  * Virtual pet needs, inspired by MPA by Maya: food, water, sleep and affection
- * drain over configurable spans and show as stat rings under your character.
+ * drain over configurable spans, are refilled through play (feeding, petting,
+ * sleeping) and show as stat rings under your character.
  *
- * Levels are stored with a timestamp and every read derives the current value
- * from elapsed time - no tick ever writes to storage. Storage is only touched
- * when the baseline must move: drain-speed changes, refills, unload, and the
- * offline catch-up at login (which localStorage's last-seen stamp separates
- * from online time, so "pause while offline" knows what actually was offline).
+ * The live levels live IN MEMORY and fold elapsed drain/recovery on every
+ * read; gains land in memory too. Storage sees a baseline (levels + stamp)
+ * written only every few minutes when something beyond plain drain happened -
+ * pure drain is re-derivable and never needs a write. localStorage's last-seen
+ * stamp (never a save sync) separates online from offline time at login.
  */
 export default class Pet extends ModuleInstance {
 
     private onlineStampTimer: ReturnType<typeof setInterval> | null = null;
+
+    /** Live levels; null until Load seeds them from storage. */
+    private live: PetLevels | null = null;
+    private liveStamp = 0;
+    /** Whether memory holds changes storage does not (gains, sleep recovery). */
+    private dirty = false;
+    private lastFlush = 0;
+    private sleepFactorCache = -1;
+    private sleepFactorAt = 0;
+    /** When the pet last went down on someone, for the sex-pet reward window. */
+    private readonly oralAt = new Map<number, number>();
+
+    private readonly activities = new CustomActivityRegistry();
+    private mpaPresent = false;
 
     protected readonly SystemConfig: ModuleConfig = {
         Name: "Pet",
@@ -34,10 +62,11 @@ export default class Pet extends ModuleInstance {
         Description: "Virtual pet needs: food, water, sleep and affection",
         Active: true,
         Icon: "Icons/Horse.png",
-        HoverText: "Become a virtual pet: food, water, sleep and affection slowly drain and "
-            + "show as stat rings under your character. This first version brings the needs "
-            + "and their drain settings - feeding, petting and sleep recovery follow in a "
-            + "later update (refill by hand until then). Inspired by MPA by Maya.",
+        HoverText: "Become a virtual pet: food, water, sleep and affection drain over time and "
+            + "show as stat rings under your character. Being fed and watered (food items, pet "
+            + "bowls), petted and cuddled, and sleeping (eyes closed with a sleepy emoticon - "
+            + "beds help) fills them back up. Stats can be shared with the room and configured "
+            + "remotely by those permitted. Inspired by MPA by Maya.",
         PublicData: false,
         Reference: "pet",
         MenuString: "Pet",
@@ -65,8 +94,23 @@ export default class Pet extends ModuleInstance {
         return "pet.edit";
     }
 
+    override get SupportsRemote(): boolean {
+        return true;
+    }
+
     override get Settings(): AnySetting[] {
         return [
+            // Page 1: what kind of pet you are
+            {
+                type: "checkbox",
+                name: "bePet",
+                label: "Be a virtual pet (needs drain and can be filled)",
+                hoverText: "The master switch for your own needs. Off, your levels freeze and "
+                    + "nothing drains or gains - useful when you only want to SEE other pets' "
+                    + "stats without being one.",
+                default: true,
+                onSet: () => this.flush(),
+            },
             {
                 type: "checkbox",
                 name: "hudSelf",
@@ -81,6 +125,39 @@ export default class Pet extends ModuleInstance {
                 label: "Show exact percentages on the stat rings",
                 default: false,
             },
+            {
+                type: "checkbox",
+                name: "shareStats",
+                label: "Share your pet stats with the room",
+                hoverText: "Broadcasts your levels (rounded, a few times an hour) to BC+ users "
+                    + "in the room so they can see your rings. Off, your stats stay entirely "
+                    + "on your side.",
+                default: true,
+            },
+            {
+                type: "checkbox",
+                name: "orgasmCost",
+                label: "Orgasms cost hydration and energy",
+                hoverText: "Climaxing takes a bite out of your water and sleep levels.",
+                default: true,
+            },
+            {
+                type: "checkbox",
+                name: "masochist",
+                label: "Masochist: rough treatment raises affection",
+                hoverText: "Spanks, slaps, bites and shocks gain affection instead of losing it.",
+                default: false,
+            },
+            {
+                type: "option",
+                name: "sexPet",
+                label: "Sex pet: oral play nourishes you",
+                hoverText: "Going down on someone feeds you a little - and if they finish "
+                    + "shortly after, you drink deep. The mode sets how nourishing it is.",
+                options: [...SEX_PET_MODES],
+                default: "Off",
+            },
+            // Page 2: drain speeds and offline behavior
             ...PET_STATS.map((stat) => ({
                 type: "option" as const,
                 name: stat.drainSetting,
@@ -89,8 +166,7 @@ export default class Pet extends ModuleInstance {
                     + "reaches empty. \"Off\" removes the need entirely (its ring disappears).",
                 options: DRAIN_CHOICES.map((c) => c.label),
                 default: stat.drainDefault,
-                // Fold time-so-far at the OLD speed before the new one takes over
-                onSet: (_value: string, prev: string) => this.rebase({ [stat.id]: drainHoursValue(prev, stat.drainDefault) }),
+                onSet: () => this.flush(),
             })),
             {
                 type: "option",
@@ -109,7 +185,6 @@ export default class Pet extends ModuleInstance {
                     + "(a stat already below it just stays where it was).",
                 options: OFFLINE_FLOOR_CHOICES.map((c) => c.label),
                 default: "20%",
-                active: () => this.getSetting<string>("offlineMode") === OFFLINE_MODE_DRAIN,
             },
         ];
     }
@@ -146,6 +221,11 @@ export default class Pet extends ModuleInstance {
         return authority?.hasPermission(Player.MemberNumber ?? -1, "pet.edit") ?? false;
     }
 
+    /** Whether the own needs machinery runs (module on + "be a pet" on). */
+    isPet(): boolean {
+        return this.Config.Active && this.getSetting<boolean>("bePet") !== false;
+    }
+
     /** The needs currently in play (drain not set to Off), with their configured hours. */
     activeStats(): { id: PetStatId; label: string; color: string; hours: number }[] {
         const result: { id: PetStatId; label: string; color: string; hours: number }[] = [];
@@ -158,15 +238,10 @@ export default class Pet extends ModuleInstance {
         return result;
     }
 
-    /** Live levels, derived from the stored baseline plus elapsed drain. */
+    /** Live levels; folds elapsed drain/recovery first. */
     currentLevels(): PetLevels {
-        const stored = this.storedLevels();
-        const elapsed = Date.now() - this.stampedAt();
-        const result = {} as PetLevels;
-        for (const stat of PET_STATS) {
-            result[stat.id] = drainedLevel(stored[stat.id], this.statHours(stat.id), elapsed);
-        }
-        return result;
+        this.updateLive();
+        return { ...(this.live ?? this.storedLevels()) };
     }
 
     /** Tops every need back up to 100. */
@@ -175,32 +250,48 @@ export default class Pet extends ModuleInstance {
         for (const stat of PET_STATS) {
             full[stat.id] = 100;
         }
-        this.Data.levels = full;
-        this.Data.stampedAt = Date.now();
+        this.live = full;
+        this.liveStamp = Date.now();
+        this.dirty = true;
+        this.flush();
     }
 
     /**
-     * Folds elapsed drain into the stored levels and restarts the clock.
-     * `hourOverrides` supplies the previous speed for a stat whose drain
-     * setting just changed, so its past time is charged at the old rate.
+     * The coarse public view of this pet for room broadcast: rounded levels of
+     * the active needs plus the declared settings (so remote settings mirrors
+     * stay complete when this category replaces them). A minimal record while
+     * not a pet or not sharing, so viewers drop stale rings.
      */
-    rebase(hourOverrides: Partial<Record<PetStatId, number | null>> = {}): void {
-        const stored = this.storedLevels();
-        const elapsed = Date.now() - this.stampedAt();
-        const folded = {} as PetLevels;
-        for (const stat of PET_STATS) {
-            const hours = stat.id in hourOverrides ? (hourOverrides[stat.id] ?? null) : this.statHours(stat.id);
-            folded[stat.id] = drainedLevel(stored[stat.id], hours, elapsed);
+    publicPetData(): Record<string, unknown> {
+        if (!this.isPet() || this.getSetting<boolean>("shareStats") === false) {
+            return { shareStats: false };
         }
-        this.Data.levels = folded;
-        this.Data.stampedAt = Date.now();
+        const levels: Record<string, number> = {};
+        const current = this.currentLevels();
+        for (const stat of this.activeStats()) {
+            levels[stat.id] = coarseLevel(current[stat.id]);
+        }
+        const values = Object.fromEntries(this.Settings.map((s) => [s.name, this.getSetting(s.name)]));
+        return { ...values, levels };
     }
 
     override Load(): void {
+        this.mpaPresent = this.SDK.modInstalled("MPA");
         this.applyOfflineElapsed();
+        this.live = this.storedLevels();
+        this.liveStamp = Date.now();
+        this.lastFlush = Date.now();
         this.stampOnline();
-        this.onlineStampTimer = setInterval(() => this.stampOnline(), ONLINE_STAMP_MS);
+        this.onlineStampTimer = setInterval(() => {
+            this.stampOnline();
+            this.updateLive();
+            if (this.dirty && Date.now() - this.lastFlush >= FLUSH_MS) {
+                this.flush();
+            }
+        }, ONLINE_STAMP_MS);
         this.installHud();
+        this.installGains();
+        this.installBowlActivities();
     }
 
     override Unload(): void {
@@ -208,9 +299,11 @@ export default class Pet extends ModuleInstance {
             clearInterval(this.onlineStampTimer);
             this.onlineStampTimer = null;
         }
-        // Freeze the pet: fold drain up to now and mark the gap that follows
-        // as a deliberate off period, not offline time to catch up on
-        this.rebase();
+        this.activities.unregisterAll();
+        this.oralAt.clear();
+        // Freeze the pet: fold everything up to now and mark the gap that
+        // follows as a deliberate off period, not offline time to catch up on
+        this.flush();
         this.Data.paused = true;
         super.Unload();
     }
@@ -235,6 +328,306 @@ export default class Pet extends ModuleInstance {
         return typeof raw === "number" && raw > 0 ? raw : Date.now();
     }
 
+    // ------------------------------------------------------------- Engine
+
+    private cachedSleepFactor(now: number): number {
+        if (now - this.sleepFactorAt >= SLEEP_CHECK_MS) {
+            this.sleepFactorAt = now;
+            try {
+                this.sleepFactorCache = sleepFactor(Player);
+            } catch {
+                this.sleepFactorCache = -1;
+            }
+        }
+        return this.sleepFactorCache;
+    }
+
+    /** Folds elapsed drain (and sleep recovery) into the live levels. */
+    private updateLive(): void {
+        const now = Date.now();
+        if (this.live === null) {
+            this.live = this.storedLevels();
+            this.liveStamp = now;
+            return;
+        }
+        const elapsed = now - this.liveStamp;
+        this.liveStamp = now;
+        if (elapsed <= 0 || !this.isPet()) {
+            return;
+        }
+        for (const stat of PET_STATS) {
+            const hours = this.statHours(stat.id);
+            if (hours === null) {
+                continue;
+            }
+            let factor = -1;
+            if (stat.id === "sleep") {
+                factor = this.cachedSleepFactor(now);
+                if (factor > 0) {
+                    // Recovery is a real change storage cannot re-derive
+                    this.dirty = true;
+                }
+            }
+            const delta = (elapsed / (hours * 3_600_000)) * 100 * factor;
+            this.live[stat.id] = clampLevel(this.live[stat.id] + delta);
+        }
+    }
+
+    /** Persists the live levels as the new storage baseline. */
+    private flush(): void {
+        this.updateLive();
+        if (this.live === null) {
+            return;
+        }
+        this.Data.levels = { ...this.live };
+        this.Data.stampedAt = this.liveStamp;
+        this.dirty = false;
+        this.lastFlush = Date.now();
+    }
+
+    /**
+     * Adds to one need (negative = cost). Positive gains are scaled by the
+     * pet-treatment modifier unless `flat`. No-op for needs set to Off.
+     */
+    private gainStat(stat: PetStatId, amount: number, source?: Character | null, flat = false): void {
+        if (!this.isPet() || this.statHours(stat) === null || amount === 0) {
+            return;
+        }
+        this.updateLive();
+        if (this.live === null) {
+            return;
+        }
+        const scaled = amount > 0 && !flat ? amount * this.gainModifier(stat, source ?? null) : amount;
+        this.live[stat] = clampLevel(this.live[stat] + scaled);
+        this.dirty = true;
+        debug(`Pet ${stat} ${scaled >= 0 ? "+" : ""}${Math.round(scaled * 10) / 10} -> ${Math.round(this.live[stat])}`);
+    }
+
+    /** How well care counts: who gives it and how pet-like you are receiving it. */
+    private gainModifier(stat: PetStatId, source: Character | null): number {
+        let modifier = 1;
+        const sourceNumber = source?.MemberNumber;
+        if (typeof sourceNumber === "number" && sourceNumber !== Player.MemberNumber) {
+            const role = this.ModuleManager.getModule<Roles>("roles")?.highestRole(sourceNumber) ?? Role.Public;
+            if (role <= Role.Owner) {
+                modifier += 0.5;
+            } else if (role === Role.Lover) {
+                modifier += 0.35;
+            } else if (role === Role.Mistress) {
+                modifier += 0.25;
+            }
+        }
+        try {
+            // Hard to eat or drink around a gag
+            if ((stat === "food" || stat === "water") && !Player.CanTalk()) {
+                modifier -= 0.5;
+            }
+            // Restraints and an all-fours pose are very pet-like
+            modifier += 0.03 * Player.Appearance.filter((a) => a.Asset.Group.Name.startsWith("Item")).length;
+            if (Player.PoseMapping?.BodyFull === "AllFours") {
+                modifier += 0.5;
+            }
+        } catch {
+            // Appearance quirks must never block a gain entirely
+        }
+        return Math.max(0, modifier);
+    }
+
+    // ------------------------------------------------------------- Gains
+
+    private installGains(): void {
+        this.addHook("ChatRoomMessage", 1, (args, next) => {
+            try {
+                this.onChatMessage(args[0]);
+            } catch {
+                // A malformed message must never break the chat chain
+            }
+            return next(args);
+        });
+
+        // Own orgasm cost; BC calls this once per orgasm event and the global
+        // ActivityOrgasmRuined says whether it completes
+        this.addHook("ActivityOrgasmStart", 1, (args, next) => {
+            const character = args[0] as Character | undefined;
+            if (character?.IsPlayer() && !ActivityOrgasmRuined
+                && this.getSetting<boolean>("orgasmCost") !== false) {
+                this.gainStat("water", ORGASM_WATER_COST, null, true);
+                this.gainStat("sleep", ORGASM_SLEEP_COST, null, true);
+            }
+            return next(args);
+        });
+    }
+
+    private onChatMessage(data: ServerChatRoomMessage): void {
+        if (data?.Type !== "Activity" || !this.isPet()) {
+            return;
+        }
+        const me = Player.MemberNumber;
+        const source = chatDictAttr(data, "SourceCharacter");
+        const target = chatDictAttr(data, "TargetCharacter");
+
+        // Sex pet: the partner finishing shortly after being gone down on
+        if (typeof data.Content === "string" && /^Orgasm\d/.test(data.Content)
+            && typeof source === "number" && source !== me) {
+            this.onPartnerOrgasm(source);
+            return;
+        }
+
+        const activity = String(chatDictAttr(data, "ActivityName") ?? "");
+        if (!activity) {
+            return;
+        }
+        const focusGroup = String(chatDictAttr(data, "FocusGroupName") ?? "");
+        const sourceChar = typeof source === "number" ? this.findInRoom(source) : null;
+
+        // Eating and drinking: anything used on this pet's mouth (fed by
+        // someone, self-fed, or one of the bowl activities)
+        if (target === me && focusGroup === "ItemMouth") {
+            const bowl = activity === BCP_BOWL_EAT || activity === BCP_BOWL_DRINK || activity.startsWith("MPA_Bowl");
+            const amount = bowl ? BOWL_RECOVERY : ITEM_RECOVERY;
+            if (this.isFoodActivity(activity)) {
+                this.gainStat("food", amount, sourceChar);
+            }
+            if (this.isWaterActivity(activity)) {
+                this.gainStat("water", amount, sourceChar);
+            }
+        }
+
+        // Eating out of someone's hand (the pet performs the activity there)
+        if (source === me && target !== me && focusGroup === "ItemHands" && this.isFoodActivity(activity)) {
+            this.gainStat("food", ITEM_RECOVERY, typeof target === "number" ? this.findInRoom(target) : null);
+        }
+
+        // Affection from being touched
+        if (target === me && source !== me) {
+            const zone = AFFECTION_ZONE_WEIGHT[focusGroup] ?? 1;
+            if (AFFECTION_LOVE_ACTIVITIES.includes(activity)) {
+                this.gainStat("affection", AFFECTION_LOVE_GAIN * zone, sourceChar);
+            } else if (AFFECTION_LIKE_ACTIVITIES.includes(activity)) {
+                this.gainStat("affection", AFFECTION_LIKE_GAIN * zone, sourceChar);
+            } else if (AFFECTION_ROUGH_ACTIVITIES.includes(activity)) {
+                const flip = this.getSetting<boolean>("masochist") === true ? -1 : 1;
+                this.gainStat("affection", AFFECTION_ROUGH_LOSS * zone * flip, sourceChar);
+            }
+        }
+
+        // Sex pet: performing oral on someone
+        if (source === me && typeof target === "number" && target !== me
+            && this.sexPetGain() > 0
+            && SEX_PET_ORAL_ACTIVITIES.includes(activity) && SEX_PET_REGIONS.includes(focusGroup)) {
+            this.gainStat("food", this.sexPetGain(), this.findInRoom(target));
+            this.oralAt.set(target, Date.now());
+        }
+    }
+
+    private isFoodActivity(name: string): boolean {
+        return name === BCP_BOWL_EAT || FOOD_ACTIVITY_NAMES.includes(name)
+            || this.activityHasPrerequisite(name, "Needs-EatItem");
+    }
+
+    private isWaterActivity(name: string): boolean {
+        return name === BCP_BOWL_DRINK || WATER_ACTIVITY_NAMES.includes(name)
+            || this.activityHasPrerequisite(name, "Needs-SipItem");
+    }
+
+    private activityHasPrerequisite(name: string, prerequisite: string): boolean {
+        const activity = ActivityFemale3DCG.find((a) => (a.Name as string) === name);
+        return activity?.Prerequisite?.includes(prerequisite as ActivityPrerequisite) ?? false;
+    }
+
+    private sexPetGain(): number {
+        return SEX_PET_GAIN[this.getSetting<string>("sexPet")] ?? 0;
+    }
+
+    private onPartnerOrgasm(partner: number): void {
+        const gain = this.sexPetGain();
+        const oral = this.oralAt.get(partner);
+        if (gain <= 0 || oral === undefined || Date.now() - oral > SEX_PET_ORGASM_WINDOW_MS) {
+            return;
+        }
+        this.oralAt.delete(partner);
+        const partnerChar = this.findInRoom(partner);
+        this.gainStat("water", gain * SEX_PET_THIRST_MULTIPLIER, partnerChar);
+        if (partnerChar) {
+            SendAction(`${CharacterNickname(Player)} eagerly drinks down everything ${CharacterNickname(partnerChar)} gives.`);
+        }
+    }
+
+    private findInRoom(memberNumber: number): Character | null {
+        return (ChatRoomCharacter ?? []).find((c) => c.MemberNumber === memberNumber) ?? null;
+    }
+
+    // ------------------------------------------------------- Bowl activities
+
+    private installBowlActivities(): void {
+        // MPA registers its own bowl activities; a second pair of identical
+        // buttons helps nobody - MPA's messages feed our stats regardless
+        if (this.mpaPresent) {
+            debug("MPA detected - using its pet bowl activities instead of registering our own");
+            return;
+        }
+        const hasBowl = (acting: Character): boolean => {
+            try {
+                return InventoryGet(acting, "ItemDevices")?.Asset.Name === "PetBowl" && !acting.IsMouthBlocked();
+            } catch {
+                return false;
+            }
+        };
+        this.activities.register([
+            {
+                name: BCP_BOWL_EAT,
+                label: "Eat From Bowl",
+                selfGroups: ["ItemMouth"],
+                actionSelf: "SourceCharacter eats from PronounPossessive pet bowl.",
+                image: "Assets/Female3DCG/ItemDevices/Preview/PetBowl.png",
+                customPrerequisite: { name: "BCPHasPetBowl", check: hasBowl },
+            },
+            {
+                name: BCP_BOWL_DRINK,
+                label: "Drink From Bowl",
+                selfGroups: ["ItemMouth"],
+                actionSelf: "SourceCharacter drinks from PronounPossessive pet bowl.",
+                image: "Assets/Female3DCG/ItemDevices/Preview/PetBowl.png",
+                customPrerequisite: { name: "BCPHasPetBowl", check: hasBowl },
+            },
+        ]);
+
+        this.addHook("ActivityCheckPrerequisite", 1, (args, next) => {
+            const [prerequisite, acting] = args;
+            const result = this.activities.handlePrerequisite(prerequisite as string, acting as Character);
+            return result === null ? next(args) : result;
+        });
+
+        // Outgoing custom-activity messages carry their rendered text as a
+        // fallback, so people without BC+ still see a proper action line
+        this.addHook("ServerSend", 1, (args, next) => {
+            const [message, data] = args as [string, ServerChatRoomMessage | undefined];
+            if (message === "ChatRoomChat" && data?.Type === "Activity"
+                && String(chatDictAttr(data, "ActivityName") ?? "").startsWith(BCP_ACTIVITY_PREFIX)) {
+                this.activities.appendFallbackText(data as { Content?: string; Dictionary?: unknown[] });
+            }
+            return next(args);
+        });
+
+        this.addHook("ElementButton.CreateForActivity", 1, (args, next) => {
+            try {
+                const raw = args as unknown as unknown[];
+                const item = raw[1] as { Activity?: { Name?: string } } | undefined;
+                const image = item?.Activity?.Name ? this.activities.imageFor(item.Activity.Name) : undefined;
+                if (image) {
+                    const options = (raw[4] ?? {}) as Record<string, unknown>;
+                    options.image = image;
+                    raw[4] = options;
+                }
+            } catch {
+                // Never break BC's activity buttons over an icon
+            }
+            return next(args);
+        });
+    }
+
+    // ------------------------------------------------------------- Offline
+
     /**
      * Login catch-up: time between the baseline stamp and the last-seen stamp
      * was online play and drains fully; time after last-seen was offline and
@@ -244,11 +637,12 @@ export default class Pet extends ModuleInstance {
     private applyOfflineElapsed(): void {
         const now = Date.now();
         if (this.Data.levels === null || typeof this.Data.levels !== "object") {
-            this.refill();
+            this.Data.levels = Object.fromEntries(PET_STATS.map((s) => [s.id, 100]));
+            this.Data.stampedAt = now;
             this.Data.paused = false;
             return;
         }
-        if (this.Data.paused === true) {
+        if (this.Data.paused === true || !this.isPet()) {
             this.Data.paused = false;
             this.Data.stampedAt = now;
             return;
@@ -315,67 +709,19 @@ export default class Pet extends ModuleInstance {
         });
     }
 
+    /**
+     * Own rings only - other pets' rings are drawn by Core from their
+     * broadcast mirror, so watching pets never requires this module.
+     */
     private drawHud(C: Character, CharX: number, CharY: number, Zoom: number): void {
-        if (!C.IsPlayer() || this.getSetting<boolean>("hudSelf") === false) {
-            return;
-        }
-        const stats = this.activeStats();
-        if (stats.length === 0) {
+        if (!C.IsPlayer() || !this.isPet() || this.getSetting<boolean>("hudSelf") === false) {
             return;
         }
         const levels = this.currentLevels();
-        const radius = 16 * Zoom;
-        const spacing = 40 * Zoom;
-        const y = CharY + 950 * Zoom;
-        const startX = CharX + 250 * Zoom - ((stats.length - 1) * spacing) / 2;
-        const showNumbers = this.getSetting<boolean>("hudNumbers") === true;
-
-        let hovered: { x: number; label: string; percent: number } | null = null;
-        stats.forEach((stat, i) => {
-            const x = startX + i * spacing;
-            const level = levels[stat.id];
-            this.drawStatRing(x, y, radius, level / 100, stat.color);
-            if (showNumbers) {
-                const prevAlign = MainCanvas.textAlign;
-                MainCanvas.textAlign = "center";
-                DrawTextFit(String(Math.round(level)), x, y, radius * 1.5, "White", "Black");
-                MainCanvas.textAlign = prevAlign;
-            }
-            if (MouseIn(x - radius, y - radius, radius * 2, radius * 2)) {
-                hovered = { x, label: stat.label, percent: Math.round(level) };
-            }
-        });
-
-        // Tooltip after all rings, so it overlays its neighbors
-        if (hovered !== null) {
-            const tip = hovered as { x: number; label: string; percent: number };
-            const prevAlign = MainCanvas.textAlign;
-            MainCanvas.textAlign = "center";
-            DrawRect(tip.x - 110, y - radius - 54, 220, 44, "rgba(0, 0, 0, 0.75)");
-            DrawTextFit(`${tip.label}: ${tip.percent}%`, tip.x, y - radius - 32, 210, "White");
-            MainCanvas.textAlign = prevAlign;
-        }
-    }
-
-    /** A ring outline with a pie fill for the current fraction, MPA-style. */
-    private drawStatRing(x: number, y: number, radius: number, fraction: number, color: string): void {
-        MainCanvas.save();
-        // Soft light halo so the saturated rings read on dark backdrops too
-        MainCanvas.beginPath();
-        MainCanvas.arc(x, y, radius, 0, Math.PI * 2);
-        MainCanvas.fillStyle = "rgba(255, 255, 255, 0.35)";
-        MainCanvas.fill();
-        MainCanvas.lineWidth = Math.max(1.5, radius / 8);
-        MainCanvas.strokeStyle = color;
-        MainCanvas.stroke();
-        if (fraction > 0) {
-            MainCanvas.beginPath();
-            MainCanvas.moveTo(x, y);
-            MainCanvas.arc(x, y, radius * 0.8, -Math.PI / 2, -Math.PI / 2 - Math.PI * 2 * Math.min(1, fraction), true);
-            MainCanvas.closePath();
-            MainCanvas.fillStyle = color;
-            MainCanvas.fill();
-        }
-        MainCanvas.restore();
+        drawPetRings(
+            this.activeStats().map((stat) => ({ label: stat.label, color: stat.color, level: levels[stat.id] })),
+            CharX, CharY, Zoom,
+            { raise: this.mpaPresent, showNumbers: this.getSetting<boolean>("hudNumbers") === true },
+        );
     }
 }

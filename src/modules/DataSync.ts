@@ -13,6 +13,7 @@ import {
 import type Authority from "@/modules/Authority";
 import type Logging from "@/modules/Logging";
 import type Core from "@/modules/Core";
+import type Pet from "@/modules/Pet";
 import { getChatroomCharacter } from "@/utils/BCPlusCharacter";
 import { jsonClone } from "@/utils/BCUtils";
 
@@ -66,6 +67,22 @@ export default class DataSync extends ModuleInstance {
         return { others: core?.getSetting<boolean>("hardcoreOthers") === true };
     }
 
+    /**
+     * Synthetic categories: public views computed from otherwise-private
+     * module data ("hardcore" flag; the Pet module's coarse stat levels).
+     * Compared and broadcast like regular categories.
+     */
+    private syntheticCategories(): Record<string, Record<string, unknown>> {
+        const result: Record<string, Record<string, unknown>> = { hardcore: this.hardcoreCategory() };
+        const pet = this.ModuleManager.getModule<Pet>("pet");
+        if (pet) {
+            // Included even while the module is off: the not-sharing tombstone
+            // it returns then makes viewers drop stale ring levels
+            result["pet"] = pet.publicPetData();
+        }
+        return result;
+    }
+
     /** Broadcasts any public module whose data changed since it was last shared. */
     private broadcastChangedCategories(): void {
         if (!ServerPlayerIsInChatRoom()) {
@@ -81,15 +98,17 @@ export default class DataSync extends ModuleInstance {
                 this.categorySync(module);
             }
         }
-        const hardcore = JSON.stringify(this.hardcoreCategory());
-        if (this.lastBroadcast.get("hardcore") !== hardcore) {
-            this.lastBroadcast.set("hardcore", hardcore);
-            SendBCPMessage({
-                message: "CategorySync",
-                version: BCPLUS_VERSION,
-                category: "hardcore",
-                value: this.hardcoreCategory(),
-            });
+        for (const [category, value] of Object.entries(this.syntheticCategories())) {
+            const snapshot = JSON.stringify(value);
+            if (this.lastBroadcast.get(category) !== snapshot) {
+                this.lastBroadcast.set(category, snapshot);
+                SendBCPMessage({
+                    message: "CategorySync",
+                    version: BCPLUS_VERSION,
+                    category,
+                    value,
+                });
+            }
         }
     }
 
@@ -312,7 +331,7 @@ export default class DataSync extends ModuleInstance {
                 result[module.Slug] = jsonClone(module.Data);
             }
         }
-        result["hardcore"] = this.hardcoreCategory();
+        Object.assign(result, this.syntheticCategories());
         return result;
     }
 
