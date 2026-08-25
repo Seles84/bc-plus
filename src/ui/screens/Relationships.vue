@@ -1,25 +1,57 @@
 <script setup lang="ts">
-import { computed, inject, ref } from "vue";
+import { computed, inject, onMounted, ref } from "vue";
 import { NAV_KEY } from "@/ui/nav";
-import { useBcpVersion } from "@/ui/composables";
+import { bcpCharacter, useBcpVersion } from "@/ui/composables";
 import PersonPicker from "@/ui/screens/PersonPicker.vue";
 import { MemberNumberToName } from "@/utils/Messaging";
 import { NICKNAME_MAX, isValidCustomName } from "@/modules/Relationships";
+import type Authority from "@/modules/Authority";
 import type Relationships from "@/modules/Relationships";
 
+const props = defineProps<{ member?: number }>();
 const nav = inject(NAV_KEY)!;
 const { version, touch, core } = useBcpVersion();
 
 const relationships = core.ModuleManager.getModule<Relationships>("relationships")!;
+const local = props.member === undefined;
+const character = bcpCharacter(props.member);
+const dead = !local && character === null;
+
+onMounted(() => {
+    if (character && relationships.getRemoteEntries(character.MemberNumber) === undefined) {
+        relationships.requestEntries(character.MemberNumber);
+    }
+});
+
+const remoteState = computed(() => {
+    version.value;
+    if (local || !character) {
+        return null;
+    }
+    return relationships.getRemoteEntries(character.MemberNumber) ?? "pending";
+});
 
 const canEdit = computed(() => {
     version.value;
-    return relationships.canEdit();
+    if (local) {
+        return relationships.canEdit();
+    }
+    const authority = core.ModuleManager.getModule<Authority>("authority");
+    return character !== null && (authority?.remoteHasPermission(character, "relationships.edit") ?? false);
+});
+
+const entriesMap = computed(() => {
+    version.value;
+    if (local) {
+        return relationships.Entries;
+    }
+    const fetched = remoteState.value;
+    return typeof fetched === "object" && fetched !== null ? fetched : {};
 });
 
 const rows = computed(() => {
     version.value;
-    return Object.entries(relationships.Entries)
+    return Object.entries(entriesMap.value)
         .map(([key, entry]) => ({ member: Number.parseInt(key, 10), entry }))
         .filter((row) => Number.isInteger(row.member))
         .sort((a, b) => a.member - b.member);
@@ -27,10 +59,20 @@ const rows = computed(() => {
 
 const invalidName = ref<number | null>(null);
 
+/** Local writes apply directly; remote ones are commands their client validates. */
+function storeEntry(member: number, nickname: string, enforce: boolean): void {
+    if (local) {
+        relationships.setEntry(member, nickname, enforce);
+    } else if (character) {
+        relationships.requestSet(character.MemberNumber, member, nickname, enforce);
+    }
+    touch();
+}
+
 function commitName(member: number, event: Event): void {
     const input = event.target as HTMLInputElement;
     const name = input.value.trim();
-    const entry = relationships.Entries[String(member)];
+    const entry = entriesMap.value[String(member)];
     if (!entry || name === entry.nickname) {
         return;
     }
@@ -40,20 +82,22 @@ function commitName(member: number, event: Event): void {
         return;
     }
     invalidName.value = null;
-    relationships.setEntry(member, name, entry.enforce);
-    touch();
+    storeEntry(member, name, entry.enforce);
 }
 
 function toggleEnforce(member: number): void {
-    const entry = relationships.Entries[String(member)];
+    const entry = entriesMap.value[String(member)];
     if (entry && canEdit.value) {
-        relationships.setEntry(member, entry.nickname, !entry.enforce);
-        touch();
+        storeEntry(member, entry.nickname, !entry.enforce);
     }
 }
 
 function remove(member: number): void {
-    relationships.removeEntry(member);
+    if (local) {
+        relationships.removeEntry(member);
+    } else if (character) {
+        relationships.requestRemove(character.MemberNumber, member);
+    }
     touch();
 }
 
@@ -68,12 +112,11 @@ function addByNumber(): void {
 
 /** Seeds an entry with the member's known name; edit inline from there. */
 function startEntry(member: number): void {
-    if (relationships.Entries[String(member)]) {
+    if (entriesMap.value[String(member)]) {
         return;
     }
     const seeded = MemberNumberToName(member, "Pet").slice(0, NICKNAME_MAX);
-    relationships.setEntry(member, isValidCustomName(seeded) ? seeded : "Pet", false);
-    touch();
+    storeEntry(member, isValidCustomName(seeded) ? seeded : "Pet", false);
 }
 
 function browse(): void {
@@ -89,7 +132,15 @@ function browse(): void {
 </script>
 
 <template>
-    <div class="flex h-full flex-col gap-3">
+    <p v-if="dead" class="text-fg-dim">They are no longer in this room.</p>
+    <div v-else-if="remoteState === 'pending'" class="px-2 text-fg-dim">Requesting their relationship list...</div>
+    <div v-else-if="remoteState === 'denied'" class="px-2 text-fg-dim">
+        {{ character!.Nickname }} does not permit you to view their relationships.
+    </div>
+    <div v-else-if="remoteState === 'timeout'" class="px-2 text-fg-dim">
+        No response - they may be busy, disconnected, or running an older BC+.
+    </div>
+    <div v-else class="flex h-full flex-col gap-3">
         <p v-if="rows.length === 0" class="px-2 text-fg-dim">No custom names set.</p>
         <div v-else class="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
             <div class="flex items-center gap-3 px-3 pb-1 text-sm text-fg-dim">

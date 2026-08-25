@@ -41,16 +41,28 @@ export class UIWindow {
     readonly minimized = ref(false);
     readonly maximized = ref(false);
 
+    /** Member number whose BC+ this window shows; null = the player's own. */
+    private viewingMember: number | null = null;
+
     constructor(private readonly core: BCPlus) {}
 
     get isOpen(): boolean {
         return this.host !== null;
     }
 
-    open(): void {
+    get Viewing(): number | null {
+        return this.viewingMember;
+    }
+
+    open(member?: number): void {
         if (this.host) {
-            return;
+            if ((member ?? null) === this.viewingMember) {
+                return;
+            }
+            // Different target: rebuild the window on the new context
+            this.close();
         }
+        this.viewingMember = member ?? null;
         const host = document.createElement("div");
         host.id = "BCPUIWindow";
         const rect = this.clampRect(this.loadRect());

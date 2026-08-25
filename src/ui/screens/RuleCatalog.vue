@@ -3,15 +3,21 @@ import { computed, inject, ref } from "vue";
 import { NAV_KEY } from "@/ui/nav";
 import { useBcpVersion } from "@/ui/composables";
 import RuleConfig from "@/ui/screens/RuleConfig.vue";
-import { LocalRuleAccess } from "@/system/rules/RuleAccess";
+import { LocalRuleAccess, RemoteRuleAccess } from "@/system/rules/RuleAccess";
+import { bcpCharacter } from "@/ui/composables";
 import type { RuleCategory, RuleDefinition } from "@/system/rules/RuleTypes";
+import type Authority from "@/modules/Authority";
 import type Rules from "@/modules/Rules";
 
+const props = defineProps<{ member?: number }>();
 const nav = inject(NAV_KEY)!;
 const { version, core } = useBcpVersion();
 
 const rules = core.ModuleManager.getModule<Rules>("rules")!;
-const access = new LocalRuleAccess(rules);
+const character = bcpCharacter(props.member);
+const access = character
+    ? new RemoteRuleAccess(rules, core.ModuleManager.getModule<Authority>("authority"), character)
+    : new LocalRuleAccess(rules);
 
 const search = ref("");
 const category = ref<RuleCategory | null>(null);
@@ -42,7 +48,7 @@ const available = computed<RuleDefinition[]>(() => {
 /** Opens the config without activating - the rule arms from there. */
 function pick(definition: RuleDefinition): void {
     nav.pop();
-    nav.push({ component: RuleConfig, title: definition.name, props: { ruleId: definition.id } });
+    nav.push({ component: RuleConfig, title: definition.name, props: { ruleId: definition.id, member: props.member } });
 }
 </script>
 

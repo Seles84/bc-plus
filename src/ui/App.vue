@@ -2,6 +2,7 @@
 import { computed, inject, onMounted } from "vue";
 import { NAV_KEY, WINDOW_KEY } from "@/ui/nav";
 import MainMenu from "@/ui/screens/MainMenu.vue";
+import { MemberNumberToName } from "@/utils/Messaging";
 
 const nav = inject(NAV_KEY)!;
 const win = inject(WINDOW_KEY)!;
@@ -10,7 +11,12 @@ const current = computed(() => nav.stack[nav.stack.length - 1]);
 
 onMounted(() => {
     if (nav.stack.length === 0) {
-        nav.push({ component: MainMenu, title: "Main Menu" });
+        const member = win.Viewing;
+        nav.push({
+            component: MainMenu,
+            title: member === null ? "Main Menu" : `${MemberNumberToName(member)} (#${member})`,
+            props: member === null ? undefined : { member },
+        });
     }
 });
 </script>

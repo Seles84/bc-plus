@@ -3,12 +3,24 @@ import { computed, inject, onMounted, onUnmounted, ref } from "vue";
 import { NAV_KEY } from "@/ui/nav";
 import { useBcpVersion } from "@/ui/composables";
 import PersonPicker from "@/ui/screens/PersonPicker.vue";
+import { bcpCharacter } from "@/ui/composables";
+import { SendBCPMessage } from "@/utils/Messaging";
+import type { WeldCeremony } from "@/modules/Welding";
 import type Welding from "@/modules/Welding";
 
+const props = defineProps<{ member?: number }>();
 const nav = inject(NAV_KEY)!;
 const { version, touch, core } = useBcpVersion();
 
 const welding = core.ModuleManager.getModule<Welding>("welding")!;
+const local = props.member === undefined;
+const character = bcpCharacter(props.member);
+const dead = !local && character === null;
+
+const mirror = computed(() => {
+    version.value;
+    return (character?.BCPData?.["welding"] ?? null) as Record<string, unknown> | null;
+});
 
 // The ceremony countdown and checklist need a clock, not just data changes
 const now = ref(Date.now());
@@ -27,12 +39,53 @@ onUnmounted(() => {
 const info = computed(() => {
     version.value;
     now.value;
-    return welding.WeldInfo;
+    if (local) {
+        return welding.WeldInfo;
+    }
+    if (mirror.value?.["welded"] !== true) {
+        return null;
+    }
+    return {
+        owner: typeof mirror.value["weldOwner"] === "number" ? mirror.value["weldOwner"] : -1,
+        ownerName: String(mirror.value["weldOwnerName"] ?? "?"),
+        witnessName: String(mirror.value["weldWitnessName"] ?? "?"),
+        weldedAt: typeof mirror.value["weldedAt"] === "number" ? mirror.value["weldedAt"] : 0,
+    };
 });
 const ceremony = computed(() => {
     version.value;
     now.value;
-    return welding.Ceremony;
+    if (local) {
+        return welding.Ceremony;
+    }
+    const raw = mirror.value?.["ceremony"];
+    return raw && typeof raw === "object" ? (raw as WeldCeremony) : null;
+});
+
+/** Ceremony actions run locally on the sub's client, remotely everywhere else. */
+function sendOrRun(action: "accept" | "decline"): void {
+    if (local) {
+        run(() => (action === "accept" ? welding.accept(me.value) : welding.decline(me.value)));
+    } else if (character) {
+        SendBCPMessage({ message: "WeldCommand", action }, character.MemberNumber);
+    }
+}
+
+/** Only this sub's BC owner can initiate from outside. */
+const isTheirOwner = computed(() => {
+    version.value;
+    return character?.Character.Ownership?.MemberNumber === Player.MemberNumber;
+});
+function initiateRemote(): void {
+    if (character && isTheirOwner.value) {
+        SendBCPMessage({ message: "WeldCommand", action: "init" }, character.MemberNumber);
+    }
+}
+
+/** Whether the viewer takes part in the shown ceremony. */
+const participant = computed(() => {
+    const c = ceremony.value;
+    return c !== null && (me.value === c.owner || me.value === c.sub || me.value === c.witness);
 });
 
 const checklist = computed(() => {
@@ -96,7 +149,8 @@ function togglePref(key: "announceAnniversary" | "showWeldInfo"): void {
 </script>
 
 <template>
-    <div class="mx-auto flex max-w-3xl flex-col gap-4">
+    <p v-if="dead" class="text-fg-dim">They are no longer in this room.</p>
+    <div v-else class="mx-auto flex max-w-3xl flex-col gap-4">
         <div class="rounded-lg bg-surface p-4 text-sm" style="border: 1px solid var(--bcp-border);">
             <p class="pb-2">Welding the collar makes your BC ownership as permanent as BC+ can make it:</p>
             <ul class="list-disc pl-5 text-fg-dim">
@@ -119,7 +173,7 @@ function togglePref(key: "announceAnniversary" | "showWeldInfo"): void {
                 <p>Witnessed by {{ info.witnessName }}{{ info.weldedAt > 0 ? ` on ${new Date(info.weldedAt).toLocaleDateString()}` : "" }}</p>
                 <p class="pt-1 text-sm text-fg-dim">It ends only when the owner releases the submissive in BC.</p>
             </div>
-            <div class="flex flex-col gap-1">
+            <div v-if="local" class="flex flex-col gap-1">
                 <label class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 hover:bg-surface">
                     <input
                         type="checkbox" class="h-5 w-5" style="accent-color: var(--bcp-accent);"
@@ -163,25 +217,27 @@ function togglePref(key: "announceAnniversary" | "showWeldInfo"): void {
                 <button
                     class="rounded-lg px-4 py-2 font-semibold disabled:opacity-50"
                     style="background: var(--bcp-accent); color: var(--bcp-on-accent);"
-                    :disabled="ceremony.accepted.includes(me)"
-                    @click="run(() => welding.accept(me))"
+                    :disabled="!participant || ceremony.accepted.includes(me)"
+                    @click="sendOrRun('accept')"
                 >Accept</button>
                 <button
+                    v-if="local"
                     class="rounded-lg bg-surface px-4 py-2 hover:bg-surface-hover"
                     style="border: 1px solid var(--bcp-border);"
                     title="A BC friend of yours, present in this room"
                     @click="chooseWitness()"
                 >{{ ceremony.witness === null ? "Choose witness..." : "Change witness..." }}</button>
                 <button
-                    class="rounded-lg px-4 py-2"
+                    class="rounded-lg px-4 py-2 disabled:opacity-50"
                     style="background: rgba(224,82,82,0.15); border: 1px solid #e05252; color: #e05252;"
-                    @click="run(() => welding.decline(me))"
+                    :disabled="!participant"
+                    @click="sendOrRun('decline')"
                 >Decline / cancel</button>
             </div>
         </template>
 
-        <!-- Checklist -->
-        <template v-else>
+        <!-- Checklist (own view) -->
+        <template v-else-if="local">
             <div class="flex flex-col gap-1">
                 <h3 class="px-3 font-semibold text-accent">Requirements</h3>
                 <div v-for="check in checklist" :key="check.label" class="flex items-center gap-3 px-3 py-1">
@@ -196,6 +252,22 @@ function togglePref(key: "announceAnniversary" | "showWeldInfo"): void {
                     :disabled="!canInitiate"
                     title="Starts the 10-minute three-way vetting - your owner is asked to accept"
                     @click="run(() => welding.startCeremony(me))"
+                >Initiate welding</button>
+            </div>
+        </template>
+
+        <!-- Remote, nothing running -->
+        <template v-else>
+            <p class="px-3 text-fg-dim">{{ mirror ? "No welding is in progress." : "No welding data received from this player yet." }}</p>
+            <div v-if="mirror">
+                <button
+                    class="rounded-lg px-4 py-2 font-semibold disabled:opacity-50"
+                    style="background: var(--bcp-accent); color: var(--bcp-on-accent);"
+                    :disabled="!isTheirOwner"
+                    :title="isTheirOwner
+                        ? 'Starts the 10-minute three-way vetting on their client'
+                        : 'Only this player\'s BC owner can initiate a welding'"
+                    @click="initiateRemote()"
                 >Initiate welding</button>
             </div>
         </template>

@@ -6,8 +6,11 @@ import SettingRow from "@/ui/components/SettingRow.vue";
 import MembersPicker from "@/ui/screens/MembersPicker.vue";
 import Conditions from "@/ui/screens/Conditions.vue";
 import RulePunish from "@/ui/screens/RulePunish.vue";
-import { LocalRuleAccess } from "@/system/rules/RuleAccess";
+import { LocalRuleAccess, RemoteRuleAccess } from "@/system/rules/RuleAccess";
+import { bcpCharacter } from "@/ui/composables";
 import type { RuleAccess } from "@/system/rules/RuleAccess";
+import type Authority from "@/modules/Authority";
+import type { PunishmentDefinition } from "@/system/punishments/PunishmentTypes";
 import { describeConditions } from "@/system/conditions/Conditions";
 import { defaultPunishConfig } from "@/system/punishments/PunishmentTypes";
 import { membersValue } from "@/system/gui/Settings";
@@ -18,7 +21,9 @@ import type Rules from "@/modules/Rules";
 
 const props = defineProps<{
     ruleId: string;
-    /** Injected access (e.g. a contract draft); defaults to the own live rules. */
+    /** Viewing/editing another character's rule. */
+    member?: number;
+    /** Injected access (e.g. a contract draft); wins over member. */
     access?: RuleAccess;
     /** Contract-draft mode: live-state banners and punishments are hidden. */
     draft?: boolean;
@@ -27,8 +32,14 @@ const nav = inject(NAV_KEY)!;
 const { version, touch, core } = useBcpVersion();
 
 const rules = core.ModuleManager.getModule<Rules>("rules")!;
-const access = props.access ?? new LocalRuleAccess(rules);
+const character = props.access ? null : bcpCharacter(props.member);
+const access = props.access
+    ?? (character
+        ? new RemoteRuleAccess(rules, core.ModuleManager.getModule<Authority>("authority"), character)
+        : new LocalRuleAccess(rules));
 const isDraft = props.draft === true;
+/** Local live state (punishment/contract binding) is meaningless remotely. */
+const local = props.access === undefined && props.member === undefined;
 const definition = rules.getDefinition(props.ruleId);
 
 const state = computed(() => {
@@ -45,11 +56,11 @@ const weldLocked = computed(() => {
 });
 const contractBound = computed(() => {
     version.value;
-    return !isDraft && rules.isRuleContractBound(props.ruleId);
+    return local && rules.isRuleContractBound(props.ruleId);
 });
 const punishmentForced = computed(() => {
     version.value;
-    return !isDraft && rules.isRulePunishmentForced(props.ruleId);
+    return local && rules.isRulePunishmentForced(props.ruleId);
 });
 const bcxStatus = computed(() => {
     version.value;
@@ -79,6 +90,16 @@ function flip(toggle: Toggle): void {
         toggle.set(!toggle.value);
         touch();
     }
+}
+
+// --- Remote batching ---
+const pendingCount = computed(() => {
+    version.value;
+    return access.pendingCount();
+});
+function saveEdits(): void {
+    access.save();
+    touch();
 }
 
 // --- Conditions ---
@@ -142,7 +163,10 @@ function openPunish(): void {
             get: () => access.state(props.ruleId).punish ?? defaultPunishConfig(),
             set: (c: unknown) => access.setPunish(props.ruleId, c as never),
             canEdit: () => access.canEdit(),
-            definitions: () => core.ModuleManager.getModule<Punishments>("punishments")?.Definitions ?? {},
+            // Remote: the target's punishment definitions from their mirror
+            definitions: () => (character
+                ? ((character.BCPData?.["punishments"]?.["punishments"] ?? {}) as Record<string, PunishmentDefinition>)
+                : core.ModuleManager.getModule<Punishments>("punishments")?.Definitions ?? {}),
         },
     });
 }
@@ -177,6 +201,16 @@ function pickMembers(setting: AnySetting): void {
 <template>
     <div v-if="definition" class="mx-auto flex max-w-3xl flex-col gap-4">
         <p class="text-sm text-fg-dim">{{ definition.description }}</p>
+
+        <div v-if="pendingCount > 0" class="flex items-center gap-3 rounded-lg bg-surface px-3 py-2" style="border: 1px solid var(--bcp-border);">
+            <span class="min-w-0 flex-1 text-sm font-semibold" style="color: #d09030;">{{ pendingCount }} unsaved change{{ pendingCount === 1 ? "" : "s" }}</span>
+            <button
+                class="rounded-lg px-4 py-1.5 font-semibold"
+                style="background: var(--bcp-accent); color: var(--bcp-on-accent);"
+                title="Send every pending change in one batch - discard from the rules list"
+                @click="saveEdits()"
+            >Save</button>
+        </div>
 
         <!-- Status banners -->
         <p v-if="weldLocked" class="rounded-lg px-3 py-2 text-sm" style="background: rgba(224,82,82,0.12); color: #e05252;">

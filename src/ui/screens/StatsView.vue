@@ -1,25 +1,52 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
-import { useBcpVersion } from "@/ui/composables";
+import { computed, onMounted, ref } from "vue";
+import { bcpCharacter, useBcpVersion } from "@/ui/composables";
 import { COUNTER_LABELS, STATE_LABELS, formatStatDuration } from "@/system/statistics/StatTypes";
+import type Authority from "@/modules/Authority";
 import type Rules from "@/modules/Rules";
 import type Statistics from "@/modules/Statistics";
 
+const props = defineProps<{ member?: number }>();
 const { version, touch, core } = useBcpVersion();
 
 const statistics = core.ModuleManager.getModule<Statistics>("statistics")!;
+const local = props.member === undefined;
+const character = bcpCharacter(props.member);
+const dead = !local && character === null;
+
+onMounted(() => {
+    if (character && statistics.getRemoteStats(character.MemberNumber) === undefined) {
+        statistics.requestStats(character.MemberNumber);
+    }
+});
+
+const remoteState = computed(() => {
+    version.value;
+    if (local || !character) {
+        return null;
+    }
+    return statistics.getRemoteStats(character.MemberNumber) ?? "pending";
+});
 
 const canView = computed(() => {
     version.value;
-    return statistics.canView();
+    return local ? statistics.canView() : true;
 });
 const canReset = computed(() => {
     version.value;
-    return statistics.canReset();
+    if (local) {
+        return statistics.canReset();
+    }
+    const authority = core.ModuleManager.getModule<Authority>("authority");
+    return character !== null && (authority?.remoteHasPermission(character, "stats.reset") ?? false);
 });
 const stats = computed(() => {
     version.value;
-    return canView.value ? statistics.snapshot() : null;
+    if (local) {
+        return canView.value ? statistics.snapshot() : null;
+    }
+    const fetched = remoteState.value;
+    return typeof fetched === "object" && fetched !== null ? fetched : null;
 });
 
 const tab = ref<"overview" | "items" | "rules">("overview");
@@ -43,18 +70,37 @@ const ruleRows = computed(() => {
 const resetArmedUntil = ref(0);
 function resetStats(): void {
     if (Date.now() < resetArmedUntil.value) {
-        statistics.resetStats();
+        if (local) {
+            statistics.resetStats();
+        } else if (character) {
+            statistics.requestReset(character.MemberNumber);
+        }
         resetArmedUntil.value = 0;
         touch();
     } else {
         resetArmedUntil.value = Date.now() + 5_000;
     }
 }
+
+function refresh(): void {
+    if (character) {
+        statistics.requestStats(character.MemberNumber);
+        touch();
+    }
+}
 </script>
 
 <template>
-    <div class="flex h-full flex-col gap-3">
-        <p v-if="!canView" class="px-2 text-fg-dim">You are not permitted to view your own statistics.</p>
+    <p v-if="dead" class="text-fg-dim">They are no longer in this room.</p>
+    <div v-else class="flex h-full flex-col gap-3">
+        <p v-if="local && !canView" class="px-2 text-fg-dim">You are not permitted to view your own statistics.</p>
+        <p v-else-if="remoteState === 'pending'" class="px-2 text-fg-dim">Requesting statistics...</p>
+        <p v-else-if="remoteState === 'denied'" class="px-2 text-fg-dim">
+            {{ character!.Nickname }} does not permit you to view their statistics.
+        </p>
+        <p v-else-if="remoteState === 'timeout'" class="px-2 text-fg-dim">
+            No response - they may be busy, disconnected, or running an older BC+.
+        </p>
         <template v-else-if="stats">
             <div class="flex flex-wrap items-center gap-3 px-2 text-sm text-fg-dim">
                 <span>Recording since {{ stats.since > 0 ? new Date(stats.since).toLocaleDateString() : "-" }}</span>
@@ -121,15 +167,23 @@ function resetStats(): void {
                 </div>
             </div>
 
-            <div v-if="canReset" class="flex border-t pt-3" style="border-color: var(--bcp-border);">
+            <div v-if="canReset || !local" class="flex gap-2 border-t pt-3" style="border-color: var(--bcp-border);">
                 <button
+                    v-if="canReset"
                     class="rounded-lg px-4 py-2"
                     :style="Date.now() < resetArmedUntil
                         ? 'background: rgba(224,82,82,0.25); border: 1px solid #e05252; color: #e05252;'
                         : 'background: var(--bcp-surface); border: 1px solid var(--bcp-border);'"
-                    title="Wipes all counters and starts over"
+                    :title="local ? 'Wipes all counters and starts over' : 'Wipes their counters (their client validates)'"
                     @click="resetStats()"
                 >{{ Date.now() < resetArmedUntil ? "Confirm reset" : "Reset stats" }}</button>
+                <button
+                    v-if="!local"
+                    class="rounded-lg bg-surface px-4 py-2 hover:bg-surface-hover"
+                    style="border: 1px solid var(--bcp-border);"
+                    title="Request their latest numbers"
+                    @click="refresh()"
+                >Refresh</button>
             </div>
         </template>
     </div>
