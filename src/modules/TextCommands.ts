@@ -10,6 +10,7 @@ import type Rules from "@/modules/Rules";
 import type Curses from "@/modules/Curses";
 import type Logging from "@/modules/Logging";
 import type Statistics from "@/modules/Statistics";
+import type Pet from "@/modules/Pet";
 import type DataSync from "@/modules/DataSync";
 import type Core from "@/modules/Core";
 import type Welding from "@/modules/Welding";
@@ -165,6 +166,36 @@ export default class TextCommands extends ModuleInstance {
                     "See the BC+ Statistics page for everything else.",
                 ];
                 this.reply(lines.join("<br>"));
+            },
+        },
+        {
+            name: "pet",
+            description: "Show your pet stats (pet refill tops them up)",
+            handler: (args) => {
+                const pet = this.ModuleManager.getModule<Pet>("pet");
+                if (!pet || !pet.Config.Active) {
+                    this.reply("The Pet module is off - switch it on via the BC+ General page.");
+                    return;
+                }
+                if ((args[0] ?? "").toLowerCase() === "refill") {
+                    if (!pet.canEdit()) {
+                        this.reply("You are not permitted to change your pet settings.");
+                        return;
+                    }
+                    pet.refill();
+                    this.reply("All pet stats are back at 100%.");
+                    return;
+                }
+                const stats = pet.activeStats();
+                if (stats.length === 0) {
+                    this.reply("All pet needs are set to Off - nothing is draining.");
+                    return;
+                }
+                const levels = pet.currentLevels();
+                this.reply([
+                    "Your pet stats:",
+                    ...stats.map((stat) => `- ${stat.label}: ${Math.round(levels[stat.id])}%`),
+                ].join("<br>"));
             },
         },
         {

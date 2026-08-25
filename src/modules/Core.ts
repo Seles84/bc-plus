@@ -184,7 +184,7 @@ export default class Core extends ModuleInstance {
             type: "checkbox" as const,
             name: `module.${m.Slug}`,
             label: `${m.Config.MenuString || m.Config.Name} module enabled`,
-            default: true,
+            default: m.DefaultEnabled,
             active: () => this.canManageModules(),
             onSet: (value: boolean) => this.applyModuleEnabled(m.Slug, value),
         }));
