@@ -138,7 +138,7 @@ function reviewCode(): void {
         <div class="flex flex-wrap items-center gap-2 border-t pt-3" style="border-color: var(--bcp-border);">
             <button
                 class="rounded-lg px-4 py-2 font-semibold"
-                style="background: var(--bcp-accent); color: var(--bcp-bg);"
+                style="background: var(--bcp-accent); color: var(--bcp-on-accent);"
                 @click="newDraft()"
             >New draft</button>
             <span class="flex-1"></span>

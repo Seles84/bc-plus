@@ -30,7 +30,7 @@ const groups = computed(() => {
                 :key="tab[0]"
                 class="rounded-full px-4 py-1"
                 :style="category === tab[0]
-                    ? 'background: var(--bcp-accent); color: var(--bcp-bg);'
+                    ? 'background: var(--bcp-accent); color: var(--bcp-on-accent);'
                     : 'background: var(--bcp-surface); border: 1px solid var(--bcp-border);'"
                 @click="category = tab[0]"
             >{{ tab[1] }}</button>

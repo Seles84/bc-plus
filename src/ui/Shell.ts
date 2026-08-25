@@ -142,6 +142,66 @@ export class UIWindow {
     applyTheme(): void {
         const theme = this.core.ModuleManager.getModule<Core>("core")?.getSetting<string>("uiTheme");
         this.host?.classList.toggle("bcp-light", theme === "Light");
+        this.ensureReadableTokens();
+    }
+
+    /**
+     * Themed accents are often canvas button-fill colors - far too dark to
+     * read as text on our surfaces. Measure the effective palette and derive
+     * a contrast-assured text accent (--bcp-accent-fg) plus the right text
+     * color for accent-filled buttons (--bcp-on-accent).
+     */
+    private ensureReadableTokens(): void {
+        const host = this.host;
+        const shadow = host?.shadowRoot;
+        if (!host || !shadow) {
+            return;
+        }
+        try {
+            const probe = document.createElement("div");
+            probe.style.display = "none";
+            shadow.appendChild(probe);
+            const parse = (raw: string): [number, number, number] | null => {
+                probe.style.color = "";
+                probe.style.color = raw.trim();
+                const match = /rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/.exec(getComputedStyle(probe).color);
+                return match ? [Number(match[1]), Number(match[2]), Number(match[3])] : null;
+            };
+            const styles = getComputedStyle(host);
+            const accent = parse(styles.getPropertyValue("--bcp-accent"));
+            const surface = parse(styles.getPropertyValue("--bcp-surface"));
+            probe.remove();
+            if (!accent || !surface) {
+                return;
+            }
+
+            const luminance = (c: [number, number, number]): number => {
+                const f = (v: number): number => {
+                    const s = v / 255;
+                    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+                };
+                return 0.2126 * f(c[0]) + 0.7152 * f(c[1]) + 0.0722 * f(c[2]);
+            };
+            const contrast = (a: [number, number, number], b: [number, number, number]): number => {
+                const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+                return (hi! + 0.05) / (lo! + 0.05);
+            };
+            const mix = (a: [number, number, number], b: [number, number, number], t: number): [number, number, number] =>
+                [0, 1, 2].map((i) => Math.round(a[i]! + (b[i]! - a[i]!) * t)) as [number, number, number];
+
+            // Pull the accent towards white on dark surfaces (black on light)
+            // until accent-colored text clears readable contrast
+            const towards: [number, number, number] = luminance(surface) < 0.35 ? [255, 255, 255] : [16, 16, 16];
+            let accentFg = accent;
+            for (let t = 0.1; contrast(accentFg, surface) < 4.5 && t <= 0.95; t += 0.1) {
+                accentFg = mix(accent, towards, t);
+            }
+            host.style.setProperty("--bcp-accent-fg", `rgb(${accentFg.join(",")})`);
+            const onAccent = contrast(accent, [255, 255, 255]) >= contrast(accent, [22, 18, 28]) ? "#ffffff" : "#16121c";
+            host.style.setProperty("--bcp-on-accent", onAccent);
+        } catch {
+            // The CSS defaults stay in place - readable for our own palette
+        }
     }
 
     /** Title-bar drag; the pointer stays tracked outside the window too. */

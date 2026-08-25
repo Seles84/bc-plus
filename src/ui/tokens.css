@@ -28,10 +28,18 @@
     --bcp-surface: var(--tmd-element, var(--bcp-fb-surface));
     --bcp-surface-hover: var(--tmd-element-hover, var(--bcp-fb-surface-hover));
     --bcp-text: var(--tmd-text, var(--bcp-fb-text));
-    --bcp-text-dim: var(--tmd-text-disabled, var(--bcp-fb-text-dim));
+    /* Dim text derives from the real text color, so it can never vanish on
+       a theme whose disabled color is unreadable */
+    --bcp-text-dim: color-mix(in srgb, var(--bcp-text) 62%, transparent);
     --bcp-accent: var(--tmd-accent, var(--bcp-fb-accent));
     --bcp-accent-hover: var(--tmd-accent-hover, var(--bcp-fb-accent-hover));
     --bcp-border: var(--tmd-accent, var(--bcp-fb-border));
+    /* Contrast-assured variants, recomputed at runtime against the actual
+       theme (Themed accents are often button-fill colors, far too dark to
+       read as text): accent-fg for accent-colored TEXT, on-accent for text
+       ON accent-filled buttons. The shell overrides these inline. */
+    --bcp-accent-fg: var(--bcp-accent);
+    --bcp-on-accent: #16121c;
 
     font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
     font-size: 15px;
@@ -74,6 +82,14 @@ input, select {
 input:focus, select:focus {
     outline: 2px solid var(--bcp-accent);
     outline-offset: -1px;
+}
+input::placeholder {
+    color: color-mix(in srgb, var(--bcp-text) 45%, transparent);
+    opacity: 1;
+}
+textarea::placeholder {
+    color: color-mix(in srgb, var(--bcp-text) 45%, transparent);
+    opacity: 1;
 }
 
 /* Scrollbars matching the theme */

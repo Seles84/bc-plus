@@ -66,7 +66,7 @@ function resetStats(): void {
                     :key="entry[0]"
                     class="rounded-full px-3 py-1"
                     :style="tab === entry[0]
-                        ? 'background: var(--bcp-accent); color: var(--bcp-bg);'
+                        ? 'background: var(--bcp-accent); color: var(--bcp-on-accent);'
                         : 'background: var(--bcp-surface); border: 1px solid var(--bcp-border);'"
                     @click="tab = entry[0]"
                 >{{ entry[1] }}</button>

@@ -150,7 +150,7 @@ function release(): void {
                 class="rounded-lg px-5 py-2.5 font-semibold"
                 :style="Date.now() < signArmedUntil
                     ? 'background: #e05252; color: #fff;'
-                    : 'background: var(--bcp-accent); color: var(--bcp-bg);'"
+                    : 'background: var(--bcp-accent); color: var(--bcp-on-accent);'"
                 title="Apply and seal every listed rule"
                 @click="sign()"
             >{{ Date.now() < signArmedUntil ? "Click again to SIGN" : "Sign the contract" }}</button>

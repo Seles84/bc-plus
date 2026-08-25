@@ -14,7 +14,8 @@
     --color-surface-hover: var(--bcp-surface-hover);
     --color-fg: var(--bcp-text);
     --color-fg-dim: var(--bcp-text-dim);
-    --color-accent: var(--bcp-accent);
+    /* text-accent renders with the contrast-assured variant */
+    --color-accent: var(--bcp-accent-fg);
     --color-accent-hover: var(--bcp-accent-hover);
     --color-edge: var(--bcp-border);
 }

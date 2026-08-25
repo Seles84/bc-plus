@@ -162,7 +162,7 @@ function togglePref(key: "announceAnniversary" | "showWeldInfo"): void {
             <div class="flex flex-wrap gap-2">
                 <button
                     class="rounded-lg px-4 py-2 font-semibold disabled:opacity-50"
-                    style="background: var(--bcp-accent); color: var(--bcp-bg);"
+                    style="background: var(--bcp-accent); color: var(--bcp-on-accent);"
                     :disabled="ceremony.accepted.includes(me)"
                     @click="run(() => welding.accept(me))"
                 >Accept</button>
@@ -192,7 +192,7 @@ function togglePref(key: "announceAnniversary" | "showWeldInfo"): void {
             <div>
                 <button
                     class="rounded-lg px-4 py-2 font-semibold disabled:opacity-50"
-                    style="background: var(--bcp-accent); color: var(--bcp-bg);"
+                    style="background: var(--bcp-accent); color: var(--bcp-on-accent);"
                     :disabled="!canInitiate"
                     title="Starts the 10-minute three-way vetting - your owner is asked to accept"
                     @click="run(() => welding.startCeremony(me))"

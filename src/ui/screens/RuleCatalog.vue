@@ -58,7 +58,7 @@ function pick(definition: RuleDefinition): void {
             <button
                 class="rounded-full px-3 py-1 text-sm"
                 :style="category === null
-                    ? 'background: var(--bcp-accent); color: var(--bcp-bg);'
+                    ? 'background: var(--bcp-accent); color: var(--bcp-on-accent);'
                     : 'background: var(--bcp-surface); border: 1px solid var(--bcp-border);'"
                 @click="category = null"
             >All</button>
@@ -67,7 +67,7 @@ function pick(definition: RuleDefinition): void {
                 :key="entry"
                 class="rounded-full px-3 py-1 text-sm"
                 :style="category === entry
-                    ? 'background: var(--bcp-accent); color: var(--bcp-bg);'
+                    ? 'background: var(--bcp-accent); color: var(--bcp-on-accent);'
                     : 'background: var(--bcp-surface); border: 1px solid var(--bcp-border);'"
                 @click="category = category === entry ? null : entry"
             >{{ entry }}</button>
