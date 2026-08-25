@@ -5,6 +5,15 @@ import ModuleSettings from "@/ui/screens/ModuleSettings.vue";
 import RulesList from "@/ui/screens/RulesList.vue";
 import CursesList from "@/ui/screens/CursesList.vue";
 import PunishmentsList from "@/ui/screens/PunishmentsList.vue";
+import Authority from "@/ui/screens/Authority.vue";
+import CommandsView from "@/ui/screens/CommandsView.vue";
+import ContractsHub from "@/ui/screens/ContractsHub.vue";
+import ExportImport from "@/ui/screens/ExportImport.vue";
+import LogView from "@/ui/screens/LogView.vue";
+import Relationships from "@/ui/screens/Relationships.vue";
+import RolesView from "@/ui/screens/RolesView.vue";
+import StatsView from "@/ui/screens/StatsView.vue";
+import WeldingView from "@/ui/screens/WeldingView.vue";
 import type { Component } from "vue";
 import { BCPLUS_REPO, BCPLUS_VERSION } from "@/system/Constants";
 import { BCPVersionCompare, parseBCPVersion } from "@/utils/Version";
@@ -23,6 +32,14 @@ const PORTED_SCREENS: Record<string, Component> = {
     rules: RulesList,
     curses: CursesList,
     punishments: PunishmentsList,
+    roles: RolesView,
+    authority: Authority,
+    logging: LogView,
+    statistics: StatsView,
+    relationships: Relationships,
+    commands: CommandsView,
+    contracts: ContractsHub,
+    welding: WeldingView,
 };
 
 /** Ported modules render natively; the rest still open the classic canvas view. */
@@ -52,8 +69,7 @@ function openModule(module: ModuleInstance): void {
 }
 
 function openExportImport(): void {
-    win.close();
-    core.ModuleManager.getModule<GUI>("gui")?.openCanvasExport();
+    nav.push({ component: ExportImport, title: "Export / Import" });
 }
 
 function openChangelog(): void {
