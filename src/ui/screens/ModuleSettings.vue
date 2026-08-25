@@ -97,6 +97,28 @@ function refillPet(): void {
         touch();
     }
 }
+
+// --- General page: the factory reset (two-click armed) ---
+import { ref } from "vue";
+import type Core from "@/modules/Core";
+const resetArmedUntil = ref(0);
+const canFactoryReset = computed(() => {
+    version.value;
+    return (core.ModuleManager.getModule("core") as Core | undefined)?.canFactoryReset() ?? false;
+});
+function factoryReset(): void {
+    const coreModule = core.ModuleManager.getModule("core") as Core | undefined;
+    if (!coreModule || !canFactoryReset.value) {
+        return;
+    }
+    if (Date.now() < resetArmedUntil.value) {
+        resetArmedUntil.value = 0;
+        void coreModule.factoryReset();
+    } else {
+        resetArmedUntil.value = Date.now() + 4_000;
+        touch();
+    }
+}
 </script>
 
 <template>
@@ -120,9 +142,19 @@ function refillPet(): void {
                 @click="refillPet()"
             >Refill all stats</button>
         </div>
-        <p v-if="props.slug === 'core' && !remote" class="mt-3 px-3 text-sm text-fg-dim">
-            Factory reset lives at <code>/bcp reset</code> for now.
-        </p>
+        <div v-if="props.slug === 'core' && !remote" class="mt-3 flex items-center gap-3 px-3">
+            <button
+                class="rounded-lg px-4 py-2 disabled:opacity-50"
+                :style="Date.now() < resetArmedUntil
+                    ? 'background: rgba(224,82,82,0.25); border: 1px solid #e05252; color: #e05252;'
+                    : 'background: rgba(224,82,82,0.12); border: 1px solid #e05252; color: #e05252;'"
+                :disabled="!canFactoryReset"
+                :title="canFactoryReset
+                    ? 'Factory reset - wipes every BC+ setting, rule, curse, role and log entry, then reloads'
+                    : 'Disabled - your collar is welded'"
+                @click="factoryReset()"
+            >{{ Date.now() < resetArmedUntil ? "Confirm reset" : "Reset BC+" }}</button>
+        </div>
         <p v-if="remote && !canEdit" class="mt-3 px-3 text-sm text-fg-dim">
             {{ module.Config.PublicData
                 ? "You do not have permission to change these settings; viewing only."

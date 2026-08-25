@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, inject } from "vue";
-import { BCPLUS_KEY, NAV_KEY, WINDOW_KEY } from "@/ui/nav";
+import { BCPLUS_KEY, NAV_KEY } from "@/ui/nav";
 import ModuleSettings from "@/ui/screens/ModuleSettings.vue";
 import RulesList from "@/ui/screens/RulesList.vue";
 import CursesList from "@/ui/screens/CursesList.vue";
@@ -20,7 +20,6 @@ import { BCPVersionCompare, parseBCPVersion } from "@/utils/Version";
 import { MemberNumberToName } from "@/utils/Messaging";
 import { getChatroomCharacter } from "@/utils/BCPlusCharacter";
 import type { ModuleInstance } from "@/system/module/ModuleInstance";
-import type { GUI } from "@/modules/GUI";
 import type Core from "@/modules/Core";
 
 const props = defineProps<{
@@ -30,7 +29,6 @@ const props = defineProps<{
 
 const core = inject(BCPLUS_KEY)!;
 const nav = inject(NAV_KEY)!;
-const win = inject(WINDOW_KEY)!;
 
 const remote = computed(() => props.member !== undefined);
 
@@ -52,11 +50,6 @@ const PORTED_SCREENS: Record<string, Component> = {
     welding: WeldingView,
 };
 
-/** Ported modules render natively; the rest still open the classic canvas view. */
-function isDomNative(module: ModuleInstance): boolean {
-    return module.Slug in PORTED_SCREENS
-        || (module.SettingsScreen === null && module.Settings.length > 0);
-}
 
 function openModule(module: ModuleInstance): void {
     if (remote.value && !getChatroomCharacter(props.member!)) {
@@ -71,16 +64,12 @@ function openModule(module: ModuleInstance): void {
             title,
             props: remote.value ? { member: props.member } : undefined,
         });
-    } else if (isDomNative(module)) {
+    } else {
         nav.push({
             component: ModuleSettings,
             title,
             props: { slug: module.Slug, member: props.member },
         });
-    } else {
-        // Not ported to the new window yet - the classic view takes over
-        win.close();
-        core.ModuleManager.getModule<GUI>("gui")?.openCanvasModule(module);
     }
 }
 
@@ -136,7 +125,7 @@ const updateText = computed(() => {
                 <span class="min-w-0">
                     <span class="block truncate font-semibold">{{ module.Config.MenuString || module.Config.Name }}</span>
                     <span class="block truncate text-sm text-fg-dim">
-                        {{ isDomNative(module) ? module.Config.Description : "Opens in the classic view" }}
+                        {{ module.Config.Description }}
                     </span>
                 </span>
             </button>

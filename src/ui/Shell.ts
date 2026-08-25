@@ -119,6 +119,13 @@ export class UIWindow {
 
         this.resizeObserver = new ResizeObserver(() => this.schedulePersist());
         this.resizeObserver.observe(host);
+
+        // The modal-mode preference decides the opening state: floating
+        // (checked) or filling the screen (unchecked, the classic feel)
+        const floating = this.core.ModuleManager.getModule<Core>("core")?.getSetting<boolean>("modalMode") === true;
+        if (!floating) {
+            this.toggleMaximize();
+        }
         debug("BC+ window opened");
     }
 

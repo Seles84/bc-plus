@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, inject, ref } from "vue";
 import { NAV_KEY } from "@/ui/nav";
-import { collectMemberCandidates } from "@/gui/UserSelectScreen";
+import { collectMemberCandidates } from "@/utils/MemberSelect";
 
 const props = defineProps<{
     /** Called with the chosen member; the picker pops itself. */

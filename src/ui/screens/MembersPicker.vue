@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, inject, ref } from "vue";
 import { NAV_KEY } from "@/ui/nav";
-import { collectMemberCandidates } from "@/gui/UserSelectScreen";
+import { collectMemberCandidates } from "@/utils/MemberSelect";
 import { MemberNumberToName } from "@/utils/Messaging";
 
 const props = defineProps<{

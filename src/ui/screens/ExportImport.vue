@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { computed, inject, ref } from "vue";
-import { WINDOW_KEY } from "@/ui/nav";
+import { NAV_KEY } from "@/ui/nav";
 import { useBcpVersion } from "@/ui/composables";
+import Migration from "@/ui/screens/Migration.vue";
 import { copyExportCode, decodeExport, encodeExport } from "@/utils/ExportImport";
 import { jsonClone } from "@/utils/BCUtils";
-import type { GUI } from "@/modules/GUI";
 import type Curses from "@/modules/Curses";
 import type Relationships from "@/modules/Relationships";
 import type Rules from "@/modules/Rules";
 
-const win = inject(WINDOW_KEY)!;
+const nav = inject(NAV_KEY)!;
 const { version, touch, core } = useBcpVersion();
 
 const rules = core.ModuleManager.getModule<Rules>("rules");
@@ -128,8 +128,7 @@ function runExport(section: Section): void {
 
 const bcxInstalled = computed(() => core.SDK.bcxInstalled());
 function openMigration(): void {
-    win.close();
-    core.ModuleManager.getModule<GUI>("gui")?.openCanvasMigration();
+    nav.push({ component: Migration, title: "Migrate from BCX" });
 }
 </script>
 
@@ -184,7 +183,7 @@ function openMigration(): void {
         <div v-if="bcxInstalled" class="flex items-center gap-3 rounded-lg bg-surface p-3" style="border: 1px solid var(--bcp-border);">
             <span class="min-w-0 flex-1">
                 <span class="block font-semibold">Migrate from BCX</span>
-                <span class="block text-sm text-fg-dim">copy your BCX rules and curses into BC+ (opens in the classic view)</span>
+                <span class="block text-sm text-fg-dim">copy your BCX rules and curses into BC+</span>
             </span>
             <button
                 class="rounded-lg bg-bg px-4 py-1.5 hover:bg-surface-hover"

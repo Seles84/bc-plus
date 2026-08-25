@@ -2,8 +2,12 @@
 import { computed, inject, onMounted } from "vue";
 import { NAV_KEY, WINDOW_KEY } from "@/ui/nav";
 import MainMenu from "@/ui/screens/MainMenu.vue";
+import Welcome from "@/ui/screens/Welcome.vue";
+import { BCPLUS_KEY } from "@/ui/nav";
 import { MemberNumberToName } from "@/utils/Messaging";
+import type Core from "@/modules/Core";
 
+const core = inject(BCPLUS_KEY)!;
 const nav = inject(NAV_KEY)!;
 const win = inject(WINDOW_KEY)!;
 
@@ -12,6 +16,12 @@ const current = computed(() => nav.stack[nav.stack.length - 1]);
 onMounted(() => {
     if (nav.stack.length === 0) {
         const member = win.Viewing;
+        const firstRun = member === null
+            && (core.ModuleManager.getModule("core") as Core | undefined)?.isFirstRun() === true;
+        if (firstRun) {
+            nav.push({ component: Welcome, title: "Welcome" });
+            return;
+        }
         nav.push({
             component: MainMenu,
             title: member === null ? "Main Menu" : `${MemberNumberToName(member)} (#${member})`,

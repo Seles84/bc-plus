@@ -5,14 +5,11 @@ import {
     ContractDraft, ContractPayload, MAX_ACTIVE_CONTRACTS, MAX_DRAFTS, SignedContract,
     describeContractDuration, sanitizeContractPayload,
 } from "@/system/contracts/ContractTypes";
-import { ContractsScreen } from "@/gui/ContractsScreen";
-import { GUIScreen } from "@/system/gui/GUIScreen";
 import { BCPMessageContent, BCPNotifyPlayer, FindCharacterInRoom, SendAction, SendBCPMessage } from "@/utils/Messaging";
 import { encodeExport } from "@/utils/ExportImport";
 import { jsonClone } from "@/utils/BCUtils";
 import { rememberMember } from "@/utils/MemberCache";
 import { debug, err } from "@/system/Console";
-import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Logging from "@/modules/Logging";
 import type Rules from "@/modules/Rules";
 
@@ -63,10 +60,6 @@ export default class Contracts extends ModuleInstance {
 
     override get CanDisable(): boolean {
         return true;
-    }
-
-    override get SettingsScreen(): ((character: BCPlusCharacter | null) => GUIScreen) | null {
-        return (character) => new ContractsScreen(this, character);
     }
 
     get Drafts(): Record<string, ContractDraft> {

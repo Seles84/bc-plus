@@ -2,14 +2,11 @@ import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { ModuleConfig, PermissionDefinition } from "@/system/module/ModuleTypes";
 import { BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
 import { Role } from "@/system/Roles";
-import { GUIScreen } from "@/system/gui/GUIScreen";
-import { RelationshipsScreen } from "@/gui/RelationshipsScreen";
 import { BCPNotifyPlayer, MemberNumberToName, SendBCPMessage } from "@/utils/Messaging";
 import { containsWord, spokenPayload, spokenText } from "@/rules/speechUtils";
 import { decodeExport, encodeExport } from "@/utils/ExportImport";
 import { jsonClone } from "@/utils/BCUtils";
 import { debug } from "@/system/Console";
-import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Authority from "@/modules/Authority";
 import type Logging from "@/modules/Logging";
 import type Core from "@/modules/Core";
@@ -90,10 +87,6 @@ export default class Relationships extends ModuleInstance {
 
     override get CanDisable(): boolean {
         return true;
-    }
-
-    override get SettingsScreen(): ((character: BCPlusCharacter | null) => GUIScreen) | null {
-        return (character) => new RelationshipsScreen(this, character);
     }
 
     /** Custom name entries keyed by member number (mutable, auto-synced). */

@@ -3,13 +3,10 @@ import { ModuleConfig, PermissionDefinition } from "@/system/module/ModuleTypes"
 import { BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
 import { Role } from "@/system/Roles";
 import { LOG_MAX_ENTRIES, LOG_REMOTE_LIMIT, LogCategory, LogEntry } from "@/system/logging/LogTypes";
-import { LoggingScreen } from "@/gui/LoggingScreen";
-import { GUIScreen } from "@/system/gui/GUIScreen";
 import { BCPNotifyPlayer, SendBCPMessage } from "@/utils/Messaging";
 import { jsonClone } from "@/utils/BCUtils";
 import { AnySetting } from "@/system/gui/Settings";
 import { debug, warn } from "@/system/Console";
-import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Authority from "@/modules/Authority";
 import type Rules from "@/modules/Rules";
 import type Curses from "@/modules/Curses";
@@ -117,10 +114,6 @@ export default class Logging extends ModuleInstance {
 
     override get CanDisable(): boolean {
         return true;
-    }
-
-    override get SettingsScreen(): ((character: BCPlusCharacter | null) => GUIScreen) | null {
-        return (character) => new LoggingScreen(this, character);
     }
 
     get Entries(): LogEntry[] {

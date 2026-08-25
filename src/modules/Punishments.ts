@@ -6,12 +6,9 @@ import { captureItemSpec } from "@/system/curses/CurseTypes";
 import {
     ActivePunishment, PUNISHMENT_LOCKS, PunishmentDefinition, describeDuration,
 } from "@/system/punishments/PunishmentTypes";
-import { PunishmentsListScreen } from "@/gui/PunishmentsScreen";
-import { GUIScreen } from "@/system/gui/GUIScreen";
 import { BCPMessageContent, BCPNotifyPlayer, SendAction, SendBCPMessage } from "@/utils/Messaging";
 import { jsonClone } from "@/utils/BCUtils";
 import { debug, err, warn } from "@/system/Console";
-import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type { Originator } from "@/system/module/ModuleTypes";
 import type Authority from "@/modules/Authority";
 import type Curses from "@/modules/Curses";
@@ -103,10 +100,6 @@ export default class Punishments extends ModuleInstance {
 
     override get CanDisable(): boolean {
         return true;
-    }
-
-    override get SettingsScreen(): ((character: BCPlusCharacter | null) => GUIScreen) | null {
-        return (character) => new PunishmentsListScreen(this, character);
     }
 
     get Definitions(): Record<string, PunishmentDefinition> {
