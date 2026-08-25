@@ -5,12 +5,16 @@ import { Role } from "@/system/Roles";
 import { AnySetting } from "@/system/gui/Settings";
 import {
     AFFECTION_LIKE_ACTIVITIES, AFFECTION_LIKE_GAIN, AFFECTION_LOVE_ACTIVITIES, AFFECTION_LOVE_GAIN,
-    AFFECTION_ROUGH_ACTIVITIES, AFFECTION_ROUGH_LOSS, AFFECTION_ZONE_WEIGHT,
-    BCP_BOWL_DRINK, BCP_BOWL_EAT, BOWL_RECOVERY, DRAIN_CHOICES, FOOD_ACTIVITY_NAMES, ITEM_RECOVERY,
+    AFFECTION_ROUGH_ACTIVITIES, AFFECTION_ROUGH_LOSS, AFFECTION_SKILLS, AFFECTION_ZONE_WEIGHT,
+    BCP_BOWL_DRINK, BCP_BOWL_EAT, BOWL_RECOVERY, DRAIN_CHOICES, FOOD_ACTIVITY_NAMES,
+    HUNGER_THRESHOLD_CHOICES, ITEM_RECOVERY,
     OFFLINE_FLOOR_CHOICES, OFFLINE_MODES, OFFLINE_MODE_DRAIN, ORGASM_SLEEP_COST, ORGASM_WATER_COST,
-    PET_STATS, PetLevels, PetStatId, SEX_PET_GAIN, SEX_PET_MODES, SEX_PET_ORAL_ACTIVITIES,
-    SEX_PET_ORGASM_WINDOW_MS, SEX_PET_REGIONS, SEX_PET_THIRST_MULTIPLIER, WATER_ACTIVITY_NAMES,
-    chatDictAttr, clampLevel, coarseLevel, drainHoursValue, drainedLevel, offlineFloorValue, sleepFactor,
+    PASSOUT_MUMBLES, PASSOUT_WAKE_LEVEL, PET_STATS, PetLevels, PetStatId,
+    SEX_PET_GAIN, SEX_PET_MODES, SEX_PET_ORAL_ACTIVITIES,
+    SEX_PET_ORGASM_WINDOW_MS, SEX_PET_REGIONS, SEX_PET_THIRST_MULTIPLIER, SKILL_MOD_INTERVAL_MS,
+    SLOW_LEAVE_MAX_EXTRA_SEC, TINT_THRESHOLD_CHOICES, WATER_ACTIVITY_NAMES,
+    chatDictAttr, clampLevel, coarseLevel, drainHoursValue, drainedLevel, offlineFloorValue,
+    isSleepingLook, percentValue, sleepFactor,
 } from "@/system/pet/PetTypes";
 import { drawPetRings } from "@/system/pet/PetHud";
 import { BCP_ACTIVITY_PREFIX, CustomActivityRegistry } from "@/utils/CustomActivities";
@@ -54,6 +58,11 @@ export default class Pet extends ModuleInstance {
 
     private readonly activities = new CustomActivityRegistry();
     private mpaPresent = false;
+
+    /** Effects state: knocked out until sleep recovers. */
+    private passedOut = false;
+    private effectsTimer: ReturnType<typeof setInterval> | null = null;
+    private lastSkillApply = 0;
 
     protected readonly SystemConfig: ModuleConfig = {
         Name: "Pet",
@@ -186,6 +195,94 @@ export default class Pet extends ModuleInstance {
                 options: OFFLINE_FLOOR_CHOICES.map((c) => c.label),
                 default: "20%",
             },
+            // Page 3: effects of low stats
+            {
+                type: "checkbox",
+                name: "effects",
+                label: "Enable pet effects (low stats have consequences)",
+                hoverText: "The master switch for everything below: exhaustion darkens your "
+                    + "vision and knocks you out, hunger dulls your hearing and slows your "
+                    + "leaving, affection buffs or debuffs your skills. Each effect can be "
+                    + "switched off individually.",
+                default: false,
+            },
+            {
+                type: "checkbox",
+                name: "fxTint",
+                label: "Vision darkens as you get sleepy",
+                default: true,
+            },
+            {
+                type: "option",
+                name: "fxTintAt",
+                label: "Vision starts darkening below",
+                options: [...TINT_THRESHOLD_CHOICES],
+                default: "25%",
+            },
+            {
+                type: "checkbox",
+                name: "fxPassout",
+                label: "Pass out when exhausted",
+                hoverText: "Sleep hitting empty knocks you out: eyes forced closed, kneeling, "
+                    + "unable to talk, walk or interact, deaf and mostly blind - chat comes out "
+                    + "as sleepy mumbles. The forced nap recovers sleep on its own; you wake at "
+                    + "10%. /bcp commands keep working throughout.",
+                default: true,
+            },
+            {
+                type: "checkbox",
+                name: "fxDeaf",
+                label: "Hearing fades when hungry",
+                default: true,
+            },
+            {
+                type: "option",
+                name: "fxDeafAt",
+                label: "Hearing starts fading below",
+                options: [...HUNGER_THRESHOLD_CHOICES],
+                default: "30%",
+            },
+            {
+                type: "checkbox",
+                name: "fxSlowLeave",
+                label: "Slow to leave the room when hungry",
+                hoverText: "A starving pet takes up to 25 extra seconds to leave a chat room "
+                    + "and counts as slow (easy to catch).",
+                default: true,
+            },
+            {
+                type: "option",
+                name: "fxSlowAt",
+                label: "Leaving slows below",
+                options: [...HUNGER_THRESHOLD_CHOICES],
+                default: "30%",
+            },
+            {
+                type: "checkbox",
+                name: "fxSkillBuffs",
+                label: "High affection buffs skills",
+                hoverText: "A well-loved pet gains up to +5 Self bondage and Willpower - but "
+                    + "the pet-brain costs up to -5 Bondage, Evasion and Lockpicking (with "
+                    + "debuffs enabled below).",
+                default: true,
+            },
+            {
+                type: "checkbox",
+                name: "fxSkillDebuffs",
+                label: "Low affection debuffs skills",
+                hoverText: "A neglected pet loses up to -5 Self bondage and Willpower; the "
+                    + "sharpened survival instinct grants up to +5 Bondage, Evasion and "
+                    + "Lockpicking (with buffs enabled above).",
+                default: true,
+            },
+            {
+                type: "checkbox",
+                name: "fxHungryAffection",
+                label: "Hunger and thirst dampen affection gains",
+                hoverText: "Petting counts less on an empty stomach: affection gains scale "
+                    + "with your food and water levels.",
+                default: true,
+            },
         ];
     }
 
@@ -292,12 +389,21 @@ export default class Pet extends ModuleInstance {
         this.installHud();
         this.installGains();
         this.installBowlActivities();
+        this.installEffects();
+        this.effectsTimer = setInterval(() => this.effectsTick(), 2_000);
     }
 
     override Unload(): void {
         if (this.onlineStampTimer !== null) {
             clearInterval(this.onlineStampTimer);
             this.onlineStampTimer = null;
+        }
+        if (this.effectsTimer !== null) {
+            clearInterval(this.effectsTimer);
+            this.effectsTimer = null;
+        }
+        if (this.passedOut) {
+            this.wakeUp(true);
         }
         this.activities.unregisterAll();
         this.oralAt.clear();
@@ -429,6 +535,21 @@ export default class Pet extends ModuleInstance {
             }
         } catch {
             // Appearance quirks must never block a gain entirely
+        }
+        // Petting counts less on an empty stomach (effects option)
+        if (stat === "affection" && this.effectOn("fxHungryAffection", "affection")) {
+            const levels = this.currentLevels();
+            const parts: number[] = [];
+            if (this.statHours("food") !== null) {
+                parts.push(levels.food);
+            }
+            if (this.statHours("water") !== null) {
+                parts.push(levels.water);
+            }
+            if (parts.length > 0) {
+                const average = parts.reduce((sum, v) => sum + v, 0) / parts.length;
+                modifier *= average / 75;
+            }
         }
         return Math.max(0, modifier);
     }
@@ -624,6 +745,235 @@ export default class Pet extends ModuleInstance {
             }
             return next(args);
         });
+    }
+
+    // ------------------------------------------------------------- Effects
+
+    /** Whether MPA's own conditions run - ours then stand down entirely. */
+    private mpaEffectsActive(): boolean {
+        if (!this.mpaPresent) {
+            return false;
+        }
+        try {
+            const mpa = (Player as unknown as { MPA?: Record<string, Record<string, unknown> | undefined> }).MPA;
+            return mpa?.["VirtualPet"]?.["enabled"] === true
+                && mpa?.["VirtualPetConditions"]?.["enabled"] === true;
+        } catch {
+            return false;
+        }
+    }
+
+    /** Whether one effect toggle is armed (master + toggle + its stat in play). */
+    private effectOn(key: string, stat: PetStatId): boolean {
+        return this.isPet()
+            && this.getSetting<boolean>("effects") === true
+            && this.getSetting<boolean>(key) !== false
+            && this.statHours(stat) !== null
+            && !this.mpaEffectsActive();
+    }
+
+    private threshold(key: string, fallback: number): number {
+        return percentValue(this.getSetting<string>(key), fallback);
+    }
+
+    private effectsTick(): void {
+        this.checkPassout();
+        if (Date.now() - this.lastSkillApply >= SKILL_MOD_INTERVAL_MS) {
+            this.lastSkillApply = Date.now();
+            this.applySkillModifiers();
+        }
+    }
+
+    // --- Passout
+
+    private checkPassout(): void {
+        if (!this.effectOn("fxPassout", "sleep")) {
+            if (this.passedOut) {
+                this.wakeUp(true);
+            }
+            return;
+        }
+        const sleep = this.currentLevels().sleep;
+        if (!this.passedOut && sleep <= 0.5 && !this.lscgAsleep()) {
+            this.passOut();
+        } else if (this.passedOut && sleep >= PASSOUT_WAKE_LEVEL) {
+            this.wakeUp(false);
+        } else if (this.passedOut && !isSleepingLook(Player)) {
+            // Someone (or the pet) opened the eyes - without the sleeping look
+            // sleep stops recovering and the nap would never end
+            try {
+                CharacterSetFacialExpression(Player, "Emoticon", "Sleep");
+                CharacterSetFacialExpression(Player, "Eyes", "Closed");
+                CharacterSetFacialExpression(Player, "Eyes2", "Closed");
+            } catch {
+                // Best effort
+            }
+        }
+    }
+
+    /** Whether LSCG already has the player asleep - never pile on top. */
+    private lscgAsleep(): boolean {
+        try {
+            const lscg = (globalThis as Record<string, unknown>)["LSCG"] as
+                { getModule?: (name: string) => { SleepState?: { Active?: boolean } } | undefined } | undefined;
+            return lscg?.getModule?.("StateModule")?.SleepState?.Active === true;
+        } catch {
+            return false;
+        }
+    }
+
+    /**
+     * Knocks the pet out. The forced sleeping look (closed eyes + Sleep
+     * emoticon) starts sleep recovery on its own, so the nap self-heals and
+     * ends at the wake level.
+     */
+    private passOut(): void {
+        this.passedOut = true;
+        try {
+            SendAction(`${CharacterNickname(Player)} passes out from exhaustion.`);
+            CharacterSetFacialExpression(Player, "Emoticon", "Sleep");
+            CharacterSetFacialExpression(Player, "Eyes", "Closed");
+            CharacterSetFacialExpression(Player, "Eyes2", "Closed");
+            CharacterSetFacialExpression(Player, "Fluids", "DroolMedium");
+            if (Player.CanKneel()) {
+                PoseSetActive(Player, "Kneel", true);
+            }
+        } catch {
+            // Expressions are flavor; the state itself is what matters
+        }
+        debug("Pet passed out from exhaustion");
+    }
+
+    private wakeUp(quiet: boolean): void {
+        this.passedOut = false;
+        try {
+            CharacterSetFacialExpression(Player, "Emoticon", null);
+            CharacterSetFacialExpression(Player, "Eyes", quiet ? null : "Dazed");
+            CharacterSetFacialExpression(Player, "Eyes2", quiet ? null : "Dazed");
+            if (!quiet) {
+                CharacterSetFacialExpression(Player, "Eyebrows", "Lowered");
+                SendAction(`${CharacterNickname(Player)} stirs and wakes up from the forced nap.`);
+            }
+        } catch {
+            // Same rule as passOut
+        }
+        debug("Pet woke up");
+    }
+
+    private installEffects(): void {
+        // Sleepy tint: vision fades to black as sleep approaches empty
+        this.addHook("Player.GetTints", 5, (args, next) => {
+            const result = next(args);
+            if (!this.effectOn("fxTint", "sleep")) {
+                return result;
+            }
+            const at = this.threshold("fxTintAt", 25);
+            const sleep = this.currentLevels().sleep;
+            if (at <= 0 || sleep >= at) {
+                return result;
+            }
+            const alpha = Math.sqrt(Math.min(1, (at - sleep) / at));
+            return result.concat({ r: 0, g: 0, b: 0, a: alpha });
+        });
+
+        // Passout capability blocks
+        for (const capability of ["Player.CanTalk", "Player.CanWalk", "Player.CanChangeOwnClothes", "Player.CanInteract"] as const) {
+            this.addHook(capability, 5, (args, next) => (this.passedOut ? false : next(args)));
+        }
+
+        // Chat while passed out becomes sleepy mumbling (OOC passes)
+        this.addHook("ServerSend", 5, (args, next) => {
+            const [message, data] = args as [string, ServerChatRoomMessage | undefined];
+            if (this.passedOut && message === "ChatRoomChat" && data?.Type === "Chat"
+                && typeof data.Content === "string" && !data.Content.startsWith("(")) {
+                const mumble = PASSOUT_MUMBLES[Math.floor(Math.random() * PASSOUT_MUMBLES.length)]!;
+                SendAction(`${CharacterNickname(Player)} ${mumble}`);
+                return;
+            }
+            return next(args);
+        });
+
+        // Hearing: hunger dulls it progressively; passed out = fully deaf
+        this.addHook("Player.GetDeafLevel", 5, (args, next) => {
+            let level = next(args);
+            if (this.passedOut) {
+                level = Math.max(level, 4);
+            }
+            if (this.effectOn("fxDeaf", "food")) {
+                const at = this.threshold("fxDeafAt", 30);
+                const food = this.currentLevels().food;
+                if (at > 0 && food < at) {
+                    // Thirds of the threshold: one step deafer per third below it
+                    level = Math.max(level, Math.min(3, Math.floor((3 * (at - food)) / at)));
+                }
+            }
+            return level;
+        });
+
+        // Passed out pets see next to nothing
+        this.addHook("Player.GetBlindLevel", 5, (args, next) => {
+            if (!this.passedOut) {
+                return next(args);
+            }
+            const sensDep = Player.GameplaySettings?.SensDepChatLog;
+            return (sensDep === "SensDepExtreme" || sensDep === "SensDepTotal") ? 3 : 2;
+        });
+
+        // Hungry pets are slow to leave (and count as slow, so they can be caught)
+        this.addHook("ChatRoomAttemptLeave", 1, (args, next) => {
+            if (!this.effectOn("fxSlowLeave", "food")) {
+                return next(args);
+            }
+            const at = this.threshold("fxSlowAt", 30);
+            const food = this.currentLevels().food;
+            const previousTimer = ChatRoomSlowtimer;
+            const result = next(args);
+            if (previousTimer === 0 && ChatRoomSlowtimer > 0 && at > 0 && food <= at) {
+                const extraMs = ((at - food) / at) * SLOW_LEAVE_MAX_EXTRA_SEC * 1000;
+                ChatRoomSlowtimer = CurrentTime + ChatRoomSlowLeaveMinTime + extraMs;
+            }
+            return result;
+        });
+        this.addHook("Player.IsSlow", 1, (args, next) => {
+            if (this.effectOn("fxSlowLeave", "food")
+                && this.currentLevels().food <= this.threshold("fxSlowAt", 30)) {
+                return true;
+            }
+            return next(args);
+        });
+    }
+
+    /**
+     * Affection maps to [-5..+5] across the pet skills: positive-correlation
+     * skills get it as-is, negative ones inverted (see AFFECTION_SKILLS).
+     * Buffs and debuffs are gated by their own toggles per resulting sign.
+     */
+    private applySkillModifiers(): void {
+        if (!this.isPet() || this.getSetting<boolean>("effects") !== true
+            || this.statHours("affection") === null || this.mpaEffectsActive()) {
+            return;
+        }
+        const buffs = this.getSetting<boolean>("fxSkillBuffs") !== false;
+        const debuffs = this.getSetting<boolean>("fxSkillDebuffs") !== false;
+        if (!buffs && !debuffs) {
+            return;
+        }
+        const affection = this.currentLevels().affection;
+        const base = Math.round(((affection / 100) * 10 - 5) * 100) / 100;
+        try {
+            if (SkillModifierMax < 5) {
+                SkillModifierMax = 5;
+            }
+            for (const [skill, sign] of AFFECTION_SKILLS) {
+                const modifier = base * sign;
+                if (modifier === 0 || (modifier > 0 && !buffs) || (modifier < 0 && !debuffs)) {
+                    continue;
+                }
+                SkillSetModifier(Player, skill as SkillType, modifier, SKILL_MOD_INTERVAL_MS + 2_000, false);
+            }
+        } catch {
+            // Skill API quirks must never break the tick
+        }
     }
 
     // ------------------------------------------------------------- Offline

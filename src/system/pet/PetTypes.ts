@@ -191,6 +191,49 @@ export function sleepFactor(C: Character): number {
     return bed * (sleeping ? 5 : 1);
 }
 
+// ------------------------------------------------------------------ Effects
+
+/** Threshold choices for the scaling low-stat effects. */
+export const TINT_THRESHOLD_CHOICES: readonly string[] = ["10%", "25%", "40%"];
+export const HUNGER_THRESHOLD_CHOICES: readonly string[] = ["20%", "30%", "50%"];
+
+/** Parses a stored "30%" option value. */
+export function percentValue(raw: unknown, fallback: number): number {
+    if (typeof raw !== "string") {
+        return fallback;
+    }
+    const value = Number.parseInt(raw, 10);
+    return Number.isFinite(value) && value >= 0 && value <= 100 ? value : fallback;
+}
+
+/** A passed-out pet wakes once sleep has recovered to this level. */
+export const PASSOUT_WAKE_LEVEL = 10;
+
+/** What a passed-out pet's chat becomes (name is prefixed). */
+export const PASSOUT_MUMBLES: readonly string[] = [
+    "mumbles softly, fast asleep.",
+    "shifts a little without waking.",
+    "breathes slowly, deep asleep, a bit of drool escaping.",
+];
+
+/**
+ * Skills affection influences and the correlation sign: a well-loved pet is
+ * strong-willed and good at wearing its bonds, but too pet-brained for
+ * rigging, escaping or lockpicking - a neglected pet the other way around.
+ */
+export const AFFECTION_SKILLS: readonly [string, 1 | -1][] = [
+    ["SelfBondage", 1],
+    ["Willpower", 1],
+    ["Bondage", -1],
+    ["Evasion", -1],
+    ["LockPicking", -1],
+];
+/** Modifiers are re-asserted on this cadence (validity slightly longer). */
+export const SKILL_MOD_INTERVAL_MS = 16_000;
+
+/** Fully starved pets take this much longer to leave a room. */
+export const SLOW_LEAVE_MAX_EXTRA_SEC = 25;
+
 /** Rounds a level for the coarse public broadcast (nearest 5). */
 export function coarseLevel(value: number): number {
     return Math.round(clampLevel(value) / 5) * 5;
