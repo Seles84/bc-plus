@@ -4,7 +4,9 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.9.0] - 2026-08-25
+
+The Pet module release: the phases below (newest first) arrived over PRs #138-#141 and together form one feature - see the phase 1 entry at the bottom for the foundations.
 
 ### Added
 - Pet module phase 4 - pet speech, pet hearing, clicker training and collar bells (85 rules total). Two new RULES in a new "Pet" category, with everything rules bring (remote forcing, conditions and timers, attachable as punishments, export codes): **Speak like a pet** laces the player's speech with animal sounds - pick a sound set (Bunny/Cat/Cow/Dog/Fox/Mouse/Pony/Wolf) or custom sounds, Sprinkle mode weaves them between words while Replace mode swaps words out entirely (fully non-verbal at Max), OOC always exempt; **Hear like a pet** keeps pet words (commands, praise, the pet's own name, the chosen animal's vocabulary, custom extras) crystal clear while everything else the player hears garbles away - either only piercing existing deafness (item- or hunger-induced), or forcing a Light/Heavy garble on everything all the time. On the Pet page: **clicker training** (a new "Click-train me" permission, Mistress by default, gates whose messages click; trigger phrases editable, default `*click*`; chat and optionally emotes; up to three rapid clicks; optionally a drop of affection per click) and **collar bells** (worn bell items jingle on map steps, pose changes and emoted movement - chance scales with how many bells you wear - plus a "Jingle Bell" activity on the neck that every BC+ user in the room hears). All sounds are synthesized locally via WebAudio - no audio files, nothing sent anywhere.
