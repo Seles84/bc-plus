@@ -115,6 +115,15 @@ export default class SDK {
         return window.bcx !== undefined;
     }
 
+    /** Whether another ModSDK mod is loaded (by its registered short name, e.g. "MPA"). */
+    modInstalled(name: string): boolean {
+        try {
+            return bcModSdk.getModsInfo().some((mod) => mod.name === name);
+        } catch {
+            return false;
+        }
+    }
+
     unload(): void {
         this.hooks.forEach((h) => h.removeHook());
         this.hooks = [];
