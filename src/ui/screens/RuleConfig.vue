@@ -1,21 +1,22 @@
 <script setup lang="ts">
 import { computed, inject } from "vue";
-import { NAV_KEY, WINDOW_KEY } from "@/ui/nav";
+import { NAV_KEY } from "@/ui/nav";
 import { useBcpVersion } from "@/ui/composables";
 import SettingRow from "@/ui/components/SettingRow.vue";
 import MembersPicker from "@/ui/screens/MembersPicker.vue";
 import Conditions from "@/ui/screens/Conditions.vue";
+import RulePunish from "@/ui/screens/RulePunish.vue";
 import { LocalRuleAccess } from "@/system/rules/RuleAccess";
 import { describeConditions } from "@/system/conditions/Conditions";
+import { defaultPunishConfig } from "@/system/punishments/PunishmentTypes";
 import { membersValue } from "@/system/gui/Settings";
 import type { AnySetting } from "@/system/gui/Settings";
 import type Contracts from "@/modules/Contracts";
+import type Punishments from "@/modules/Punishments";
 import type Rules from "@/modules/Rules";
-import type { GUI } from "@/modules/GUI";
 
 const props = defineProps<{ ruleId: string }>();
 const nav = inject(NAV_KEY)!;
-const win = inject(WINDOW_KEY)!;
 const { version, touch, core } = useBcpVersion();
 
 const rules = core.ModuleManager.getModule<Rules>("rules")!;
@@ -112,7 +113,7 @@ function openConditions(): void {
     }
 }
 
-// --- Punishments (config screen not ported yet) ---
+// --- Punishments attachment ---
 const punishSummary = computed(() => {
     const punish = state.value.punish;
     if (!punish || punish.punishments.length === 0) {
@@ -122,12 +123,17 @@ const punishSummary = computed(() => {
         + (punish.threshold > 1 ? ` after ${punish.threshold} violations in ${punish.windowMin} min` : ", every violation");
 });
 
-function openPunishClassic(): void {
-    if (!definition) {
-        return;
-    }
-    win.close();
-    core.ModuleManager.getModule<GUI>("gui")?.openCanvasRule(definition);
+function openPunish(): void {
+    nav.push({
+        component: RulePunish,
+        title: `Punishments - ${definition?.name ?? ""}`,
+        props: {
+            get: () => access.state(props.ruleId).punish ?? defaultPunishConfig(),
+            set: (c: unknown) => access.setPunish(props.ruleId, c as never),
+            canEdit: () => access.canEdit(),
+            definitions: () => core.ModuleManager.getModule<Punishments>("punishments")?.Definitions ?? {},
+        },
+    });
 }
 
 // --- Custom settings ---
@@ -236,8 +242,8 @@ function pickMembers(setting: AnySetting): void {
             <button
                 class="rounded-lg bg-bg px-3 py-1.5 hover:bg-surface-hover"
                 style="border: 1px solid var(--bcp-border);"
-                title="What happens when this rule is broken (opens in the classic view for now)"
-                @click="openPunishClassic()"
+                title="What happens when this rule is broken"
+                @click="openPunish()"
             >Punishments...</button>
             <span class="min-w-0 flex-1 truncate text-sm text-fg-dim">{{ punishSummary }}</span>
         </section>

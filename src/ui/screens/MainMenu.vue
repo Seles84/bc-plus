@@ -3,6 +3,8 @@ import { computed, inject } from "vue";
 import { BCPLUS_KEY, NAV_KEY, WINDOW_KEY } from "@/ui/nav";
 import ModuleSettings from "@/ui/screens/ModuleSettings.vue";
 import RulesList from "@/ui/screens/RulesList.vue";
+import CursesList from "@/ui/screens/CursesList.vue";
+import PunishmentsList from "@/ui/screens/PunishmentsList.vue";
 import type { Component } from "vue";
 import { BCPLUS_REPO, BCPLUS_VERSION } from "@/system/Constants";
 import { BCPVersionCompare, parseBCPVersion } from "@/utils/Version";
@@ -19,6 +21,8 @@ const modules = computed(() => core.ModuleManager.Modules.filter((m) => m.HasGUI
 /** Custom screens already ported to the new window. */
 const PORTED_SCREENS: Record<string, Component> = {
     rules: RulesList,
+    curses: CursesList,
+    punishments: PunishmentsList,
 };
 
 /** Ported modules render natively; the rest still open the classic canvas view. */
