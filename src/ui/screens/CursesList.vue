@@ -93,19 +93,21 @@ function toggleAnnounce(): void {
     <div v-else class="flex h-full flex-col gap-3">
         <p v-if="slots.length === 0" class="px-2 text-fg-dim">No slots are cursed yet.</p>
 
-        <div class="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
-            <div
-                v-for="slot in slots"
-                :key="slot.group"
-                class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-surface"
-                @click="openSlot(slot.group)"
-            >
-                <span class="min-w-0 flex-1 truncate font-semibold">{{ groupLabel(slot.group) }}</span>
-                <span
-                    class="w-16 shrink-0 text-sm font-semibold"
-                    :style="{ color: slot.active ? '#4caf6d' : 'var(--bcp-text-dim)' }"
-                >{{ slot.active ? "Active" : "Inactive" }}</span>
-                <span class="max-w-xs truncate text-sm text-fg-dim">{{ summary(slot) }}</span>
+        <div class="@container min-h-0 flex-1 overflow-y-auto">
+            <div class="grid grid-cols-1 content-start gap-x-8 gap-y-0.5 @3xl:grid-cols-2 @6xl:grid-cols-3">
+                <div
+                    v-for="slot in slots"
+                    :key="slot.group"
+                    class="flex min-w-0 cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-surface"
+                    @click="openSlot(slot.group)"
+                >
+                    <span class="min-w-0 flex-1 truncate font-semibold">{{ groupLabel(slot.group) }}</span>
+                    <span
+                        class="shrink-0 text-sm font-semibold"
+                        :style="{ color: slot.active ? '#4caf6d' : 'var(--bcp-text-dim)' }"
+                    >{{ slot.active ? "Active" : "Inactive" }}</span>
+                    <span class="max-w-56 truncate text-sm text-fg-dim">{{ summary(slot) }}</span>
+                </div>
             </div>
         </div>
 

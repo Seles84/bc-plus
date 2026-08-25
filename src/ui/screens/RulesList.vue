@@ -199,9 +199,10 @@ function openGlobalConditions(): void {
             No rules are active. Use "Add rule" to pick from the catalog.
         </p>
 
-        <div class="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
+        <div class="@container min-h-0 flex-1 overflow-y-auto">
+            <div class="grid grid-cols-1 content-start gap-x-8 gap-y-0.5 @3xl:grid-cols-2 @6xl:grid-cols-3">
             <template v-for="(row, index) in listRows" :key="row.header ?? row.definition!.id">
-                <div v-if="row.header" class="px-2 pt-2 text-sm font-semibold text-fg-dim" :class="{ 'pt-0': index === 0 }">
+                <div v-if="row.header" class="col-span-full px-2 pt-2 text-sm font-semibold text-fg-dim" :class="{ 'pt-0': index === 0 }">
                     {{ row.header }}
                 </div>
                 <div
@@ -238,6 +239,7 @@ function openGlobalConditions(): void {
                     </span>
                 </div>
             </template>
+            </div>
         </div>
 
         <div class="flex flex-wrap items-center gap-3 border-t pt-2" style="border-color: var(--bcp-border);">
