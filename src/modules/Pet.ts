@@ -6,17 +6,20 @@ import { AnySetting } from "@/system/gui/Settings";
 import {
     AFFECTION_LIKE_ACTIVITIES, AFFECTION_LIKE_GAIN, AFFECTION_LOVE_ACTIVITIES, AFFECTION_LOVE_GAIN,
     AFFECTION_ROUGH_ACTIVITIES, AFFECTION_ROUGH_LOSS, AFFECTION_SKILLS, AFFECTION_ZONE_WEIGHT,
-    BCP_BOWL_DRINK, BCP_BOWL_EAT, BOWL_RECOVERY, DRAIN_CHOICES, FOOD_ACTIVITY_NAMES,
-    HUNGER_THRESHOLD_CHOICES, ITEM_RECOVERY,
+    BCP_BOWL_DRINK, BCP_BOWL_EAT, BCP_JINGLE_BELL, BELL_JINGLE_CHANCE, BELL_JINGLE_OPTIONS,
+    BOWL_RECOVERY, DRAIN_CHOICES, FOOD_ACTIVITY_NAMES,
+    HUNGER_THRESHOLD_CHOICES, ITEM_RECOVERY, MOVEMENT_VERBS,
     OFFLINE_FLOOR_CHOICES, OFFLINE_MODES, OFFLINE_MODE_DRAIN, ORGASM_SLEEP_COST, ORGASM_WATER_COST,
     PASSOUT_MUMBLES, PASSOUT_WAKE_LEVEL, PET_STATS, PetLevels, PetStatId,
     SEX_PET_GAIN, SEX_PET_MODES, SEX_PET_ORAL_ACTIVITIES,
     SEX_PET_ORGASM_WINDOW_MS, SEX_PET_REGIONS, SEX_PET_THIRST_MULTIPLIER, SKILL_MOD_INTERVAL_MS,
     SLOW_LEAVE_MAX_EXTRA_SEC, TINT_THRESHOLD_CHOICES, WATER_ACTIVITY_NAMES,
     chatDictAttr, clampLevel, coarseLevel, drainHoursValue, drainedLevel, offlineFloorValue,
-    isSleepingLook, parchSpeech, percentValue, sleepFactor,
+    isSleepingLook, parchSpeech, percentValue, sleepFactor, wornBellCount,
 } from "@/system/pet/PetTypes";
-import { transformSpoken } from "@/rules/speechUtils";
+import { playClicks, playJingle } from "@/system/pet/PetSounds";
+import { containsWord, spokenText, transformSpoken } from "@/rules/speechUtils";
+import { stringListValue } from "@/system/gui/Settings";
 import { drawPetRings } from "@/system/pet/PetHud";
 import { BCP_ACTIVITY_PREFIX, CustomActivityRegistry } from "@/utils/CustomActivities";
 import { SendAction } from "@/utils/Messaging";
@@ -83,12 +86,20 @@ export default class Pet extends ModuleInstance {
     };
 
     override get Permissions(): PermissionDefinition[] {
-        return [{
-            id: "pet.edit",
-            label: "Change my pet settings",
-            defaultRole: Role.Owner,
-            defaultSelf: true,
-        }];
+        return [
+            {
+                id: "pet.edit",
+                label: "Change my pet settings",
+                defaultRole: Role.Owner,
+                defaultSelf: true,
+            },
+            {
+                id: "pet.train",
+                label: "Click-train me (whose clicks I hear)",
+                defaultRole: Role.Mistress,
+                defaultSelf: false,
+            },
+        ];
     }
 
     override get CanDisable(): boolean {
@@ -299,6 +310,56 @@ export default class Pet extends ModuleInstance {
                 options: [...HUNGER_THRESHOLD_CHOICES],
                 default: "30%",
             },
+            // Page 4: training sounds
+            {
+                type: "checkbox",
+                name: "clicker",
+                label: "Clicker training: hear your trigger clicks",
+                hoverText: "When someone permitted to click-train you (Authority page) sends "
+                    + "a message containing one of your trigger phrases, you hear a clicker "
+                    + "snap - repeated triggers click up to three times. The sound is "
+                    + "synthesized locally; nothing is sent anywhere.",
+                default: false,
+            },
+            {
+                type: "stringList",
+                name: "clickerTriggers",
+                label: "Clicker trigger phrases:",
+                default: ["*click*"],
+                maxChars: 32,
+                maxEntries: 10,
+                entryLabel: "trigger",
+            },
+            {
+                type: "checkbox",
+                name: "clickerEmotes",
+                label: "Emotes can trigger the clicker too",
+                default: true,
+            },
+            {
+                type: "checkbox",
+                name: "clickerSelf",
+                label: "Your own messages can click",
+                default: false,
+            },
+            {
+                type: "checkbox",
+                name: "clickerReward",
+                label: "A click gives a drop of affection",
+                default: true,
+            },
+            {
+                type: "option",
+                name: "bellJingle",
+                label: "Worn bells jingle on movement",
+                hoverText: "Moving on the map, changing pose or moving in an emote can set "
+                    + "any worn bell items ringing (collar bells, nipple bells, ...). The "
+                    + "chance scales with how many you wear. There is also a \"Jingle Bell\" "
+                    + "activity on your neck while wearing one - its ring is heard by every "
+                    + "BC+ user in the room.",
+                options: [...BELL_JINGLE_OPTIONS],
+                default: "Off",
+            },
         ];
     }
 
@@ -404,8 +465,9 @@ export default class Pet extends ModuleInstance {
         }, ONLINE_STAMP_MS);
         this.installHud();
         this.installGains();
-        this.installBowlActivities();
+        this.installActivities();
         this.installEffects();
+        this.installTraining();
         this.effectsTimer = setInterval(() => this.effectsTick(), 2_000);
     }
 
@@ -696,13 +758,7 @@ export default class Pet extends ModuleInstance {
 
     // ------------------------------------------------------- Bowl activities
 
-    private installBowlActivities(): void {
-        // MPA registers its own bowl activities; a second pair of identical
-        // buttons helps nobody - MPA's messages feed our stats regardless
-        if (this.mpaPresent) {
-            debug("MPA detected - using its pet bowl activities instead of registering our own");
-            return;
-        }
+    private installActivities(): void {
         const hasBowl = (acting: Character): boolean => {
             try {
                 return InventoryGet(acting, "ItemDevices")?.Asset.Name === "PetBowl" && !acting.IsMouthBlocked();
@@ -710,24 +766,38 @@ export default class Pet extends ModuleInstance {
                 return false;
             }
         };
-        this.activities.register([
-            {
-                name: BCP_BOWL_EAT,
-                label: "Eat From Bowl",
-                selfGroups: ["ItemMouth"],
-                actionSelf: "SourceCharacter eats from PronounPossessive pet bowl.",
-                image: "Assets/Female3DCG/ItemDevices/Preview/PetBowl.png",
-                customPrerequisite: { name: "BCPHasPetBowl", check: hasBowl },
-            },
-            {
-                name: BCP_BOWL_DRINK,
-                label: "Drink From Bowl",
-                selfGroups: ["ItemMouth"],
-                actionSelf: "SourceCharacter drinks from PronounPossessive pet bowl.",
-                image: "Assets/Female3DCG/ItemDevices/Preview/PetBowl.png",
-                customPrerequisite: { name: "BCPHasPetBowl", check: hasBowl },
-            },
-        ]);
+        // MPA registers its own bowl activities; a second pair of identical
+        // buttons helps nobody - MPA's messages feed our stats regardless
+        if (!this.mpaPresent) {
+            this.activities.register([
+                {
+                    name: BCP_BOWL_EAT,
+                    label: "Eat From Bowl",
+                    selfGroups: ["ItemMouth"],
+                    actionSelf: "SourceCharacter eats from PronounPossessive pet bowl.",
+                    image: "Assets/Female3DCG/ItemDevices/Preview/PetBowl.png",
+                    customPrerequisite: { name: "BCPHasPetBowl", check: hasBowl },
+                },
+                {
+                    name: BCP_BOWL_DRINK,
+                    label: "Drink From Bowl",
+                    selfGroups: ["ItemMouth"],
+                    actionSelf: "SourceCharacter drinks from PronounPossessive pet bowl.",
+                    image: "Assets/Female3DCG/ItemDevices/Preview/PetBowl.png",
+                    customPrerequisite: { name: "BCPHasPetBowl", check: hasBowl },
+                },
+            ]);
+        } else {
+            debug("MPA detected - using its pet bowl activities instead of registering our own");
+        }
+        this.activities.register([{
+            name: BCP_JINGLE_BELL,
+            label: "Jingle Bell",
+            selfGroups: ["ItemNeck"],
+            actionSelf: "SourceCharacter shakes PronounPossessive bell with a bright jingle.",
+            image: "Assets/Female3DCG/ItemNeckAccessories/Preview/CollarBell.png",
+            customPrerequisite: { name: "BCPHasBell", check: (acting) => wornBellCount(acting) > 0 },
+        }]);
 
         this.addHook("ActivityCheckPrerequisite", 1, (args, next) => {
             const [prerequisite, acting] = args;
@@ -761,6 +831,99 @@ export default class Pet extends ModuleInstance {
             }
             return next(args);
         });
+    }
+
+    // ------------------------------------------------------------ Training
+
+    private installTraining(): void {
+        this.addHook("ChatRoomMessage", 1, (args, next) => {
+            try {
+                this.onTrainingMessage(args[0]);
+            } catch {
+                // Sounds are flavor; never break the chat chain
+            }
+            return next(args);
+        });
+
+        // Worn bells jingle on movement: map steps, pose changes, emoted moves
+        this.addHook("ChatRoomMapViewUpdatePlayerFlag", 1, (args, next) => {
+            const result = next(args);
+            this.maybeJingle(true);
+            return result;
+        });
+        this.addHook("PoseRefresh", 1, (args, next) => {
+            const character = args[0] as Character | undefined;
+            const before = character?.IsPlayer() ? JSON.stringify(Player.PoseMapping ?? {}) : null;
+            const result = next(args);
+            if (before !== null && before !== JSON.stringify(Player.PoseMapping ?? {})) {
+                this.maybeJingle(true);
+            }
+            return result;
+        });
+    }
+
+    private onTrainingMessage(data: ServerChatRoomMessage): void {
+        // The Jingle Bell activity rings for every BC+ user in the room
+        if (data?.Type === "Activity" && String(chatDictAttr(data, "ActivityName") ?? "") === BCP_JINGLE_BELL) {
+            playJingle(2);
+            return;
+        }
+
+        // Own emoted movement can ring worn bells (a third as likely as a step)
+        if (data?.Sender === Player.MemberNumber && typeof data.Content === "string"
+            && (data.Type === "Emote" || data.Type === "Action")
+            && MOVEMENT_VERBS.some((verb) => containsWord(data.Content, verb))) {
+            this.maybeJingle(false);
+        }
+
+        // Clicker: trigger phrases from permitted people
+        if (this.getSetting<boolean>("clicker") !== true || typeof data?.Sender !== "number"
+            || typeof data.Content !== "string") {
+            return;
+        }
+        if (data.Type !== "Chat"
+            && !(data.Type === "Emote" && this.getSetting<boolean>("clickerEmotes") !== false)) {
+            return;
+        }
+        if (data.Sender === Player.MemberNumber) {
+            if (this.getSetting<boolean>("clickerSelf") !== true) {
+                return;
+            }
+        } else {
+            const authority = this.ModuleManager.getModule<Authority>("authority");
+            if (!(authority?.hasPermission(data.Sender, "pet.train") ?? false)) {
+                return;
+            }
+        }
+        const heard = spokenText(data.Content).toLocaleLowerCase();
+        let clicks = 0;
+        for (const trigger of stringListValue(this.getSetting<unknown>("clickerTriggers"))) {
+            const needle = trigger.toLocaleLowerCase();
+            for (let at = heard.indexOf(needle); at !== -1; at = heard.indexOf(needle, at + needle.length)) {
+                clicks++;
+            }
+        }
+        if (clicks === 0) {
+            return;
+        }
+        playClicks(clicks);
+        if (this.getSetting<boolean>("clickerReward") !== false) {
+            this.gainStat("affection", Math.min(3, clicks), this.findInRoom(data.Sender));
+        }
+        debug(`Clicker: ${clicks} click(s) from #${data.Sender}`);
+    }
+
+    /** Rolls the movement-jingle chance against the worn bells and plays. */
+    private maybeJingle(strongMove: boolean): void {
+        const chance = BELL_JINGLE_CHANCE[this.getSetting<string>("bellJingle")] ?? 0;
+        if (chance <= 0) {
+            return;
+        }
+        const bells = wornBellCount(Player);
+        if (bells === 0 || Math.random() > chance * bells * (strongMove ? 1 : 3)) {
+            return;
+        }
+        playJingle(bells);
     }
 
     // ------------------------------------------------------------- Effects

@@ -2,7 +2,7 @@ import { GetDotedPathType, PatchHook } from "bondage-club-mod-sdk";
 import { AnySetting } from "@/system/gui/Settings";
 import { Role } from "@/system/Roles";
 
-export type RuleCategory = "Speech" | "Social" | "Body" | "Items" | "Protection" | "Sensory" | "Rooms" | "Settings" | "Other";
+export type RuleCategory = "Speech" | "Social" | "Body" | "Items" | "Protection" | "Sensory" | "Rooms" | "Settings" | "Pet" | "Other";
 
 /** Facilities available to a rule while it is active. */
 export interface RuleContext {

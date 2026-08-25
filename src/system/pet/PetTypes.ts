@@ -92,6 +92,41 @@ export const WATER_ACTIVITY_NAMES: readonly string[] = [
 /** Our own bowl activities (registered as BC custom activities). */
 export const BCP_BOWL_EAT = "BCP_BowlEat";
 export const BCP_BOWL_DRINK = "BCP_BowlDrink";
+/** Self activity that rings a worn bell. */
+export const BCP_JINGLE_BELL = "BCP_JingleBell";
+
+// ------------------------------------------------------------------ Bells
+
+/** Chance per movement that worn bells jingle, by option value. */
+export const BELL_JINGLE_CHANCE: Readonly<Record<string, number>> = {
+    Off: 0, Low: 0.05, Medium: 0.15, High: 0.33, Max: 1,
+};
+export const BELL_JINGLE_OPTIONS: readonly string[] = ["Off", "Low", "Medium", "High", "Max"];
+
+/** Movement-ish words in own emotes that can set bells ringing. */
+export const MOVEMENT_VERBS: readonly string[] = [
+    "walk", "walks", "crawl", "crawls", "step", "steps", "move", "moves", "hop", "hops",
+    "trot", "trots", "jump", "jumps", "shake", "shakes", "wiggle", "wiggles", "stretch", "stretches",
+];
+
+/** How many bells a character visibly wears. */
+export function wornBellCount(C: Character): number {
+    let count = 0;
+    try {
+        for (const group of ["ItemNeck", "ItemNeckAccessories", "ItemNipples", "ItemNipplesPiercings"] as const) {
+            if ((InventoryGet(C, group)?.Asset.Name ?? "").toLocaleLowerCase().includes("bell")) {
+                count++;
+            }
+        }
+        const clit = InventoryGet(C, "ItemVulvaPiercings");
+        if (clit?.Asset.Name === "RoundClitPiercing" && clit.Property?.TypeRecord?.["typed"] === 2) {
+            count++;
+        }
+    } catch {
+        // Appearance quirks never break the count
+    }
+    return count;
+}
 
 /** Activities that raise affection when done TO the pet, by warmth tier. */
 export const AFFECTION_LOVE_ACTIVITIES: readonly string[] = [

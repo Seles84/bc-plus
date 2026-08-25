@@ -73,6 +73,7 @@ import {
 } from "@/rules/ControlRules";
 import { ForbidBeeps, ForbidFriendListChanges } from "@/rules/SocialRules";
 import { ForcedAfkBehavior } from "@/rules/ForcedAfk";
+import { PetHearing, PetSpeech } from "@/rules/PetRules";
 import { SETTING_RULES } from "@/rules/SettingRules";
 
 /** Every rule BC+ ships, in display order. */
@@ -130,6 +131,8 @@ export const RULE_DEFINITIONS: readonly RuleDefinition[] = [
     ForceKneeling,
     ForcedPosition,
     ForcedAfkBehavior,
+    PetSpeech,
+    PetHearing,
     ControlOrgasms,
     SecretOrgasms,
     ForbidDifficultyChange,
