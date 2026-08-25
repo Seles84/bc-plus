@@ -26,6 +26,12 @@ export class Navigator {
         }
     }
 
+    /** Replaces the whole stack with one root entry (e.g. welcome -> menu). */
+    reset(entry: NavEntry): void {
+        this.stack.splice(0);
+        this.push(entry);
+    }
+
     get depth(): number {
         return this.stack.length;
     }

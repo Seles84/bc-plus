@@ -173,15 +173,17 @@ function newRulePunishment(): void {
         <section class="flex min-h-0 flex-1 flex-col gap-1">
             <h3 class="px-3 font-semibold text-accent">Defined punishments</h3>
             <p v-if="defined.length === 0" class="px-3 text-fg-dim">None yet - create one below.</p>
-            <div class="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
-                <div
-                    v-for="definition in defined"
-                    :key="definition.id"
-                    class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 hover:bg-surface"
-                    @click="openConfig(definition.id)"
-                >
-                    <span class="min-w-0 flex-1 truncate font-semibold">{{ definition.name }}</span>
-                    <span class="max-w-md truncate text-sm text-fg-dim">{{ describeDefinition(definition) }}</span>
+            <div class="@container min-h-0 flex-1 overflow-y-auto">
+                <div class="grid grid-cols-1 content-start gap-x-8 gap-y-0.5 @3xl:grid-cols-2 @6xl:grid-cols-3">
+                    <div
+                        v-for="definition in defined"
+                        :key="definition.id"
+                        class="flex min-w-0 cursor-pointer items-center gap-3 rounded-lg px-3 py-2 hover:bg-surface"
+                        @click="openConfig(definition.id)"
+                    >
+                        <span class="min-w-0 flex-1 truncate font-semibold">{{ definition.name }}</span>
+                        <span class="max-w-56 truncate text-sm text-fg-dim">{{ describeDefinition(definition) }}</span>
+                    </div>
                 </div>
             </div>
         </section>

@@ -79,20 +79,22 @@ function pick(definition: RuleDefinition): void {
             >{{ entry }}</button>
         </div>
 
-        <div class="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
-            <button
-                v-for="definition in available"
-                :key="definition.id"
-                class="rounded-lg px-3 py-2 text-left hover:bg-surface"
-                @click="pick(definition)"
-            >
-                <span class="flex items-baseline gap-2">
-                    <span class="font-semibold">{{ definition.name }}</span>
-                    <span class="text-xs text-fg-dim">{{ definition.category }}</span>
-                </span>
-                <span class="block truncate text-sm text-fg-dim">{{ definition.description }}</span>
-            </button>
-            <p v-if="available.length === 0" class="px-3 text-fg-dim">No rules match.</p>
+        <div class="@container min-h-0 flex-1 overflow-y-auto">
+            <div class="grid grid-cols-1 content-start gap-x-8 gap-y-0.5 @3xl:grid-cols-2 @6xl:grid-cols-3">
+                <button
+                    v-for="definition in available"
+                    :key="definition.id"
+                    class="min-w-0 rounded-lg px-3 py-2 text-left hover:bg-surface"
+                    @click="pick(definition)"
+                >
+                    <span class="flex items-baseline gap-2">
+                        <span class="min-w-0 truncate font-semibold">{{ definition.name }}</span>
+                        <span class="shrink-0 text-xs text-fg-dim">{{ definition.category }}</span>
+                    </span>
+                    <span class="block truncate text-sm text-fg-dim">{{ definition.description }}</span>
+                </button>
+                <p v-if="available.length === 0" class="px-3 text-fg-dim">No rules match.</p>
+            </div>
         </div>
     </div>
 </template>

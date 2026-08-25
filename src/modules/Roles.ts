@@ -2,10 +2,7 @@ import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { ModuleConfig, PermissionDefinition } from "@/system/module/ModuleTypes";
 import { BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
 import { Role, roleName } from "@/system/Roles";
-import { GUIScreen } from "@/system/gui/GUIScreen";
-import { RolesScreen } from "@/gui/RolesScreen";
 import { BCPNotifyPlayer, MemberNumberToName, SendBCPMessage } from "@/utils/Messaging";
-import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Authority from "@/modules/Authority";
 import type Logging from "@/modules/Logging";
 import type DataSync from "@/modules/DataSync";
@@ -86,10 +83,6 @@ export default class Roles extends ModuleInstance {
 
     override get SupportsRemote(): boolean {
         return true;
-    }
-
-    override get SettingsScreen(): ((character: BCPlusCharacter | null) => GUIScreen) | null {
-        return (character) => new RolesScreen(this, character);
     }
 
     /** Members manually assigned to the given role (mutable, auto-synced). */

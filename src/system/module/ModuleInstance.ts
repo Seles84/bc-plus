@@ -1,7 +1,5 @@
 import { GetDotedPathType, PatchHook } from "bondage-club-mod-sdk";
-import { ModuleConfig, PermissionDefinition, SettingsFooterRenderer } from "@/system/module/ModuleTypes";
-import type { GUIScreen } from "@/system/gui/GUIScreen";
-import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
+import { ModuleConfig, PermissionDefinition } from "@/system/module/ModuleTypes";
 import { AnySetting, settingDefaults } from "@/system/gui/Settings";
 import { AddSyncListener, BCPMessageContent, RemoveSyncListeners } from "@/utils/Messaging";
 import type { BCPlus } from "@/index";
@@ -41,17 +39,12 @@ export abstract class ModuleInstance {
         return [];
     }
 
-    /** Whether this module appears in the BC+ main menu. */
-    get HasGUI(): boolean {
-        return this.Settings.length > 0 || this.SettingsScreen !== null;
-    }
-
     /**
-     * Factory for this module's settings screen. Null uses the auto-generated
-     * screen when `Settings` exist; override for a custom screen.
+     * Whether this module appears in the BC+ main menu. Settings-driven
+     * modules qualify automatically; custom-screen modules override.
      */
-    get SettingsScreen(): ((character: BCPlusCharacter | null) => GUIScreen) | null {
-        return null;
+    get HasGUI(): boolean {
+        return this.Settings.length > 0;
     }
 
     /** Permissions this module exposes; collected into Authority at load. */
@@ -85,11 +78,6 @@ export abstract class ModuleInstance {
      * SettingCommand; null means the settings are never editable remotely.
      */
     get EditPermission(): string | null {
-        return null;
-    }
-
-    /** Extra widgets at the bottom of this module's settings page (own view only). */
-    get SettingsFooter(): SettingsFooterRenderer | null {
         return null;
     }
 

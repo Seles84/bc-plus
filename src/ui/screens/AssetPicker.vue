@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, inject, ref } from "vue";
 import { NAV_KEY } from "@/ui/nav";
-import { catalogAssets } from "@/gui/AssetPickerScreen";
+import { catalogAssets } from "@/utils/AssetCatalog";
 
 const props = defineProps<{
     group: AssetGroupName;

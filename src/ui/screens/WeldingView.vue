@@ -1,15 +1,14 @@
 <script setup lang="ts">
 import { computed, inject, onMounted, onUnmounted, ref } from "vue";
-import { NAV_KEY } from "@/ui/nav";
 import { useBcpVersion } from "@/ui/composables";
-import PersonPicker from "@/ui/screens/PersonPicker.vue";
 import { bcpCharacter } from "@/ui/composables";
+import { PICKER_KEY } from "@/ui/picker";
 import { SendBCPMessage } from "@/utils/Messaging";
 import type { WeldCeremony } from "@/modules/Welding";
 import type Welding from "@/modules/Welding";
 
 const props = defineProps<{ member?: number }>();
-const nav = inject(NAV_KEY)!;
+const picker = inject(PICKER_KEY)!;
 const { version, touch, core } = useBcpVersion();
 
 const welding = core.ModuleManager.getModule<Welding>("welding")!;
@@ -122,13 +121,13 @@ function run(action: () => true | string): void {
 }
 
 function chooseWitness(): void {
-    nav.push({
-        component: PersonPicker,
+    void picker.pickPerson({
         title: "Choose witness",
-        props: {
-            excluded: [ceremony.value?.owner ?? -1],
-            onPick: (member: number) => run(() => welding.setWitness(member)),
-        },
+        excluded: [ceremony.value?.owner ?? -1],
+    }).then((member) => {
+        if (member !== null) {
+            run(() => welding.setWitness(member));
+        }
     });
 }
 

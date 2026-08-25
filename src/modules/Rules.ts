@@ -4,15 +4,12 @@ import { BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
 import { Role } from "@/system/Roles";
 import { RuleContext, RuleDefinition, RuleStateData, defaultRuleState } from "@/system/rules/RuleTypes";
 import { RULE_DEFINITIONS } from "@/rules/index";
-import { RulesListScreen } from "@/gui/RulesListScreen";
-import { GUIScreen } from "@/system/gui/GUIScreen";
 import { BCPMessageContent, BCPNotifyPlayer, SendAction, SendBCPMessage } from "@/utils/Messaging";
 import { decodeExport, encodeExport } from "@/utils/ExportImport";
 import { jsonClone } from "@/utils/BCUtils";
 import { ConditionData, conditionsExpired, conditionsMet, sanitizeConditions } from "@/system/conditions/Conditions";
 import { sanitizePunishConfig } from "@/system/punishments/PunishmentTypes";
 import { debug, warn } from "@/system/Console";
-import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type { Originator } from "@/system/module/ModuleTypes";
 import type Roles from "@/modules/Roles";
 import type Core from "@/modules/Core";
@@ -133,10 +130,6 @@ export default class Rules extends ModuleInstance {
 
     override get SupportsRemote(): boolean {
         return true;
-    }
-
-    override get SettingsScreen(): ((character: BCPlusCharacter | null) => GUIScreen) | null {
-        return (character) => new RulesListScreen(this, character);
     }
 
     get Definitions(): RuleDefinition[] {

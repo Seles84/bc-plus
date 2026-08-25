@@ -6,15 +6,12 @@ import {
     CURSE_LOCKS, CurseItemSpec, CurseSlotData, adoptRestoredState, captureItemSpec, itemMatchesSpec,
     lockApplicableFor, stripLockState,
 } from "@/system/curses/CurseTypes";
-import { CursesListScreen } from "@/gui/CursesScreen";
-import { GUIScreen } from "@/system/gui/GUIScreen";
 import { BCPMessageContent, BCPNotifyPlayer, MemberNumberToName, SendAction, SendBCPMessage } from "@/utils/Messaging";
 import { decodeExport, encodeExport } from "@/utils/ExportImport";
 import { jsonClone } from "@/utils/BCUtils";
 import { conditionsExpired, conditionsMet, sanitizeConditions } from "@/system/conditions/Conditions";
 import type Roles from "@/modules/Roles";
 import { debug, err } from "@/system/Console";
-import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type { Originator } from "@/system/module/ModuleTypes";
 import type Authority from "@/modules/Authority";
 import type Logging from "@/modules/Logging";
@@ -92,10 +89,6 @@ export default class Curses extends ModuleInstance {
 
     override get SupportsRemote(): boolean {
         return true;
-    }
-
-    override get SettingsScreen(): ((character: BCPlusCharacter | null) => GUIScreen) | null {
-        return (character) => new CursesListScreen(this, character);
     }
 
     get Slots(): Record<string, CurseSlotData> {

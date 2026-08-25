@@ -4,6 +4,7 @@ import App from "@/ui/App.vue";
 import tokensCss from "@/ui/tokens.css";
 import tailwindCss from "@/ui/generated/tailwind.css";
 import { BCPLUS_KEY, NAV_KEY, Navigator, WINDOW_KEY } from "@/ui/nav";
+import { handleModalEscape } from "@/ui/modal-escape";
 import { BCPLUS_STORAGE } from "@/system/Constants";
 import { debug } from "@/system/Console";
 import type { BCPlus } from "@/index";
@@ -119,6 +120,13 @@ export class UIWindow {
 
         this.resizeObserver = new ResizeObserver(() => this.schedulePersist());
         this.resizeObserver.observe(host);
+
+        // The modal-mode preference decides the opening state: floating
+        // (checked) or filling the screen (unchecked, the classic feel)
+        const floating = this.core.ModuleManager.getModule<Core>("core")?.getSetting<boolean>("modalMode") === true;
+        if (!floating) {
+            this.toggleMaximize();
+        }
         debug("BC+ window opened");
     }
 
@@ -141,8 +149,11 @@ export class UIWindow {
         debug("BC+ window closed");
     }
 
-    /** Esc goes back one screen; on the root it closes the window. */
+    /** Esc closes an open modal first, then goes back, then closes the window. */
     private escapePressed(): void {
+        if (handleModalEscape()) {
+            return;
+        }
         if (this.nav && this.nav.depth > 1) {
             this.nav.pop();
         } else {

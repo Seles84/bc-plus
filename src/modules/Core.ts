@@ -1,5 +1,5 @@
 import { ModuleInstance } from "@/system/module/ModuleInstance";
-import { ModuleConfig, PermissionDefinition, SettingsFooterRenderer } from "@/system/module/ModuleTypes";
+import { ModuleConfig, PermissionDefinition } from "@/system/module/ModuleTypes";
 import { BCPLUS_APP_NAME, BCPLUS_AUTHOR, BCPLUS_REPO, BCPLUS_VERSION, BCPLUS_VERSION_ENDPOINT, BCPLUS_WEBSITE } from "@/system/Constants";
 import { log, warn } from "@/system/Console";
 import { InfoBeep } from "@/utils/BCUtils";
@@ -129,29 +129,22 @@ export default class Core extends ModuleInstance {
             {
                 type: "checkbox",
                 name: "modalMode",
-                label: "Open BC+ in a floating window (modal mode)",
-                hoverText: "Opens the BC+ menus in a draggable window on top of the club instead "
-                    + "of taking over the screen - you can keep reading and using chat while "
-                    + "configuring. /bcp menu opens it directly from a room.",
+                label: "Open BC+ as a floating window",
+                hoverText: "Checked, the BC+ window opens small and draggable on top of the club "
+                    + "- you can keep reading and using chat while configuring. Unchecked, it "
+                    + "opens filling the screen (the maximize button switches either way). "
+                    + "/bcp menu opens it directly from a room.",
                 default: false,
             },
             {
                 type: "option",
                 name: "uiTheme",
-                label: "Floating window theme",
-                hoverText: "Color scheme of the new BC+ window when the Themed mod is not "
+                label: "BC+ window theme",
+                hoverText: "Color scheme of the BC+ window when the Themed mod is not "
                     + "running - with Themed installed, its palette is used automatically.",
                 options: ["Dark", "Light"],
                 default: "Dark",
                 onSet: () => this.ModuleManager.getModule<GUIModule>("gui")?.applyUiTheme(),
-            },
-            {
-                type: "checkbox",
-                name: "classicWindow",
-                label: "Use the classic canvas window instead",
-                hoverText: "Escape hatch while the new BC+ window matures: the floating window "
-                    + "opens as the old canvas-drawn version again.",
-                default: false,
             },
             {
                 type: "checkbox",
@@ -318,49 +311,26 @@ export default class Core extends ModuleInstance {
     /** While in the future, the reset button is armed and a second click wipes. */
     private resetArmedUntil = 0;
 
-    /** Two-step "Reset BC+" button: arm on first click, wipe on the second within 3s. */
-    override get SettingsFooter(): SettingsFooterRenderer | null {
-        return (addClickHandler) => {
-            // A welded collar disables the factory reset entirely - it would
-            // be a one-click escape from the weld
-            if (this.isWelded()) {
-                const prevWeldedAlign = MainCanvas.textAlign;
-                MainCanvas.textAlign = "center";
-                DrawButton(150, 880, 340, 70, "Reset BC+", "#ddd", "",
-                    "Disabled - your collar is welded", true);
-                MainCanvas.textAlign = prevWeldedAlign;
-                return;
-            }
-            const armed = Date.now() < this.resetArmedUntil;
-            const prevAlign = MainCanvas.textAlign;
-            MainCanvas.textAlign = "center";
-            DrawButton(
-                150, 880, 340, 70,
-                armed ? "Confirm reset" : "Reset BC+",
-                armed ? "#ff5252" : "#c94f4f",
-                "",
-                armed
-                    ? "Click again to wipe ALL BC+ data and reload"
-                    : "Factory reset - wipes every BC+ setting, rule, curse, role and log entry",
-            );
-            MainCanvas.textAlign = prevAlign;
-            addClickHandler(() => {
-                if (!MouseIn(150, 880, 340, 70)) {
-                    return;
-                }
-                if (Date.now() < this.resetArmedUntil) {
-                    this.resetArmedUntil = 0;
-                    void this.Storage.wipeAllData(false).then((wiped) => {
-                        if (wiped) {
-                            BCPNotifyPlayer("BC+ has been reset. Reloading...");
-                            setTimeout(() => window.location.reload(), 1500);
-                        }
-                    });
-                } else {
-                    this.resetArmedUntil = Date.now() + 3000;
-                }
-            });
-        };
+    /**
+     * Factory reset without a confirm dialog - callers arm their own
+     * confirmation (the General page's two-click button, /bcp reset's modal).
+     * A welded collar disables it entirely: it would be a one-click escape.
+     */
+    async factoryReset(): Promise<boolean> {
+        if (this.isWelded()) {
+            return false;
+        }
+        const wiped = await this.Storage.wipeAllData(false);
+        if (wiped) {
+            BCPNotifyPlayer("BC+ has been reset. Reloading...");
+            setTimeout(() => window.location.reload(), 1500);
+        }
+        return wiped;
+    }
+
+    /** Whether the factory reset is available (a welded collar blocks it). */
+    canFactoryReset(): boolean {
+        return !this.isWelded();
     }
 
     /** Whether the first-run welcome has not been completed yet. */

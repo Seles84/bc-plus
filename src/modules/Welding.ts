@@ -1,8 +1,6 @@
 import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { ModuleConfig } from "@/system/module/ModuleTypes";
 import { BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
-import { GUIScreen } from "@/system/gui/GUIScreen";
-import { WeldingScreen } from "@/gui/WeldingScreen";
 import { err } from "@/system/Console";
 import {
     BCPMessageContent,
@@ -12,7 +10,6 @@ import {
     SendBCPMessage,
 } from "@/utils/Messaging";
 import { getChatroomCharacter } from "@/utils/BCPlusCharacter";
-import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Rules from "@/modules/Rules";
 import type Logging from "@/modules/Logging";
 
@@ -108,10 +105,6 @@ export default class Welding extends ModuleInstance {
 
     override get SupportsRemote(): boolean {
         return true;
-    }
-
-    override get SettingsScreen(): ((character: BCPlusCharacter | null) => GUIScreen) | null {
-        return (character) => new WeldingScreen(this, character);
     }
 
     isWelded(): boolean {

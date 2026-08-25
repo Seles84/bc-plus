@@ -1,5 +1,5 @@
 import { ModuleInstance } from "@/system/module/ModuleInstance";
-import { ModuleConfig, PermissionDefinition, SettingsFooterRenderer } from "@/system/module/ModuleTypes";
+import { ModuleConfig, PermissionDefinition } from "@/system/module/ModuleTypes";
 import { BCPLUS_AUTHOR, BCPLUS_STORAGE, BCPLUS_VERSION } from "@/system/Constants";
 import { Role } from "@/system/Roles";
 import { AnySetting } from "@/system/gui/Settings";
@@ -369,24 +369,6 @@ export default class Pet extends ModuleInstance {
             levels: null,
             stampedAt: 0,
             paused: false,
-        };
-    }
-
-    override get SettingsFooter(): SettingsFooterRenderer | null {
-        return (addClickHandler) => {
-            const editable = this.canEdit();
-            const prevAlign = MainCanvas.textAlign;
-            MainCanvas.textAlign = "center";
-            DrawButton(150, 880, 340, 70, "Refill all stats", editable ? "White" : "#ddd", "",
-                editable
-                    ? "Top every need back up to 100% (/bcp pet refill works too)"
-                    : "You are not permitted to change your pet settings", !editable);
-            MainCanvas.textAlign = prevAlign;
-            addClickHandler(() => {
-                if (editable && MouseIn(150, 880, 340, 70)) {
-                    this.refill();
-                }
-            });
         };
     }
 

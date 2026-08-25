@@ -5,12 +5,9 @@ import { Role } from "@/system/Roles";
 import {
     ITEM_TIME_MAX_KEYS, REMOTE_MAP_CAPS, StatsSnapshot, sanitizeStatMap,
 } from "@/system/statistics/StatTypes";
-import { StatisticsScreen } from "@/gui/StatisticsScreen";
-import { GUIScreen } from "@/system/gui/GUIScreen";
 import { BCPNotifyPlayer, SendBCPMessage } from "@/utils/Messaging";
 import { jsonClone } from "@/utils/BCUtils";
 import { debug } from "@/system/Console";
-import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Authority from "@/modules/Authority";
 import type Punishments from "@/modules/Punishments";
 import type Welding from "@/modules/Welding";
@@ -90,10 +87,6 @@ export default class Statistics extends ModuleInstance {
 
     override get CanDisable(): boolean {
         return true;
-    }
-
-    override get SettingsScreen(): ((character: BCPlusCharacter | null) => GUIScreen) | null {
-        return (character) => new StatisticsScreen(this, character);
     }
 
     override get Defaults(): Record<string, unknown> {

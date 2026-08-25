@@ -4,8 +4,6 @@ import { BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
 import { Role } from "@/system/Roles";
 import { COMMAND_DEFINITIONS, CommandDefinition } from "@/system/commands/CommandTypes";
 import { BindLineTaskStore, GetLineTask, LineTask, NormalizeLineText, SetLineTask } from "@/system/commands/LineTask";
-import { CommandsScreen } from "@/gui/CommandsScreen";
-import { GUIScreen } from "@/system/gui/GUIScreen";
 import { err } from "@/system/Console";
 import { AnySetting } from "@/system/gui/Settings";
 import { BCPMessageContent, BCPNotifyPlayer, FindCharacterInRoom, SendAction, SendBCPMessage } from "@/utils/Messaging";
@@ -68,10 +66,6 @@ export default class Commands extends ModuleInstance {
 
     override get CanDisable(): boolean {
         return true;
-    }
-
-    override get SettingsScreen(): ((character: BCPlusCharacter | null) => GUIScreen) | null {
-        return (character) => new CommandsScreen(this, character);
     }
 
     get Definitions(): readonly CommandDefinition[] {

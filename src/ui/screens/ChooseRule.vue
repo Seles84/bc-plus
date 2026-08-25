@@ -31,20 +31,22 @@ function choose(id: string): void {
 </script>
 
 <template>
-    <div class="flex flex-col gap-0.5">
+    <div class="@container flex flex-col gap-0.5">
         <p class="px-3 pb-2 text-sm text-fg-dim">
             {{ props.note ?? "Pick the rule this punishment forces. While the punishment runs, the rule is"
                 + " active, enforced and unconditional (its own conditions are ignored), and cannot be"
                 + " switched off; when the punishment ends, the rule returns to how it was before." }}
         </p>
-        <button
-            v-for="rule in sorted"
-            :key="rule.id"
-            class="flex items-baseline gap-2 rounded-lg px-3 py-2 text-left hover:bg-surface"
-            @click="choose(rule.id)"
-        >
-            <span class="min-w-0 flex-1 truncate">{{ rule.name }}</span>
-            <span class="text-xs text-fg-dim">{{ rule.category }}</span>
-        </button>
+        <div class="grid grid-cols-1 content-start gap-x-8 gap-y-0.5 @3xl:grid-cols-2 @6xl:grid-cols-3">
+            <button
+                v-for="rule in sorted"
+                :key="rule.id"
+                class="flex min-w-0 items-baseline gap-2 rounded-lg px-3 py-2 text-left hover:bg-surface"
+                @click="choose(rule.id)"
+            >
+                <span class="min-w-0 flex-1 truncate">{{ rule.name }}</span>
+                <span class="shrink-0 text-xs text-fg-dim">{{ rule.category }}</span>
+            </button>
+        </div>
     </div>
 </template>

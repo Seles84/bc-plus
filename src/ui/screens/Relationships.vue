@@ -1,15 +1,14 @@
 <script setup lang="ts">
 import { computed, inject, onMounted, ref } from "vue";
-import { NAV_KEY } from "@/ui/nav";
 import { bcpCharacter, useBcpVersion } from "@/ui/composables";
-import PersonPicker from "@/ui/screens/PersonPicker.vue";
+import { PICKER_KEY } from "@/ui/picker";
 import { MemberNumberToName } from "@/utils/Messaging";
 import { NICKNAME_MAX, isValidCustomName } from "@/modules/Relationships";
 import type Authority from "@/modules/Authority";
 import type Relationships from "@/modules/Relationships";
 
 const props = defineProps<{ member?: number }>();
-const nav = inject(NAV_KEY)!;
+const picker = inject(PICKER_KEY)!;
 const { version, touch, core } = useBcpVersion();
 
 const relationships = core.ModuleManager.getModule<Relationships>("relationships")!;
@@ -120,13 +119,13 @@ function startEntry(member: number): void {
 }
 
 function browse(): void {
-    nav.push({
-        component: PersonPicker,
+    void picker.pickPerson({
         title: "Custom name for...",
-        props: {
-            excluded: rows.value.map((row) => row.member),
-            onPick: (member: number) => startEntry(member),
-        },
+        excluded: rows.value.map((row) => row.member),
+    }).then((member) => {
+        if (member !== null) {
+            startEntry(member);
+        }
     });
 }
 </script>
