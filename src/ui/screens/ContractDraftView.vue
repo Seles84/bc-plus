@@ -3,8 +3,8 @@ import { computed, inject, ref } from "vue";
 import { NAV_KEY } from "@/ui/nav";
 import { useBcpVersion } from "@/ui/composables";
 import ChooseRule from "@/ui/screens/ChooseRule.vue";
-import PersonPicker from "@/ui/screens/PersonPicker.vue";
 import RuleConfig from "@/ui/screens/RuleConfig.vue";
+import { PICKER_KEY } from "@/ui/picker";
 import { DraftRuleAccess } from "@/system/contracts/DraftRuleAccess";
 import { describeContractDuration, describeContractPolicy } from "@/system/contracts/ContractTypes";
 import { describeConditions } from "@/system/conditions/Conditions";
@@ -14,6 +14,7 @@ import type Rules from "@/modules/Rules";
 
 const props = defineProps<{ draftId: string }>();
 const nav = inject(NAV_KEY)!;
+const picker = inject(PICKER_KEY)!;
 const { version, touch, core } = useBcpVersion();
 
 const contracts = core.ModuleManager.getModule<Contracts>("contracts")!;
@@ -112,16 +113,10 @@ function copyOffer(): void {
 }
 
 function offerToSomeone(): void {
-    nav.push({
-        component: PersonPicker,
-        title: "Offer the contract to...",
-        props: {
-            onPick: (member: number) => {
-                if (draft.value) {
-                    contracts.offerTo(draft.value, member);
-                }
-            },
-        },
+    void picker.pickPerson({ title: "Offer the contract to..." }).then((member) => {
+        if (member !== null && draft.value) {
+            contracts.offerTo(draft.value, member);
+        }
     });
 }
 

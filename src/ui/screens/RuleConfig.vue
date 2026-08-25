@@ -3,8 +3,8 @@ import { computed, inject } from "vue";
 import { NAV_KEY } from "@/ui/nav";
 import { useBcpVersion } from "@/ui/composables";
 import SettingRow from "@/ui/components/SettingRow.vue";
-import MembersPicker from "@/ui/screens/MembersPicker.vue";
 import Conditions from "@/ui/screens/Conditions.vue";
+import { PICKER_KEY } from "@/ui/picker";
 import RulePunish from "@/ui/screens/RulePunish.vue";
 import { LocalRuleAccess, RemoteRuleAccess } from "@/system/rules/RuleAccess";
 import { bcpCharacter } from "@/ui/composables";
@@ -29,6 +29,7 @@ const props = defineProps<{
     draft?: boolean;
 }>();
 const nav = inject(NAV_KEY)!;
+const picker = inject(PICKER_KEY)!;
 const { version, touch, core } = useBcpVersion();
 
 const rules = core.ModuleManager.getModule<Rules>("rules")!;
@@ -187,13 +188,13 @@ function setSetting(setting: AnySetting, value: unknown): void {
 }
 
 function pickMembers(setting: AnySetting): void {
-    nav.push({
-        component: MembersPicker,
+    void picker.pickMembers({
         title: setting.label,
-        props: {
-            initial: membersValue(settingValue(setting)),
-            onDone: (members: number[]) => setSetting(setting, members),
-        },
+        initial: membersValue(settingValue(setting)),
+    }).then((members) => {
+        if (members !== null) {
+            setSetting(setting, members);
+        }
     });
 }
 </script>

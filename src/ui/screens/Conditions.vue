@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed, inject } from "vue";
-import { NAV_KEY } from "@/ui/nav";
+import { PICKER_KEY } from "@/ui/picker";
 import { useBcpVersion } from "@/ui/composables";
-import MembersPicker from "@/ui/screens/MembersPicker.vue";
 import {
     ConditionData, describeConditions, formatDuration, formatTimeOfDay, parseMembers,
 } from "@/system/conditions/Conditions";
@@ -24,7 +23,7 @@ const props = defineProps<{
     canEdit: () => boolean;
 }>();
 
-const nav = inject(NAV_KEY)!;
+const picker = inject(PICKER_KEY)!;
 const { version, touch, core } = useBcpVersion();
 
 const conditions = computed(() => {
@@ -96,21 +95,22 @@ const roleChoices = RoleNames.map((name, index) => ({ name, role: index as Role 
 
 // --- Members ---
 function pickMembers(): void {
-    nav.push({
-        component: MembersPicker,
+    void picker.pickMembers({
         title: "Members condition",
-        props: {
-            initial: parseMembers(conditions.value.members),
-            onDone: (members: number[]) => update((c) => {
-                if (members.length === 0) {
-                    delete c.members;
-                    delete c.membersMode;
-                } else {
-                    c.members = members.join(",");
-                    c.membersMode ??= "present";
-                }
-            }),
-        },
+        initial: parseMembers(conditions.value.members),
+    }).then((members) => {
+        if (members === null) {
+            return;
+        }
+        update((c) => {
+            if (members.length === 0) {
+                delete c.members;
+                delete c.membersMode;
+            } else {
+                c.members = members.join(",");
+                c.membersMode ??= "present";
+            }
+        });
     });
 }
 

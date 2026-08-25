@@ -3,7 +3,7 @@ import { computed, inject, ref } from "vue";
 import { NAV_KEY } from "@/ui/nav";
 import { useBcpVersion } from "@/ui/composables";
 import CustomRole from "@/ui/screens/CustomRole.vue";
-import PersonPicker from "@/ui/screens/PersonPicker.vue";
+import { PICKER_KEY } from "@/ui/picker";
 import { Role, roleName } from "@/system/Roles";
 import { MANUAL_ROLE_KEYS } from "@/modules/Roles";
 import { MemberNumberToName, SendBCPMessage } from "@/utils/Messaging";
@@ -24,6 +24,7 @@ interface RoleRow {
 
 const props = defineProps<{ member?: number }>();
 const nav = inject(NAV_KEY)!;
+const picker = inject(PICKER_KEY)!;
 const { version, touch, core } = useBcpVersion();
 
 const roles = core.ModuleManager.getModule<Roles>("roles")!;
@@ -164,13 +165,13 @@ function addFromInput(): void {
 }
 
 function browse(): void {
-    nav.push({
-        component: PersonPicker,
+    void picker.pickPerson({
         title: `Assign as ${roleLabel(addRole.value)}`,
-        props: {
-            excluded: memberList(addRole.value) ?? [],
-            onPick: (member: number) => addMember(member),
-        },
+        excluded: memberList(addRole.value) ?? [],
+    }).then((member) => {
+        if (member !== null) {
+            addMember(member);
+        }
     });
 }
 

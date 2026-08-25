@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { computed, inject, onMounted } from "vue";
-import { NAV_KEY } from "@/ui/nav";
+import { PICKER_KEY } from "@/ui/picker";
 import { bcpCharacter, useBcpVersion } from "@/ui/composables";
 import SettingRow from "@/ui/components/SettingRow.vue";
-import MembersPicker from "@/ui/screens/MembersPicker.vue";
 import { membersValue } from "@/system/gui/Settings";
 import { SendBCPMessage } from "@/utils/Messaging";
 import type { AnySetting } from "@/system/gui/Settings";
@@ -12,7 +11,7 @@ import type DataSync from "@/modules/DataSync";
 import type Pet from "@/modules/Pet";
 
 const props = defineProps<{ slug: string; member?: number }>();
-const nav = inject(NAV_KEY)!;
+const picker = inject(PICKER_KEY)!;
 const { version, touch, core } = useBcpVersion();
 const module = core.ModuleManager.getModule(props.slug);
 const character = bcpCharacter(props.member);
@@ -80,13 +79,13 @@ function set(setting: AnySetting, newValue: unknown): void {
 }
 
 function pickMembers(setting: AnySetting): void {
-    nav.push({
-        component: MembersPicker,
+    void picker.pickMembers({
         title: setting.label,
-        props: {
-            initial: membersValue(value(setting)),
-            onDone: (members: number[]) => set(setting, members),
-        },
+        initial: membersValue(value(setting)),
+    }).then((members) => {
+        if (members !== null) {
+            set(setting, members);
+        }
     });
 }
 
