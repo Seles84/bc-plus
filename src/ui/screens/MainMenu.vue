@@ -2,6 +2,8 @@
 import { computed, inject } from "vue";
 import { BCPLUS_KEY, NAV_KEY, WINDOW_KEY } from "@/ui/nav";
 import ModuleSettings from "@/ui/screens/ModuleSettings.vue";
+import RulesList from "@/ui/screens/RulesList.vue";
+import type { Component } from "vue";
 import { BCPLUS_REPO, BCPLUS_VERSION } from "@/system/Constants";
 import { BCPVersionCompare, parseBCPVersion } from "@/utils/Version";
 import type { ModuleInstance } from "@/system/module/ModuleInstance";
@@ -14,13 +16,25 @@ const win = inject(WINDOW_KEY)!;
 
 const modules = computed(() => core.ModuleManager.Modules.filter((m) => m.HasGUI && m.Config.Active));
 
-/** Settings-driven modules render natively; custom screens still open the classic canvas view. */
+/** Custom screens already ported to the new window. */
+const PORTED_SCREENS: Record<string, Component> = {
+    rules: RulesList,
+};
+
+/** Ported modules render natively; the rest still open the classic canvas view. */
 function isDomNative(module: ModuleInstance): boolean {
-    return module.SettingsScreen === null && module.Settings.length > 0;
+    return module.Slug in PORTED_SCREENS
+        || (module.SettingsScreen === null && module.Settings.length > 0);
 }
 
 function openModule(module: ModuleInstance): void {
-    if (isDomNative(module)) {
+    const ported = PORTED_SCREENS[module.Slug];
+    if (ported) {
+        nav.push({
+            component: ported,
+            title: module.Config.MenuString || module.Config.Name,
+        });
+    } else if (isDomNative(module)) {
         nav.push({
             component: ModuleSettings,
             title: module.Config.MenuString || module.Config.Name,

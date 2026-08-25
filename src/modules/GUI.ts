@@ -8,7 +8,10 @@ import { MainMenu } from "@/gui/MainMenu";
 import { WelcomeScreen } from "@/gui/WelcomeScreen";
 import { ExportImportScreen } from "@/gui/ExportImportScreen";
 import { ModuleSettingsScreen } from "@/gui/ModuleSettings";
+import { RuleConfigScreen } from "@/gui/RulesListScreen";
 import { UIWindow } from "@/ui/Shell";
+import type { RuleDefinition } from "@/system/rules/RuleTypes";
+import type Rules from "@/modules/Rules";
 import { BCPlusCharacter, getChatroomCharacter } from "@/utils/BCPlusCharacter";
 import { BCPNotifyPlayer } from "@/utils/Messaging";
 import { debug } from "@/system/Console";
@@ -127,6 +130,19 @@ export class GUI extends ModuleInstance {
             return;
         }
         this.openModal(module.SettingsScreen?.(character) ?? new ModuleSettingsScreen(module, character));
+    }
+
+    /**
+     * Fallback from the DOM rule config: opens the classic canvas rule
+     * config (own view), where the punishments attachment flow lives.
+     */
+    openCanvasRule(definition: RuleDefinition): void {
+        const character = getChatroomCharacter(Player.MemberNumber ?? -1);
+        const rules = this.ModuleManager.getModule<Rules>("rules");
+        if (!character || !rules) {
+            return;
+        }
+        this.openModal(new RuleConfigScreen(rules, character, definition));
     }
 
     /** Fallback from the DOM window's menu: the classic export/import hub. */
