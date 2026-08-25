@@ -4,6 +4,11 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- New BC+ window (first slice of the UI overhaul): the floating window is now a real, modern interface instead of a canvas drawing - draggable, freely resizable (size and position remembered), minimizable and maximizable, with the main menu and the settings pages (General, Pet) rendered natively; modules whose screens are not yet ported open in the classic view from the same menu, so everything stays reachable. The window follows the Themed mod's colors automatically when Themed is running; without it, a clean dark look with the BC+ purple accent applies, switchable to light via the new "Floating window theme" option. `/bcp menu` now opens the window regardless of the modal-mode setting, typing inside it never triggers club hotkeys, and a "Use the classic canvas window instead" checkbox on the General page remains as an escape hatch while the new window matures. More screens move over in upcoming updates.
+
 ## [0.9.0] - 2026-08-25
 
 The Pet module release: the phases below (newest first) arrived over PRs #138-#141 and together form one feature - see the phase 1 entry at the bottom for the foundations.

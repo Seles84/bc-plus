@@ -200,14 +200,10 @@ export default class TextCommands extends ModuleInstance {
         },
         {
             name: "menu",
-            description: "Open the BC+ window (modal mode)",
+            description: "Open the BC+ floating window",
             handler: () => {
                 const gui = this.ModuleManager.getModule<GUIModule>("gui");
-                if (gui?.modalModeEnabled() !== true) {
-                    this.reply("Modal mode is off - enable \"Open BC+ in a floating window\" on the BC+ General page first.");
-                    return;
-                }
-                if (!gui.openModalMenu()) {
+                if (gui?.openModalMenu() !== true) {
                     this.reply("Could not open the BC+ window.");
                 }
             },

@@ -1,0 +1,20 @@
+/*
+ * Tailwind input for the BC+ DOM UI. Preflight is NOT imported - its reset
+ * would restyle the entire club page; the compiled output is injected into
+ * the window's shadow root only.
+ */
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@theme {
+    /* Map Tailwind color utilities onto the runtime theme tokens, so
+       bg-surface / text-fg / border-accent etc. follow Themed live */
+    --color-bg: var(--bcp-bg);
+    --color-surface: var(--bcp-surface);
+    --color-surface-hover: var(--bcp-surface-hover);
+    --color-fg: var(--bcp-text);
+    --color-fg-dim: var(--bcp-text-dim);
+    --color-accent: var(--bcp-accent);
+    --color-accent-hover: var(--bcp-accent-hover);
+    --color-edge: var(--bcp-border);
+}

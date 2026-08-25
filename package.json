@@ -22,15 +22,19 @@
         "lint:fix": "eslint . --fix"
     },
     "dependencies": {
-        "bondage-club-mod-sdk": "^1.2.0"
+        "bondage-club-mod-sdk": "^1.2.0",
+        "vue": "^3.5.41"
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",
+        "@tailwindcss/cli": "^4.3.3",
         "bc-stubs": "^131.0.0-Alpha.1",
         "esbuild": "^0.28.1",
         "eslint": "^10.8.1",
         "globals": "^17.9.0",
+        "tailwindcss": "^4.3.3",
         "typescript": "^6.0.3",
-        "typescript-eslint": "^8.66.0"
+        "typescript-eslint": "^8.66.0",
+        "unplugin-vue": "^7.2.0"
     }
 }

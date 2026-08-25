@@ -6,6 +6,9 @@ import { GUIScreen } from "@/system/gui/GUIScreen";
 import { ModalHost } from "@/system/gui/ModalHost";
 import { MainMenu } from "@/gui/MainMenu";
 import { WelcomeScreen } from "@/gui/WelcomeScreen";
+import { ExportImportScreen } from "@/gui/ExportImportScreen";
+import { ModuleSettingsScreen } from "@/gui/ModuleSettings";
+import { UIWindow } from "@/ui/Shell";
 import { BCPlusCharacter, getChatroomCharacter } from "@/utils/BCPlusCharacter";
 import { BCPNotifyPlayer } from "@/utils/Messaging";
 import { debug } from "@/system/Console";
@@ -24,6 +27,7 @@ export class GUI extends ModuleInstance {
     static instance: GUI | null = null;
 
     private modalHost: ModalHost | null = null;
+    private uiWindow: UIWindow | null = null;
     private currentSubscreen: GUIScreen | null = null;
     private bcPlusButton: [number, number, number, number] = [1815, 685, 90, 90];
     private readonly escapeHandler = (event: KeyboardEvent): void => {
@@ -85,12 +89,53 @@ export class GUI extends ModuleInstance {
         if (this.hardcoreSelfBlocked()) {
             return false;
         }
+        if (this.domUiEnabled()) {
+            this.openDomWindow();
+            return true;
+        }
         const character = getChatroomCharacter(Player.MemberNumber ?? -1);
         if (!character) {
             return false;
         }
         this.openModal(new MainMenu(this, character));
         return true;
+    }
+
+    /** Whether the floating window uses the new DOM UI (classic is the escape hatch). */
+    domUiEnabled(): boolean {
+        return this.ModuleManager.getModule<Core>("core")?.getSetting<boolean>("classicWindow") !== true;
+    }
+
+    /** Opens (or focuses) the new DOM window on the player's own BC+. */
+    openDomWindow(): void {
+        this.uiWindow ??= new UIWindow(this.Core);
+        this.uiWindow.open();
+    }
+
+    /** Re-applies the light/dark fallback after the theme setting changed. */
+    applyUiTheme(): void {
+        this.uiWindow?.applyTheme();
+    }
+
+    /**
+     * Fallback from the DOM window's menu: opens a not-yet-ported module's
+     * screen in the classic canvas floating window (own view).
+     */
+    openCanvasModule(module: ModuleInstance): void {
+        const character = getChatroomCharacter(Player.MemberNumber ?? -1);
+        if (!character) {
+            return;
+        }
+        this.openModal(module.SettingsScreen?.(character) ?? new ModuleSettingsScreen(module, character));
+    }
+
+    /** Fallback from the DOM window's menu: the classic export/import hub. */
+    openCanvasExport(): void {
+        const character = getChatroomCharacter(Player.MemberNumber ?? -1);
+        if (!character) {
+            return;
+        }
+        this.openModal(new ExportImportScreen(this, character));
     }
 
     /** Hardcore option 1: the player's own BC+ refuses to open while bound. */
@@ -123,6 +168,11 @@ export class GUI extends ModuleInstance {
      * was revoked).
      */
     private hardcoreSweep(): void {
+        // The DOM window is always the player's own view
+        if (this.uiWindow?.isOpen && this.hardcoreSelfBlocked()) {
+            this.uiWindow.close();
+            BCPNotifyPlayer("BC+ closed - your hands are bound.");
+        }
         const screen = this.currentSubscreen;
         if (!screen) {
             return;
@@ -253,9 +303,15 @@ export class GUI extends ModuleInstance {
                     : new MainMenu(this, character);
                 if (this.modalModeEnabled()) {
                     // Modal mode: leave the sheet so the club stays visible,
-                    // then open the same menu in the floating window
+                    // then open the same menu in the floating window. Own
+                    // view uses the new DOM window (welcome flow and remote
+                    // views stay on the classic screens for now).
                     InformationSheetExit();
-                    this.openModal(screen);
+                    if (character.isPlayer() && !(screen instanceof WelcomeScreen) && this.domUiEnabled()) {
+                        this.openDomWindow();
+                    } else {
+                        this.openModal(screen);
+                    }
                 } else {
                     this.setSubscreen(screen);
                 }
@@ -300,6 +356,8 @@ export class GUI extends ModuleInstance {
             this.hardcoreTimer = null;
         }
         document.removeEventListener("keydown", this.escapeHandler, true);
+        this.uiWindow?.close();
+        this.uiWindow = null;
         this.modalHost?.destroy();
         this.modalHost = null;
         this.setSubscreen(null);
