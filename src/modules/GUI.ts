@@ -7,6 +7,7 @@ import { ModalHost } from "@/system/gui/ModalHost";
 import { MainMenu } from "@/gui/MainMenu";
 import { WelcomeScreen } from "@/gui/WelcomeScreen";
 import { ExportImportScreen } from "@/gui/ExportImportScreen";
+import { MigrationScreen } from "@/gui/MigrationScreen";
 import { ModuleSettingsScreen } from "@/gui/ModuleSettings";
 import { UIWindow } from "@/ui/Shell";
 import { BCPlusCharacter, getChatroomCharacter } from "@/utils/BCPlusCharacter";
@@ -136,6 +137,15 @@ export class GUI extends ModuleInstance {
             return;
         }
         this.openModal(new ExportImportScreen(this, character));
+    }
+
+    /** Fallback from the DOM export/import page: the classic BCX migration tool. */
+    openCanvasMigration(): void {
+        const character = getChatroomCharacter(Player.MemberNumber ?? -1);
+        if (!character) {
+            return;
+        }
+        this.openModal(new MigrationScreen(this, character));
     }
 
     /** Hardcore option 1: the player's own BC+ refuses to open while bound. */

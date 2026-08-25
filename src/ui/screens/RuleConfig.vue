@@ -7,6 +7,7 @@ import MembersPicker from "@/ui/screens/MembersPicker.vue";
 import Conditions from "@/ui/screens/Conditions.vue";
 import RulePunish from "@/ui/screens/RulePunish.vue";
 import { LocalRuleAccess } from "@/system/rules/RuleAccess";
+import type { RuleAccess } from "@/system/rules/RuleAccess";
 import { describeConditions } from "@/system/conditions/Conditions";
 import { defaultPunishConfig } from "@/system/punishments/PunishmentTypes";
 import { membersValue } from "@/system/gui/Settings";
@@ -15,12 +16,19 @@ import type Contracts from "@/modules/Contracts";
 import type Punishments from "@/modules/Punishments";
 import type Rules from "@/modules/Rules";
 
-const props = defineProps<{ ruleId: string }>();
+const props = defineProps<{
+    ruleId: string;
+    /** Injected access (e.g. a contract draft); defaults to the own live rules. */
+    access?: RuleAccess;
+    /** Contract-draft mode: live-state banners and punishments are hidden. */
+    draft?: boolean;
+}>();
 const nav = inject(NAV_KEY)!;
 const { version, touch, core } = useBcpVersion();
 
 const rules = core.ModuleManager.getModule<Rules>("rules")!;
-const access = new LocalRuleAccess(rules);
+const access = props.access ?? new LocalRuleAccess(rules);
+const isDraft = props.draft === true;
 const definition = rules.getDefinition(props.ruleId);
 
 const state = computed(() => {
@@ -33,19 +41,19 @@ const canEdit = computed(() => {
 });
 const weldLocked = computed(() => {
     version.value;
-    return access.weldLocked(props.ruleId);
+    return !isDraft && access.weldLocked(props.ruleId);
 });
 const contractBound = computed(() => {
     version.value;
-    return rules.isRuleContractBound(props.ruleId);
+    return !isDraft && rules.isRuleContractBound(props.ruleId);
 });
 const punishmentForced = computed(() => {
     version.value;
-    return rules.isRulePunishmentForced(props.ruleId);
+    return !isDraft && rules.isRulePunishmentForced(props.ruleId);
 });
 const bcxStatus = computed(() => {
     version.value;
-    return access.bcxStatus(props.ruleId);
+    return isDraft ? "none" : access.bcxStatus(props.ruleId);
 });
 const locked = computed(() => weldLocked.value || contractBound.value);
 
@@ -60,7 +68,7 @@ interface Toggle {
 }
 
 const toggles = computed<Toggle[]>(() => [
-    { label: "Rule is active", value: state.value.active, lockable: true, set: (v) => access.setActive(props.ruleId, v) },
+    { label: isDraft ? "Included in the contract" : "Rule is active", value: state.value.active, lockable: true, set: (v) => access.setActive(props.ruleId, v) },
     { label: "Enforce (block the action)", value: state.value.enforce, lockable: true, set: (v) => access.setEnforce(props.ruleId, v) },
     { label: "Log violations", value: state.value.log, lockable: false, set: (v) => access.setLog(props.ruleId, v) },
     { label: "Announce breaches in chat", value: state.value.announce, lockable: false, set: (v) => access.setAnnounce(props.ruleId, v) },
@@ -75,9 +83,12 @@ function flip(toggle: Toggle): void {
 
 // --- Conditions ---
 const usesGlobal = computed(() => state.value.useGlobal === true);
-const conditionsSummary = computed(() => (usesGlobal.value
-    ? `Global: ${describeConditions(access.globalConditions())}`
-    : describeConditions(state.value.conditions)));
+const conditionsSummary = computed(() => {
+    if (usesGlobal.value) {
+        return isDraft ? "Follows the signer's global conditions" : `Global: ${describeConditions(access.globalConditions())}`;
+    }
+    return describeConditions(state.value.conditions);
+});
 
 function toggleUseGlobal(): void {
     if (canEdit.value && !locked.value) {
@@ -227,7 +238,7 @@ function pickMembers(setting: AnySetting): void {
                 <button
                     class="rounded-lg bg-bg px-3 py-1.5 hover:bg-surface-hover disabled:opacity-50"
                     style="border: 1px solid var(--bcp-border);"
-                    :disabled="locked"
+                    :disabled="locked || (isDraft && usesGlobal)"
                     :title="usesGlobal
                         ? 'When rules following the global set are in effect - editing affects all of them'
                         : 'When this rule is in effect'"
@@ -238,7 +249,7 @@ function pickMembers(setting: AnySetting): void {
         </section>
 
         <!-- Punishments -->
-        <section class="flex items-center gap-3 rounded-lg bg-surface p-3" style="border: 1px solid var(--bcp-border);">
+        <section v-if="!isDraft" class="flex items-center gap-3 rounded-lg bg-surface p-3" style="border: 1px solid var(--bcp-border);">
             <button
                 class="rounded-lg bg-bg px-3 py-1.5 hover:bg-surface-hover"
                 style="border: 1px solid var(--bcp-border);"

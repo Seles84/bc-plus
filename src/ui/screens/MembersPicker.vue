@@ -97,7 +97,7 @@ function done(): void {
             <span class="flex-1"></span>
             <button
                 class="rounded-lg px-4 py-1.5 font-semibold"
-                style="background: var(--bcp-accent); color: var(--bcp-bg);"
+                style="background: var(--bcp-accent); color: var(--bcp-on-accent);"
                 @click="done()"
             >Done ({{ selected.length }})</button>
         </div>

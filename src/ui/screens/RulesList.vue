@@ -142,7 +142,7 @@ function openGlobalConditions(): void {
         <div class="flex flex-wrap items-center gap-2">
             <button
                 class="rounded-lg px-4 py-2 font-semibold disabled:opacity-50"
-                style="background: var(--bcp-accent); color: var(--bcp-bg);"
+                style="background: var(--bcp-accent); color: var(--bcp-on-accent);"
                 :disabled="!canEdit"
                 @click="openCatalog()"
             >Add rule</button>

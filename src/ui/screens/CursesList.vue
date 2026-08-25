@@ -104,7 +104,7 @@ function toggleAnnounce(): void {
             <button
                 v-if="canEdit"
                 class="rounded-lg px-4 py-2 font-semibold"
-                style="background: var(--bcp-accent); color: var(--bcp-bg);"
+                style="background: var(--bcp-accent); color: var(--bcp-on-accent);"
                 @click="addCurse()"
             >Curse a slot...</button>
             <label class="flex cursor-pointer items-center gap-2" :class="{ 'opacity-50': !canEdit }">
