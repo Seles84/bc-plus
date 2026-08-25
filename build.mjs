@@ -1,5 +1,8 @@
 import * as esbuild from "esbuild";
-import { copyFileSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import Vue from "unplugin-vue/esbuild";
+import { spawnSync } from "node:child_process";
+import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
 
@@ -23,6 +26,31 @@ const dev = serve || args.includes("--dev");
 
 const SERVE_PORT = 3045;
 
+/**
+ * Compiles the Tailwind stylesheet for the DOM UI into src/ui/generated/
+ * (git-ignored; imported into the bundle as text and injected into the
+ * window's shadow root). Only writes on change, so watch mode does not
+ * rebuild in a loop. Preflight is deliberately not imported - its reset
+ * would restyle the whole club page.
+ */
+function buildTailwind() {
+    const input = fileURLToPath(new URL("./src/ui/app.css", import.meta.url));
+    const output = fileURLToPath(new URL("./src/ui/generated/tailwind.css", import.meta.url));
+    const cli = fileURLToPath(new URL("./node_modules/@tailwindcss/cli/dist/index.mjs", import.meta.url));
+    mkdirSync(new URL("./src/ui/generated/", import.meta.url), { recursive: true });
+    const result = spawnSync(process.execPath, [cli, "-i", input, "-o", `${output}.tmp`, ...(dev ? [] : ["--minify"])], {
+        stdio: ["ignore", "ignore", "inherit"],
+    });
+    if (result.status !== 0) {
+        throw new Error(`Tailwind build failed (exit ${result.status})`);
+    }
+    const fresh = readFileSync(`${output}.tmp`, "utf8");
+    if (!existsSync(output) || readFileSync(output, "utf8") !== fresh) {
+        writeFileSync(output, fresh);
+    }
+}
+buildTailwind();
+
 /** @type {esbuild.BuildOptions} */
 const options = {
     entryPoints: ["src/index.ts"],
@@ -35,12 +63,36 @@ const options = {
     sourcemap: dev ? "inline" : false,
     loader: {
         ".png": "dataurl",
+        // Stylesheets ship as strings and are injected into the UI shadow root
+        ".css": "text",
     },
+    plugins: [
+        Vue({ isProduction: !dev }),
+        {
+            name: "bcp-tailwind",
+            setup(build) {
+                let first = true;
+                build.onStart(() => {
+                    // Initial CSS was built at script start; regenerate on
+                    // watch rebuilds so new utility classes appear
+                    if (first) {
+                        first = false;
+                        return;
+                    }
+                    buildTailwind();
+                });
+            },
+        },
+    ],
     define: {
         BCP_VERSION: JSON.stringify(dev ? pkg.displayVersion : pkg.version),
         BCP_DEV_ENV: JSON.stringify(dev),
         BCP_STABLE: JSON.stringify(!dev),
         BCP_SAVE_KEY: JSON.stringify(process.env.BCP_SAVE_KEY ?? ""),
+        "process.env.NODE_ENV": JSON.stringify(dev ? "development" : "production"),
+        __VUE_OPTIONS_API__: "false",
+        __VUE_PROD_DEVTOOLS__: "false",
+        __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: "false",
     },
     logLevel: "info",
 };

@@ -16,6 +16,7 @@ import { Role, RoleNames } from "@/system/Roles";
 import type Authority from "@/modules/Authority";
 import type Welding from "@/modules/Welding";
 import type Rules from "@/modules/Rules";
+import type { GUI as GUIModule } from "@/modules/GUI";
 
 export type BCPPreset = "Dominant" | "Switch" | "Submissive" | "Slave";
 export const PRESETS: readonly BCPPreset[] = ["Dominant", "Switch", "Submissive", "Slave"];
@@ -132,6 +133,24 @@ export default class Core extends ModuleInstance {
                 hoverText: "Opens the BC+ menus in a draggable window on top of the club instead "
                     + "of taking over the screen - you can keep reading and using chat while "
                     + "configuring. /bcp menu opens it directly from a room.",
+                default: false,
+            },
+            {
+                type: "option",
+                name: "uiTheme",
+                label: "Floating window theme",
+                hoverText: "Color scheme of the new BC+ window when the Themed mod is not "
+                    + "running - with Themed installed, its palette is used automatically.",
+                options: ["Dark", "Light"],
+                default: "Dark",
+                onSet: () => this.ModuleManager.getModule<GUIModule>("gui")?.applyUiTheme(),
+            },
+            {
+                type: "checkbox",
+                name: "classicWindow",
+                label: "Use the classic canvas window instead",
+                hoverText: "Escape hatch while the new BC+ window matures: the floating window "
+                    + "opens as the old canvas-drawn version again.",
                 default: false,
             },
             {
