@@ -234,6 +234,31 @@ export const SKILL_MOD_INTERVAL_MS = 16_000;
 /** Fully starved pets take this much longer to leave a room. */
 export const SLOW_LEAVE_MAX_EXTRA_SEC = 25;
 
+/**
+ * Dry-throat speech: cracks words with pauses and stutters, harder with
+ * severity (1 = occasional cracks, 3 = barely getting words out). Applied to
+ * in-character segments only (the caller handles OOC).
+ */
+export function parchSpeech(text: string, severity: number): string {
+    const chance = Math.min(0.9, 0.3 * severity);
+    return text
+        .split(/(\s+)/)
+        .map((token) => {
+            if (!/\p{L}/u.test(token) || Math.random() >= chance) {
+                return token;
+            }
+            if (token.length < 3) {
+                // Too short to crack - stutter it instead
+                return `${token[0]}-${token}`;
+            }
+            const cut = Math.max(1, Math.floor(token.length / 2));
+            const cracked = `${token.slice(0, cut)}...${token.slice(cut)}`;
+            // Near-empty throats also stumble into the word
+            return severity >= 3 && Math.random() < 0.5 ? `${token[0]}-${cracked}` : cracked;
+        })
+        .join("");
+}
+
 /** Rounds a level for the coarse public broadcast (nearest 5). */
 export function coarseLevel(value: number): number {
     return Math.round(clampLevel(value) / 5) * 5;

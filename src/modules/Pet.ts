@@ -14,8 +14,9 @@ import {
     SEX_PET_ORGASM_WINDOW_MS, SEX_PET_REGIONS, SEX_PET_THIRST_MULTIPLIER, SKILL_MOD_INTERVAL_MS,
     SLOW_LEAVE_MAX_EXTRA_SEC, TINT_THRESHOLD_CHOICES, WATER_ACTIVITY_NAMES,
     chatDictAttr, clampLevel, coarseLevel, drainHoursValue, drainedLevel, offlineFloorValue,
-    isSleepingLook, percentValue, sleepFactor,
+    isSleepingLook, parchSpeech, percentValue, sleepFactor,
 } from "@/system/pet/PetTypes";
+import { transformSpoken } from "@/rules/speechUtils";
 import { drawPetRings } from "@/system/pet/PetHud";
 import { BCP_ACTIVITY_PREFIX, CustomActivityRegistry } from "@/utils/CustomActivities";
 import { SendAction } from "@/utils/Messaging";
@@ -282,6 +283,21 @@ export default class Pet extends ModuleInstance {
                 hoverText: "Petting counts less on an empty stomach: affection gains scale "
                     + "with your food and water levels.",
                 default: true,
+            },
+            {
+                type: "checkbox",
+                name: "fxThirst",
+                label: "Speech dries up when thirsty",
+                hoverText: "A parched throat cracks your words with pauses and stutters, "
+                    + "getting worse as water approaches empty. OOC text is never touched.",
+                default: true,
+            },
+            {
+                type: "option",
+                name: "fxThirstAt",
+                label: "Speech starts cracking below",
+                options: [...HUNGER_THRESHOLD_CHOICES],
+                default: "30%",
             },
         ];
     }
@@ -889,6 +905,22 @@ export default class Pet extends ModuleInstance {
                 const mumble = PASSOUT_MUMBLES[Math.floor(Math.random() * PASSOUT_MUMBLES.length)]!;
                 SendAction(`${CharacterNickname(Player)} ${mumble}`);
                 return;
+            }
+            return next(args);
+        });
+
+        // Dry throat: thirst cracks outgoing speech (in-character text only).
+        // Priority below the passout hook, whose full mumble replacement wins
+        this.addHook("ServerSend", 4, (args, next) => {
+            const [message, data] = args as [string, ServerChatRoomMessage | undefined];
+            if (message === "ChatRoomChat" && data?.Type === "Chat"
+                && typeof data.Content === "string" && this.effectOn("fxThirst", "water")) {
+                const at = this.threshold("fxThirstAt", 30);
+                const water = this.currentLevels().water;
+                if (at > 0 && water < at) {
+                    const severity = Math.min(3, 1 + Math.floor((3 * (at - water)) / at));
+                    data.Content = transformSpoken(data.Content, (text) => parchSpeech(text, severity));
+                }
             }
             return next(args);
         });
