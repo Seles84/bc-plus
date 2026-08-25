@@ -17,15 +17,25 @@ import WeldingView from "@/ui/screens/WeldingView.vue";
 import type { Component } from "vue";
 import { BCPLUS_REPO, BCPLUS_VERSION } from "@/system/Constants";
 import { BCPVersionCompare, parseBCPVersion } from "@/utils/Version";
+import { MemberNumberToName } from "@/utils/Messaging";
+import { getChatroomCharacter } from "@/utils/BCPlusCharacter";
 import type { ModuleInstance } from "@/system/module/ModuleInstance";
 import type { GUI } from "@/modules/GUI";
 import type Core from "@/modules/Core";
+
+const props = defineProps<{
+    /** Viewing another character's BC+ (remote menu). */
+    member?: number;
+}>();
 
 const core = inject(BCPLUS_KEY)!;
 const nav = inject(NAV_KEY)!;
 const win = inject(WINDOW_KEY)!;
 
-const modules = computed(() => core.ModuleManager.Modules.filter((m) => m.HasGUI && m.Config.Active));
+const remote = computed(() => props.member !== undefined);
+
+const modules = computed(() => core.ModuleManager.Modules.filter((m) =>
+    (remote.value ? m.SupportsRemote : m.HasGUI && m.Config.Active)));
 
 /** Custom screens already ported to the new window. */
 const PORTED_SCREENS: Record<string, Component> = {
@@ -49,17 +59,23 @@ function isDomNative(module: ModuleInstance): boolean {
 }
 
 function openModule(module: ModuleInstance): void {
+    if (remote.value && !getChatroomCharacter(props.member!)) {
+        return;
+    }
+    const name = module.Config.MenuString || module.Config.Name;
+    const title = remote.value ? `${name} - ${MemberNumberToName(props.member!)}` : name;
     const ported = PORTED_SCREENS[module.Slug];
     if (ported) {
         nav.push({
             component: ported,
-            title: module.Config.MenuString || module.Config.Name,
+            title,
+            props: remote.value ? { member: props.member } : undefined,
         });
     } else if (isDomNative(module)) {
         nav.push({
             component: ModuleSettings,
-            title: module.Config.MenuString || module.Config.Name,
-            props: { slug: module.Slug },
+            title,
+            props: { slug: module.Slug, member: props.member },
         });
     } else {
         // Not ported to the new window yet - the classic view takes over
@@ -75,6 +91,13 @@ function openExportImport(): void {
 function openChangelog(): void {
     window.open(`${BCPLUS_REPO}/blob/main/CHANGE-LOG.md`, "_blank");
 }
+
+const targetVersion = computed(() => {
+    if (props.member === undefined) {
+        return null;
+    }
+    return getChatroomCharacter(props.member)?.BCPVersion ?? null;
+});
 
 const modeText = computed(() => (core.Mode === "tandem"
     ? `Tandem with BCX v${window.bcx?.version ?? "?"}`
@@ -121,15 +144,19 @@ const updateText = computed(() => {
 
         <div class="mt-auto flex flex-wrap items-center gap-3 border-t pt-3" style="border-color: var(--bcp-border);">
             <div class="min-w-0 flex-1 text-sm text-fg-dim">
-                <div>BC+ v{{ BCPLUS_VERSION }} &middot; {{ modeText }}</div>
-                <div v-if="updateText" :class="updateText.fresh ? 'text-fg-dim' : 'text-accent'">{{ updateText.text }}</div>
+                <div v-if="remote">Viewing {{ MemberNumberToName(props.member!) }} (#{{ props.member }}) &middot; their client validates every change</div>
+                <div v-if="remote && targetVersion">Their BC+: v{{ targetVersion }}</div>
+                <div v-if="!remote">BC+ v{{ BCPLUS_VERSION }} &middot; {{ modeText }}</div>
+                <div v-if="!remote && updateText" :class="updateText.fresh ? 'text-fg-dim' : 'text-accent'">{{ updateText.text }}</div>
             </div>
             <button
+                v-if="!remote"
                 class="rounded-lg bg-surface px-4 py-2 hover:bg-surface-hover"
                 style="border: 1px solid var(--bcp-border);"
                 @click="openExportImport()"
             >Export / Import</button>
             <button
+                v-if="!remote"
                 class="rounded-lg bg-surface px-4 py-2 hover:bg-surface-hover"
                 style="border: 1px solid var(--bcp-border);"
                 @click="openChangelog()"

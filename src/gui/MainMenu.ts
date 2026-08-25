@@ -61,17 +61,22 @@ class MainMenuPage extends GUIPage {
         }
 
         MainCanvas.textAlign = "left";
+        // Remote menus act on the TARGET's modules - the viewer's own module
+        // being switched off (e.g. the opt-in Pet) must not gray the button;
+        // the target's client validates whether their side answers
+        const remote = character !== null && !character.isPlayer();
         let hovered: { title: string; text: string } | null = null;
         this.menuModules.forEach((module, i) => {
             const col = Math.floor(i / 6);
             const row = i % 6;
             const rect = { Top: 190 + 120 * row, Left: 150 + 430 * col, Height: 90, Width: 400 };
+            const usable = remote || module.Config.Active;
             this.addClickHandler(ButtonActionWidget(
                 rect,
                 {
                     Name: module.Config.MenuString || module.Config.Name,
                     Icon: module.Config.Icon || null,
-                    Active: module.Config.Active,
+                    Active: usable,
                 },
                 () => {
                     const screen = module.SettingsScreen?.(this.Character)
@@ -82,7 +87,7 @@ class MainMenuPage extends GUIPage {
             if (MouseIn(rect.Left, rect.Top, rect.Width, rect.Height)) {
                 hovered = {
                     title: module.Config.MenuString || module.Config.Name,
-                    text: module.Config.Active
+                    text: usable
                         ? (module.Config.HoverText || module.Config.Description)
                         : "Module is deactivated.",
                 };

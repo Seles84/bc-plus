@@ -4,15 +4,23 @@ import { NAV_KEY } from "@/ui/nav";
 import { useBcpVersion } from "@/ui/composables";
 import CurseSlot from "@/ui/screens/CurseSlot.vue";
 import SlotGrid from "@/ui/screens/SlotGrid.vue";
-import { LocalCurseAccess } from "@/system/curses/CurseAccess";
+import { LocalCurseAccess, RemoteCurseAccess } from "@/system/curses/CurseAccess";
 import { CURSE_LOCKS } from "@/system/curses/CurseTypes";
+import { bcpCharacter } from "@/ui/composables";
+import type Authority from "@/modules/Authority";
 import type Curses from "@/modules/Curses";
 
+const props = defineProps<{ member?: number }>();
 const nav = inject(NAV_KEY)!;
 const { version, touch, core } = useBcpVersion();
 
 const curses = core.ModuleManager.getModule<Curses>("curses")!;
-const access = new LocalCurseAccess(curses);
+const local = props.member === undefined;
+const character = bcpCharacter(props.member);
+const dead = !local && character === null;
+const access = character
+    ? new RemoteCurseAccess(curses, core.ModuleManager.getModule<Authority>("authority"), character)
+    : new LocalCurseAccess(curses);
 
 const canEdit = computed(() => {
     version.value;
@@ -38,7 +46,7 @@ function summary(slot: (typeof slots.value)[number]): string {
 }
 
 function openSlot(group: string): void {
-    nav.push({ component: CurseSlot, title: `Curse - ${groupLabel(group)}`, props: { group } });
+    nav.push({ component: CurseSlot, title: `Curse - ${groupLabel(group)}`, props: { group, member: props.member } });
 }
 
 function addCurse(): void {
@@ -81,7 +89,8 @@ function toggleAnnounce(): void {
 </script>
 
 <template>
-    <div class="flex h-full flex-col gap-3">
+    <p v-if="dead" class="text-fg-dim">They are no longer in this room.</p>
+    <div v-else class="flex h-full flex-col gap-3">
         <p v-if="slots.length === 0" class="px-2 text-fg-dim">No slots are cursed yet.</p>
 
         <div class="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
@@ -107,7 +116,7 @@ function toggleAnnounce(): void {
                 style="background: var(--bcp-accent); color: var(--bcp-on-accent);"
                 @click="addCurse()"
             >Curse a slot...</button>
-            <label class="flex cursor-pointer items-center gap-2" :class="{ 'opacity-50': !canEdit }">
+            <label v-if="local" class="flex cursor-pointer items-center gap-2" :class="{ 'opacity-50': !canEdit }">
                 <input
                     type="checkbox"
                     class="h-5 w-5"
@@ -118,6 +127,7 @@ function toggleAnnounce(): void {
                 >
                 <span>Announce curse activity in chat</span>
             </label>
+            <span v-if="!canEdit" class="text-sm text-fg-dim">You do not have permission to change these curses; viewing only.</span>
         </div>
     </div>
 </template>

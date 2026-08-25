@@ -2,18 +2,23 @@
 import { computed, inject } from "vue";
 import { NAV_KEY } from "@/ui/nav";
 import { useBcpVersion } from "@/ui/composables";
-import { LocalPunishmentAccess } from "@/system/punishments/PunishmentAccess";
+import { LocalPunishmentAccess, RemotePunishmentAccess } from "@/system/punishments/PunishmentAccess";
 import { PUNISHMENT_LOCKS, describeDuration } from "@/system/punishments/PunishmentTypes";
+import { bcpCharacter } from "@/ui/composables";
+import type Authority from "@/modules/Authority";
 import type Curses from "@/modules/Curses";
 import type Punishments from "@/modules/Punishments";
 import type Rules from "@/modules/Rules";
 
-const props = defineProps<{ id: string }>();
+const props = defineProps<{ id: string; member?: number }>();
 const nav = inject(NAV_KEY)!;
 const { version, touch, core } = useBcpVersion();
 
 const punishments = core.ModuleManager.getModule<Punishments>("punishments")!;
-const access = new LocalPunishmentAccess(punishments);
+const character = bcpCharacter(props.member);
+const access = character
+    ? new RemotePunishmentAccess(core.ModuleManager.getModule<Authority>("authority"), character)
+    : new LocalPunishmentAccess(punishments);
 
 const definition = computed(() => {
     version.value;

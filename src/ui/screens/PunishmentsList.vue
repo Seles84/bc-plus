@@ -6,19 +6,27 @@ import AssetPicker from "@/ui/screens/AssetPicker.vue";
 import ChooseRule from "@/ui/screens/ChooseRule.vue";
 import PunishmentConfig from "@/ui/screens/PunishmentConfig.vue";
 import SlotGrid from "@/ui/screens/SlotGrid.vue";
-import { LocalPunishmentAccess } from "@/system/punishments/PunishmentAccess";
+import { LocalPunishmentAccess, RemotePunishmentAccess } from "@/system/punishments/PunishmentAccess";
 import {
     PUNISHMENT_LOCKS, PunishmentDefinition, describeDuration, describeRemaining,
 } from "@/system/punishments/PunishmentTypes";
+import { bcpCharacter } from "@/ui/composables";
+import type Authority from "@/modules/Authority";
 import type Curses from "@/modules/Curses";
 import type Punishments from "@/modules/Punishments";
 import type Rules from "@/modules/Rules";
 
+const props = defineProps<{ member?: number }>();
 const nav = inject(NAV_KEY)!;
 const { version, touch, core } = useBcpVersion();
 
 const punishments = core.ModuleManager.getModule<Punishments>("punishments")!;
-const access = new LocalPunishmentAccess(punishments);
+const local = props.member === undefined;
+const character = bcpCharacter(props.member);
+const dead = !local && character === null;
+const access = character
+    ? new RemotePunishmentAccess(core.ModuleManager.getModule<Authority>("authority"), character)
+    : new LocalPunishmentAccess(punishments);
 const rules = core.ModuleManager.getModule<Rules>("rules");
 
 const canEdit = computed(() => {
@@ -70,7 +78,7 @@ function lift(id: string): void {
 
 function openConfig(id: string): void {
     const name = access.definitions()[id]?.name ?? "Punishment";
-    nav.push({ component: PunishmentConfig, title: `Punishment - ${name}`, props: { id } });
+    nav.push({ component: PunishmentConfig, title: `Punishment - ${name}`, props: { id, member: props.member } });
 }
 
 function newFromWorn(): void {
@@ -140,7 +148,8 @@ function newRulePunishment(): void {
 </script>
 
 <template>
-    <div class="flex h-full flex-col gap-4">
+    <p v-if="dead" class="text-fg-dim">They are no longer in this room.</p>
+    <div v-else class="flex h-full flex-col gap-4">
         <section class="flex flex-col gap-1">
             <h3 class="px-3 font-semibold text-accent">Running punishments</h3>
             <p v-if="running.length === 0" class="px-3 text-fg-dim">None.</p>

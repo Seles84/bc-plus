@@ -4,17 +4,22 @@ import { NAV_KEY } from "@/ui/nav";
 import { useBcpVersion } from "@/ui/composables";
 import AssetPicker from "@/ui/screens/AssetPicker.vue";
 import Conditions from "@/ui/screens/Conditions.vue";
-import { LocalCurseAccess } from "@/system/curses/CurseAccess";
+import { LocalCurseAccess, RemoteCurseAccess } from "@/system/curses/CurseAccess";
 import { CURSE_LOCKS, lockApplicableFor } from "@/system/curses/CurseTypes";
 import { describeConditions } from "@/system/conditions/Conditions";
+import { bcpCharacter } from "@/ui/composables";
+import type Authority from "@/modules/Authority";
 import type Curses from "@/modules/Curses";
 
-const props = defineProps<{ group: string }>();
+const props = defineProps<{ group: string; member?: number }>();
 const nav = inject(NAV_KEY)!;
 const { version, touch, core } = useBcpVersion();
 
 const curses = core.ModuleManager.getModule<Curses>("curses")!;
-const access = new LocalCurseAccess(curses);
+const character = bcpCharacter(props.member);
+const access = character
+    ? new RemoteCurseAccess(curses, core.ModuleManager.getModule<Authority>("authority"), character)
+    : new LocalCurseAccess(curses);
 
 const slot = computed(() => {
     version.value;

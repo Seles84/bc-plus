@@ -1,6 +1,13 @@
 import { inject, onMounted, onUnmounted, ref } from "vue";
 import { BCPLUS_KEY } from "@/ui/nav";
+import { getChatroomCharacter } from "@/utils/BCPlusCharacter";
+import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type { BCPlus } from "@/index";
+
+/** The BC+ wrapper for a remote member, or null for the own view. */
+export function bcpCharacter(member: number | undefined): BCPlusCharacter | null {
+    return member === undefined ? null : getChatroomCharacter(member);
+}
 
 /**
  * Bridges BC+'s non-reactive module data into Vue: returns a version counter
@@ -18,6 +25,10 @@ export function useBcpVersion(): { version: ReturnType<typeof ref<number>>; touc
     onMounted(() => {
         unsubscribers.push(core.Events.on("saveSynced", touch));
         unsubscribers.push(core.Events.on("characterSyncReceived", () => touch()));
+        // Remote request-response flows (log/stats/relationships fetches)
+        unsubscribers.push(core.Events.on("logReceived", () => touch()));
+        unsubscribers.push(core.Events.on("statsReceived", () => touch()));
+        unsubscribers.push(core.Events.on("relationshipsReceived", () => touch()));
     });
     onUnmounted(() => {
         for (const unsubscribe of unsubscribers.splice(0)) {

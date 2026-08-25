@@ -1,16 +1,24 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { useBcpVersion } from "@/ui/composables";
+import { bcpCharacter, useBcpVersion } from "@/ui/composables";
 import { RoleNames } from "@/system/Roles";
+import { SendBCPMessage } from "@/utils/Messaging";
 import type Authority from "@/modules/Authority";
 
+const props = defineProps<{ member?: number }>();
 const { version, touch, core } = useBcpVersion();
 
 const authority = core.ModuleManager.getModule<Authority>("authority")!;
+const character = bcpCharacter(props.member);
+const remote = props.member !== undefined;
 
 const canEdit = computed(() => {
     version.value;
     const permission = authority.EditPermission;
+    if (remote) {
+        return permission !== null && character !== null
+            && (authority.remoteHasPermission(character, permission) ?? false);
+    }
     return !permission || (authority.hasPermission(Player.MemberNumber ?? -1, permission) ?? true);
 });
 
@@ -19,28 +27,42 @@ const defs = computed(() => {
     return authority.PermissionDefs;
 });
 
-function roleOf(id: string): string {
+function get(name: string): unknown {
     version.value;
-    return authority.getSetting<string>(`${id}.role`);
+    if (remote) {
+        return character?.BCPData?.["authority"]?.[name]
+            ?? authority.Settings.find((s) => s.name === name)?.default;
+    }
+    return authority.getSetting(name);
+}
+
+function set(name: string, value: unknown): void {
+    if (!canEdit.value) {
+        return;
+    }
+    if (remote) {
+        // No optimistic write; the target's change-broadcast updates the mirror
+        SendBCPMessage({ message: "SettingCommand", module: "authority", name, value }, props.member!);
+        return;
+    }
+    authority.setSetting(name, value);
+    touch();
+}
+
+function roleOf(id: string): string {
+    return String(get(`${id}.role`) ?? "Public");
 }
 
 function selfOf(id: string): boolean {
-    version.value;
-    return authority.getSetting<boolean>(`${id}.self`);
+    return get(`${id}.self`) === true;
 }
 
 function setRole(id: string, event: Event): void {
-    if (canEdit.value) {
-        authority.setSetting(`${id}.role`, (event.target as HTMLSelectElement).value);
-        touch();
-    }
+    set(`${id}.role`, (event.target as HTMLSelectElement).value);
 }
 
 function toggleSelf(id: string): void {
-    if (canEdit.value) {
-        authority.setSetting(`${id}.self`, !selfOf(id));
-        touch();
-    }
+    set(`${id}.self`, !selfOf(id));
 }
 </script>
 

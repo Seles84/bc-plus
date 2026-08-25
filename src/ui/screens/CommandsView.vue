@@ -1,15 +1,24 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { useBcpVersion } from "@/ui/composables";
+import { bcpCharacter, useBcpVersion } from "@/ui/composables";
+import type Authority from "@/modules/Authority";
 import type Commands from "@/modules/Commands";
 
+const props = defineProps<{ member?: number }>();
 const { version, touch, core } = useBcpVersion();
 
 const commands = core.ModuleManager.getModule<Commands>("commands")!;
+const local = props.member === undefined;
+const character = bcpCharacter(props.member);
+const dead = !local && character === null;
 
 const canUse = computed(() => {
     version.value;
-    return commands.canUseOnSelf();
+    if (local) {
+        return commands.canUseOnSelf();
+    }
+    const authority = core.ModuleManager.getModule<Authority>("authority");
+    return character !== null && (authority?.remoteHasPermission(character, "commands.use") ?? false);
 });
 const definitions = computed(() => {
     version.value;
@@ -24,7 +33,7 @@ const argument = ref("");
 
 function invoke(definition: (typeof definitions.value)[number]): void {
     if (canUse.value) {
-        commands.invoke(definition, argument.value, null);
+        commands.invoke(definition, argument.value, character);
     }
 }
 
@@ -35,8 +44,9 @@ function toggleWhisper(): void {
 </script>
 
 <template>
-    <div class="flex h-full flex-col gap-3">
-        <label class="flex cursor-pointer items-center gap-2 self-end" title="Turns the whisper interface ('!bcp <command>') on or off">
+    <p v-if="dead" class="text-fg-dim">They are no longer in this room.</p>
+    <div v-else class="flex h-full flex-col gap-3">
+        <label v-if="local" class="flex cursor-pointer items-center gap-2 self-end" title="Turns the whisper interface ('!bcp <command>') on or off">
             <input
                 type="checkbox" class="h-5 w-5" style="accent-color: var(--bcp-accent);"
                 :checked="whisperOn"

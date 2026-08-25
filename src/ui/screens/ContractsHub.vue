@@ -4,15 +4,41 @@ import { NAV_KEY } from "@/ui/nav";
 import { useBcpVersion } from "@/ui/composables";
 import ContractDraftView from "@/ui/screens/ContractDraftView.vue";
 import ContractReview from "@/ui/screens/ContractReview.vue";
-import { describeContractDuration, sanitizeContractPayload } from "@/system/contracts/ContractTypes";
+import { describeContractDuration, describeContractPolicy, sanitizeContractPayload } from "@/system/contracts/ContractTypes";
 import { decodeExport } from "@/utils/ExportImport";
+import { bcpCharacter } from "@/ui/composables";
+import { MemberNumberToName } from "@/utils/Messaging";
+import { onMounted } from "vue";
 import type { SignedContract } from "@/system/contracts/ContractTypes";
 import type Contracts from "@/modules/Contracts";
 
+const props = defineProps<{ member?: number }>();
 const nav = inject(NAV_KEY)!;
 const { version, touch, core } = useBcpVersion();
 
 const contracts = core.ModuleManager.getModule<Contracts>("contracts")!;
+const local = props.member === undefined;
+const character = bcpCharacter(props.member);
+const dead = !local && character === null;
+
+onMounted(() => {
+    if (character) {
+        contracts.queryAuthored(character.MemberNumber);
+    }
+});
+
+/** Remote view: the contracts YOU authored on this person. */
+const authored = computed(() => {
+    version.value;
+    return character ? contracts.authoredOn(character.MemberNumber) : undefined;
+});
+
+function releaseAuthored(contractId: string): void {
+    if (character) {
+        contracts.requestRelease(character.MemberNumber, contractId);
+        touch();
+    }
+}
 
 const offer = computed(() => {
     version.value;
@@ -92,7 +118,37 @@ function reviewCode(): void {
 </script>
 
 <template>
-    <div class="flex h-full flex-col gap-4">
+    <p v-if="dead" class="text-fg-dim">They are no longer in this room.</p>
+
+    <!-- Remote: contracts you authored on this person -->
+    <div v-else-if="!local" class="flex h-full flex-col gap-2">
+        <h3 class="px-3 font-semibold text-accent">Contracts you authored on {{ MemberNumberToName(props.member!) }}</h3>
+        <p v-if="authored === undefined" class="px-3 text-fg-dim">Asking their client...</p>
+        <p v-else-if="authored.length === 0" class="px-3 text-fg-dim">
+            None - offer one from a draft on your own Contracts page.
+        </p>
+        <div v-else class="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
+            <div
+                v-for="contract in authored"
+                :key="contract.id"
+                class="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-surface"
+            >
+                <span class="min-w-0 flex-1 truncate">"{{ contract.title }}"</span>
+                <span class="max-w-md truncate text-sm text-fg-dim">
+                    {{ activeRuleCount(contract.rules) }} rules - {{ remainingText(contract) }} - {{ describeContractPolicy(contract.policy) }}
+                </span>
+                <button
+                    class="rounded-lg bg-surface px-3 py-1.5 hover:bg-surface-hover"
+                    style="border: 1px solid var(--bcp-border);"
+                    title="End this contract - their rules return to how they were"
+                    @click="releaseAuthored(contract.id)"
+                >Release</button>
+            </div>
+        </div>
+        <p class="px-3 text-sm text-fg-dim">Their client answers only with contracts naming you as the author; releasing is validated on their side.</p>
+    </div>
+
+    <div v-else class="flex h-full flex-col gap-4">
         <section class="flex flex-col gap-1">
             <h3 class="px-3 font-semibold text-accent">Contracts binding you</h3>
             <button

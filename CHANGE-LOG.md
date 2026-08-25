@@ -4,6 +4,14 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- Viewing someone else's BC+ no longer grays out modules that YOU have switched off locally (classic view): the remote menu acts on the target's modules, so having the opt-in Pet module disabled on your side wrongly showed their Pet page as deactivated. The target's client decides whether their side answers, as always.
+
+### Added
+- New BC+ window, slice 5 - remote views: opening someone else's BC+ (their info-sheet button, in modal mode) now uses the new window too, with a "Viewing X - their client validates every change" context and their BC+ version in the footer. Every remote flow is native: rules (reading their list and BCX coverage, editing with the pending-changes batch - an unsaved counter with Save/Discard on the list and a Save bar on the config page), curses and punishments (mirror-based, including catalog picks and captures against their appearance), the Pet page and other module settings (private ones fetched via the settings-request flow), Authority, roles assignment/revocation, the log (request states, praise/scold/note with an inline message field, remote clear), statistics (request, reset, refresh), relationships, commands, welding (their ceremony/welded state from the mirror, accept/decline as a participant, owner-initiated welding) and contracts you authored on them (with release). Permission previews gate the controls as before - and as always, the courtesy is cosmetic: the other client validates everything. The hardcore sweep closes a remote window when access is lost mid-look, exactly like the classic screens.
+
 ## [0.10.0] - 2026-08-25
 
 The UI overhaul release: BC+'s menus are a real, modern interface now. The entries below (newest first) arrived over PRs #143-#146.

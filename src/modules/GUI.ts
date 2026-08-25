@@ -107,10 +107,10 @@ export class GUI extends ModuleInstance {
         return this.ModuleManager.getModule<Core>("core")?.getSetting<boolean>("classicWindow") !== true;
     }
 
-    /** Opens (or focuses) the new DOM window on the player's own BC+. */
-    openDomWindow(): void {
+    /** Opens (or focuses) the new DOM window - own BC+, or another member's. */
+    openDomWindow(member?: number): void {
         this.uiWindow ??= new UIWindow(this.Core);
-        this.uiWindow.open();
+        this.uiWindow.open(member);
     }
 
     /** Re-applies the light/dark fallback after the theme setting changed. */
@@ -178,10 +178,16 @@ export class GUI extends ModuleInstance {
      * was revoked).
      */
     private hardcoreSweep(): void {
-        // The DOM window is always the player's own view
-        if (this.uiWindow?.isOpen && this.hardcoreSelfBlocked()) {
-            this.uiWindow.close();
-            BCPNotifyPlayer("BC+ closed - your hands are bound.");
+        if (this.uiWindow?.isOpen) {
+            const viewing = this.uiWindow.Viewing;
+            const target = viewing !== null ? getChatroomCharacter(viewing) : null;
+            const windowReason = viewing === null || target === null || target.isPlayer()
+                ? (this.hardcoreSelfBlocked() ? "your hands are bound" : null)
+                : this.remoteViewBlockReason(target);
+            if (windowReason !== null) {
+                this.uiWindow.close();
+                BCPNotifyPlayer(`BC+ closed - ${windowReason}.`);
+            }
         }
         const screen = this.currentSubscreen;
         if (!screen) {
@@ -313,12 +319,12 @@ export class GUI extends ModuleInstance {
                     : new MainMenu(this, character);
                 if (this.modalModeEnabled()) {
                     // Modal mode: leave the sheet so the club stays visible,
-                    // then open the same menu in the floating window. Own
-                    // view uses the new DOM window (welcome flow and remote
-                    // views stay on the classic screens for now).
+                    // then open the same menu in the floating window. The DOM
+                    // window covers own AND remote views (the first-run
+                    // welcome stays on the classic screens for now).
                     InformationSheetExit();
-                    if (character.isPlayer() && !(screen instanceof WelcomeScreen) && this.domUiEnabled()) {
-                        this.openDomWindow();
+                    if (!(screen instanceof WelcomeScreen) && this.domUiEnabled()) {
+                        this.openDomWindow(character.isPlayer() ? undefined : character.MemberNumber);
                     } else {
                         this.openModal(screen);
                     }
