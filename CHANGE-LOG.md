@@ -4,7 +4,9 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.10.0] - 2026-08-25
+
+The UI overhaul release: BC+'s menus are a real, modern interface now. The entries below (newest first) arrived over PRs #143-#146.
 
 ### Added
 - New BC+ window, slice 4 - every remaining own-view screen is now native: Roles (the full assignment table with BC-derived rows, custom role creation, the grants editor and per-item grant scoping), Authority (the permission table with role dropdowns and self checkboxes), the Behavior Log (with recording configuration and clear), Statistics (overview/items/rule-violations as tabs with reset), Relationships (inline-editable custom names with enforce toggles and a person picker), Commands (with the whisper-interface toggle and argument field), Welding (the full blurb, requirement checklist, live ceremony status with countdown, witness picking, accept/decline and the welded view with its preferences), Contracts (the hub, the complete draft composer with per-rule configuration exactly as it will apply at signing, offer codes and in-room offers, and the full-disclosure review with two-click signing), and Export/Import (per-section export-to-clipboard and inline code import). Only the first-run welcome, the BCX migration tool and viewing OTHER people's BC+ remain in the classic view - those flows close the window and open it as before. Destructive actions (clear log, reset stats, delete draft, sign contract) use a two-click confirm inside the window instead of the old popup dialogs.
