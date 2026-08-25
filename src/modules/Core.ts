@@ -9,6 +9,7 @@ import { modalConfirm } from "@/gui/Modal";
 import { BCPNotifyLines, BCPNotifyPlayer } from "@/utils/Messaging";
 import { getChatroomCharacter } from "@/utils/BCPlusCharacter";
 import { KnownMember, bindMemberCache, rememberCharacter } from "@/utils/MemberCache";
+import { drawPetRings, ringEntriesFromMirror } from "@/system/pet/PetHud";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import appLogo from "@/images/icon90.png";
 import { Role, RoleNames } from "@/system/Roles";
@@ -141,6 +142,15 @@ export default class Core extends ModuleInstance {
                     + "running BC+ (including you). Hovering it shows their BC+ version; a grayed "
                     + "icon means their permissions give you no access.",
                 default: true,
+            },
+            {
+                type: "checkbox",
+                name: "petStatsOthers",
+                label: "Show pet stats under pets who share them",
+                hoverText: "Draws the stat rings of every BC+ virtual pet in the room who "
+                    + "broadcasts their levels (hover a ring for the exact value). Works "
+                    + "without the Pet module - watching pets does not make you one.",
+                default: false,
             },
             {
                 type: "checkbox",
@@ -609,9 +619,40 @@ export default class Core extends ModuleInstance {
             } catch {
                 // Drawing extras must never break BC's frame
             }
+            try {
+                this.drawOtherPetStats(...args);
+            } catch {
+                // Same rule for the pet rings
+            }
             return result;
         });
     }
+
+    /**
+     * Stat rings under OTHER pets who broadcast their levels, drawn from
+     * their synced mirror. Lives here (not in the Pet module) so watching
+     * pets never requires opting into being one; the pet's own rings are
+     * the Pet module's business.
+     */
+    private drawOtherPetStats(C: Character, CharX: number, CharY: number, Zoom: number): void {
+        if (this.getSetting<boolean>("petStatsOthers") !== true
+            || C.IsPlayer() || typeof C.MemberNumber !== "number") {
+            return;
+        }
+        const character = getChatroomCharacter(C.MemberNumber);
+        if (!character?.BCPVersion) {
+            return;
+        }
+        this.mpaPresent ??= this.SDK.modInstalled("MPA");
+        drawPetRings(
+            ringEntriesFromMirror(character.BCPData?.["pet"]),
+            CharX, CharY, Zoom,
+            { raise: this.mpaPresent },
+        );
+    }
+
+    /** Cached once - checked per character per frame. */
+    private mpaPresent: boolean | null = null;
 
     private drawRoomIcon(C: Character, CharX: number, CharY: number, Zoom: number): void {
         if (this.getSetting<boolean>("roomIcons") === false || typeof C.MemberNumber !== "number") {

@@ -12,9 +12,9 @@ import {
     SEX_PET_ORGASM_WINDOW_MS, SEX_PET_REGIONS, SEX_PET_THIRST_MULTIPLIER, WATER_ACTIVITY_NAMES,
     chatDictAttr, clampLevel, coarseLevel, drainHoursValue, drainedLevel, offlineFloorValue, sleepFactor,
 } from "@/system/pet/PetTypes";
+import { drawPetRings } from "@/system/pet/PetHud";
 import { BCP_ACTIVITY_PREFIX, CustomActivityRegistry } from "@/utils/CustomActivities";
 import { SendAction } from "@/utils/Messaging";
-import { getChatroomCharacter } from "@/utils/BCPlusCharacter";
 import { debug } from "@/system/Console";
 import type Authority from "@/modules/Authority";
 import type Roles from "@/modules/Roles";
@@ -123,14 +123,6 @@ export default class Pet extends ModuleInstance {
                 type: "checkbox",
                 name: "hudNumbers",
                 label: "Show exact percentages on the stat rings",
-                default: false,
-            },
-            {
-                type: "checkbox",
-                name: "hudOthers",
-                label: "Show other pets' stats under their characters",
-                hoverText: "Draws the stat rings under every BC+ pet in the room who shares "
-                    + "their stats.",
                 default: false,
             },
             {
@@ -717,91 +709,19 @@ export default class Pet extends ModuleInstance {
         });
     }
 
+    /**
+     * Own rings only - other pets' rings are drawn by Core from their
+     * broadcast mirror, so watching pets never requires this module.
+     */
     private drawHud(C: Character, CharX: number, CharY: number, Zoom: number): void {
-        let stats: { id: PetStatId; label: string; color: string }[];
-        let levels: Partial<Record<PetStatId, number>>;
-        if (C.IsPlayer()) {
-            if (!this.isPet() || this.getSetting<boolean>("hudSelf") === false) {
-                return;
-            }
-            stats = this.activeStats();
-            levels = this.currentLevels();
-        } else {
-            if (this.getSetting<boolean>("hudOthers") !== true || typeof C.MemberNumber !== "number") {
-                return;
-            }
-            const mirror = getChatroomCharacter(C.MemberNumber)?.BCPData?.["pet"]?.["levels"] as
-                Record<string, unknown> | undefined;
-            if (!mirror || typeof mirror !== "object") {
-                return;
-            }
-            levels = {};
-            stats = [];
-            for (const stat of PET_STATS) {
-                const value = mirror[stat.id];
-                if (typeof value === "number" && Number.isFinite(value)) {
-                    levels[stat.id] = clampLevel(value);
-                    stats.push(stat);
-                }
-            }
-        }
-        if (stats.length === 0) {
+        if (!C.IsPlayer() || !this.isPet() || this.getSetting<boolean>("hudSelf") === false) {
             return;
         }
-
-        const radius = 16 * Zoom;
-        const spacing = 40 * Zoom;
-        // MPA draws its rings at the same spot - sit slightly higher when it runs
-        const y = CharY + (this.mpaPresent ? 900 : 950) * Zoom;
-        const startX = CharX + 250 * Zoom - ((stats.length - 1) * spacing) / 2;
-        const showNumbers = this.getSetting<boolean>("hudNumbers") === true;
-
-        let hovered: { x: number; label: string; percent: number } | null = null;
-        stats.forEach((stat, i) => {
-            const x = startX + i * spacing;
-            const level = levels[stat.id] ?? 0;
-            this.drawStatRing(x, y, radius, level / 100, stat.color);
-            if (showNumbers) {
-                const prevAlign = MainCanvas.textAlign;
-                MainCanvas.textAlign = "center";
-                DrawTextFit(String(Math.round(level)), x, y, radius * 1.5, "White", "Black");
-                MainCanvas.textAlign = prevAlign;
-            }
-            if (MouseIn(x - radius, y - radius, radius * 2, radius * 2)) {
-                hovered = { x, label: stat.label, percent: Math.round(level) };
-            }
-        });
-
-        // Tooltip after all rings, so it overlays its neighbors
-        if (hovered !== null) {
-            const tip = hovered as { x: number; label: string; percent: number };
-            const prevAlign = MainCanvas.textAlign;
-            MainCanvas.textAlign = "center";
-            DrawRect(tip.x - 110, y - radius - 54, 220, 44, "rgba(0, 0, 0, 0.75)");
-            DrawTextFit(`${tip.label}: ${tip.percent}%`, tip.x, y - radius - 32, 210, "White");
-            MainCanvas.textAlign = prevAlign;
-        }
-    }
-
-    /** A ring outline with a pie fill for the current fraction, MPA-style. */
-    private drawStatRing(x: number, y: number, radius: number, fraction: number, color: string): void {
-        MainCanvas.save();
-        // Soft light halo so the saturated rings read on dark backdrops too
-        MainCanvas.beginPath();
-        MainCanvas.arc(x, y, radius, 0, Math.PI * 2);
-        MainCanvas.fillStyle = "rgba(255, 255, 255, 0.35)";
-        MainCanvas.fill();
-        MainCanvas.lineWidth = Math.max(1.5, radius / 8);
-        MainCanvas.strokeStyle = color;
-        MainCanvas.stroke();
-        if (fraction > 0) {
-            MainCanvas.beginPath();
-            MainCanvas.moveTo(x, y);
-            MainCanvas.arc(x, y, radius * 0.8, -Math.PI / 2, -Math.PI / 2 - Math.PI * 2 * Math.min(1, fraction), true);
-            MainCanvas.closePath();
-            MainCanvas.fillStyle = color;
-            MainCanvas.fill();
-        }
-        MainCanvas.restore();
+        const levels = this.currentLevels();
+        drawPetRings(
+            this.activeStats().map((stat) => ({ label: stat.label, color: stat.color, level: levels[stat.id] })),
+            CharX, CharY, Zoom,
+            { raise: this.mpaPresent, showNumbers: this.getSetting<boolean>("hudNumbers") === true },
+        );
     }
 }
