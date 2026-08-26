@@ -66,7 +66,10 @@ export default class ModuleManager {
         const authority = this.getModule<Authority>("authority");
         if (authority) {
             for (const module of active) {
-                authority.registerPermissions(module.Permissions);
+                authority.registerPermissions(module.Permissions.map((def) => ({
+                    ...def,
+                    module: module.Config.MenuString || module.Config.Name,
+                })));
             }
         }
 

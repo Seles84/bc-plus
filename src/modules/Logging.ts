@@ -85,14 +85,14 @@ export default class Logging extends ModuleInstance {
      */
     override get Settings(): AnySetting[] {
         return [
-            { type: "checkbox", name: "record.rule", label: "Record rule violations and blocked attempts", default: true },
-            { type: "checkbox", name: "record.curse", label: "Record curse events", default: true },
-            { type: "checkbox", name: "record.punishment", label: "Record punishments", default: true },
-            { type: "checkbox", name: "record.authority", label: "Record permission changes", default: true },
-            { type: "checkbox", name: "record.role", label: "Record role changes", default: true },
-            { type: "checkbox", name: "record.relationship", label: "Record relationship changes", default: true },
-            { type: "checkbox", name: "record.welding", label: "Record welding ceremonies and events", default: true },
-            { type: "checkbox", name: "record.other", label: "Record commands and other events", default: true },
+            { type: "checkbox", category: "What to record", name: "record.rule", label: "Record rule violations and blocked attempts", default: true },
+            { type: "checkbox", category: "What to record", name: "record.curse", label: "Record curse events", default: true },
+            { type: "checkbox", category: "What to record", name: "record.punishment", label: "Record punishments", default: true },
+            { type: "checkbox", category: "What to record", name: "record.authority", label: "Record permission changes", default: true },
+            { type: "checkbox", category: "What to record", name: "record.role", label: "Record role changes", default: true },
+            { type: "checkbox", category: "What to record", name: "record.relationship", label: "Record relationship changes", default: true },
+            { type: "checkbox", category: "What to record", name: "record.welding", label: "Record welding ceremonies and events", default: true },
+            { type: "checkbox", category: "What to record", name: "record.other", label: "Record commands and other events", default: true },
         ];
     }
 
