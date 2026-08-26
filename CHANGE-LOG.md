@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 - The main menu has its own icon set now: every module shows a matching flat lavender icon in BC+'s accent style, replacing the borrowed BC stock icons (Curses and Welding even shared the same padlock before). The icons ship inside the bundle, so they load instantly and work offline.
+- The General page is organized into sections now - General, Updates, Appearance, Hardcore mode and Modules - and the Pet settings into Being a pet, Needs & drain, Low-stat effects and Clicker & bells. Sections flow into two columns when the window is wide enough, so a maximized window no longer shows one endless single-file list.
 
 ## [0.11.0] - 2026-08-25
 

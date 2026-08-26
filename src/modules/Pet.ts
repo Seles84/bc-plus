@@ -126,6 +126,7 @@ export default class Pet extends ModuleInstance {
             {
                 type: "checkbox",
                 name: "bePet",
+                category: "Being a pet",
                 label: "Be a virtual pet (needs drain and can be filled)",
                 hoverText: "The master switch for your own needs. Off, your levels freeze and "
                     + "nothing drains or gains - useful when you only want to SEE other pets' "
@@ -136,6 +137,7 @@ export default class Pet extends ModuleInstance {
             {
                 type: "checkbox",
                 name: "hudSelf",
+                category: "Being a pet",
                 label: "Show your pet stats under your character",
                 hoverText: "Draws a small ring per need at your character's feet in chat rooms. "
                     + "Hover a ring for the exact value.",
@@ -144,12 +146,14 @@ export default class Pet extends ModuleInstance {
             {
                 type: "checkbox",
                 name: "hudNumbers",
+                category: "Being a pet",
                 label: "Show exact percentages on the stat rings",
                 default: false,
             },
             {
                 type: "checkbox",
                 name: "shareStats",
+                category: "Being a pet",
                 label: "Share your pet stats with the room",
                 hoverText: "Broadcasts your levels (rounded, a few times an hour) to BC+ users "
                     + "in the room so they can see your rings. Off, your stats stay entirely "
@@ -159,6 +163,7 @@ export default class Pet extends ModuleInstance {
             {
                 type: "checkbox",
                 name: "orgasmCost",
+                category: "Being a pet",
                 label: "Orgasms cost hydration and energy",
                 hoverText: "Climaxing takes a bite out of your water and sleep levels.",
                 default: true,
@@ -166,6 +171,7 @@ export default class Pet extends ModuleInstance {
             {
                 type: "checkbox",
                 name: "masochist",
+                category: "Being a pet",
                 label: "Masochist: rough treatment raises affection",
                 hoverText: "Spanks, slaps, bites and shocks gain affection instead of losing it.",
                 default: false,
@@ -173,6 +179,7 @@ export default class Pet extends ModuleInstance {
             {
                 type: "option",
                 name: "sexPet",
+                category: "Being a pet",
                 label: "Sex pet: oral play nourishes you",
                 hoverText: "Going down on someone feeds you a little - and if they finish "
                     + "shortly after, you drink deep. The mode sets how nourishing it is.",
@@ -183,6 +190,7 @@ export default class Pet extends ModuleInstance {
             ...PET_STATS.map((stat) => ({
                 type: "option" as const,
                 name: stat.drainSetting,
+                category: "Needs & drain",
                 label: `${stat.label} runs out after`,
                 hoverText: `How long a full ${stat.label.toLowerCase()} bar lasts before it `
                     + "reaches empty. \"Off\" removes the need entirely (its ring disappears).",
@@ -193,6 +201,7 @@ export default class Pet extends ModuleInstance {
             {
                 type: "option",
                 name: "offlineMode",
+                category: "Needs & drain",
                 label: "While logged out",
                 hoverText: "Whether your needs keep draining while you are not in the club. "
                     + "Draining is softened by the floor setting below.",
@@ -202,6 +211,7 @@ export default class Pet extends ModuleInstance {
             {
                 type: "option",
                 name: "offlineFloor",
+                category: "Needs & drain",
                 label: "Offline drain stops at",
                 hoverText: "Time spent logged out never pulls a stat below this level "
                     + "(a stat already below it just stays where it was).",
@@ -212,6 +222,7 @@ export default class Pet extends ModuleInstance {
             {
                 type: "checkbox",
                 name: "effects",
+                category: "Low-stat effects",
                 label: "Enable pet effects (low stats have consequences)",
                 hoverText: "The master switch for everything below: exhaustion darkens your "
                     + "vision and knocks you out, hunger dulls your hearing and slows your "
@@ -222,12 +233,14 @@ export default class Pet extends ModuleInstance {
             {
                 type: "checkbox",
                 name: "fxTint",
+                category: "Low-stat effects",
                 label: "Vision darkens as you get sleepy",
                 default: true,
             },
             {
                 type: "option",
                 name: "fxTintAt",
+                category: "Low-stat effects",
                 label: "Vision starts darkening below",
                 options: [...TINT_THRESHOLD_CHOICES],
                 default: "25%",
@@ -235,6 +248,7 @@ export default class Pet extends ModuleInstance {
             {
                 type: "checkbox",
                 name: "fxPassout",
+                category: "Low-stat effects",
                 label: "Pass out when exhausted",
                 hoverText: "Sleep hitting empty knocks you out: eyes forced closed, kneeling, "
                     + "unable to talk, walk or interact, deaf and mostly blind - chat comes out "
@@ -245,12 +259,14 @@ export default class Pet extends ModuleInstance {
             {
                 type: "checkbox",
                 name: "fxDeaf",
+                category: "Low-stat effects",
                 label: "Hearing fades when hungry",
                 default: true,
             },
             {
                 type: "option",
                 name: "fxDeafAt",
+                category: "Low-stat effects",
                 label: "Hearing starts fading below",
                 options: [...HUNGER_THRESHOLD_CHOICES],
                 default: "30%",
@@ -258,6 +274,7 @@ export default class Pet extends ModuleInstance {
             {
                 type: "checkbox",
                 name: "fxSlowLeave",
+                category: "Low-stat effects",
                 label: "Slow to leave the room when hungry",
                 hoverText: "A starving pet takes up to 25 extra seconds to leave a chat room "
                     + "and counts as slow (easy to catch).",
@@ -266,6 +283,7 @@ export default class Pet extends ModuleInstance {
             {
                 type: "option",
                 name: "fxSlowAt",
+                category: "Low-stat effects",
                 label: "Leaving slows below",
                 options: [...HUNGER_THRESHOLD_CHOICES],
                 default: "30%",
@@ -273,6 +291,7 @@ export default class Pet extends ModuleInstance {
             {
                 type: "checkbox",
                 name: "fxSkillBuffs",
+                category: "Low-stat effects",
                 label: "High affection buffs skills",
                 hoverText: "A well-loved pet gains up to +5 Self bondage and Willpower - but "
                     + "the pet-brain costs up to -5 Bondage, Evasion and Lockpicking (with "
@@ -282,6 +301,7 @@ export default class Pet extends ModuleInstance {
             {
                 type: "checkbox",
                 name: "fxSkillDebuffs",
+                category: "Low-stat effects",
                 label: "Low affection debuffs skills",
                 hoverText: "A neglected pet loses up to -5 Self bondage and Willpower; the "
                     + "sharpened survival instinct grants up to +5 Bondage, Evasion and "
@@ -291,6 +311,7 @@ export default class Pet extends ModuleInstance {
             {
                 type: "checkbox",
                 name: "fxHungryAffection",
+                category: "Low-stat effects",
                 label: "Hunger and thirst dampen affection gains",
                 hoverText: "Petting counts less on an empty stomach: affection gains scale "
                     + "with your food and water levels.",
@@ -299,6 +320,7 @@ export default class Pet extends ModuleInstance {
             {
                 type: "checkbox",
                 name: "fxThirst",
+                category: "Low-stat effects",
                 label: "Speech dries up when thirsty",
                 hoverText: "A parched throat cracks your words with pauses and stutters, "
                     + "getting worse as water approaches empty. OOC text is never touched.",
@@ -307,6 +329,7 @@ export default class Pet extends ModuleInstance {
             {
                 type: "option",
                 name: "fxThirstAt",
+                category: "Low-stat effects",
                 label: "Speech starts cracking below",
                 options: [...HUNGER_THRESHOLD_CHOICES],
                 default: "30%",
@@ -315,6 +338,7 @@ export default class Pet extends ModuleInstance {
             {
                 type: "checkbox",
                 name: "clicker",
+                category: "Clicker & bells",
                 label: "Clicker training: hear your trigger clicks",
                 hoverText: "When someone permitted to click-train you (Authority page) sends "
                     + "a message containing one of your trigger phrases, you hear a clicker "
@@ -325,6 +349,7 @@ export default class Pet extends ModuleInstance {
             {
                 type: "stringList",
                 name: "clickerTriggers",
+                category: "Clicker & bells",
                 label: "Clicker trigger phrases:",
                 default: ["*click*"],
                 maxChars: 32,
@@ -334,24 +359,28 @@ export default class Pet extends ModuleInstance {
             {
                 type: "checkbox",
                 name: "clickerEmotes",
+                category: "Clicker & bells",
                 label: "Emotes can trigger the clicker too",
                 default: true,
             },
             {
                 type: "checkbox",
                 name: "clickerSelf",
+                category: "Clicker & bells",
                 label: "Your own messages can click",
                 default: false,
             },
             {
                 type: "checkbox",
                 name: "clickerReward",
+                category: "Clicker & bells",
                 label: "A click gives a drop of affection",
                 default: true,
             },
             {
                 type: "option",
                 name: "bellJingle",
+                category: "Clicker & bells",
                 label: "Worn bells jingle on movement",
                 hoverText: "Moving on the map, changing pose or moving in an emote can set "
                     + "any worn bell items ringing (collar bells, nipple bells, ...). The "
