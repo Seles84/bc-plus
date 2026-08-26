@@ -1,3 +1,4 @@
+import menuIcon from "@/assets/icons/contracts.png";
 import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { ModuleConfig } from "@/system/module/ModuleTypes";
 import { BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
@@ -36,7 +37,7 @@ export default class Contracts extends ModuleInstance {
         Author: BCPLUS_AUTHOR,
         Description: "Rule bundles that take effect when the target countersigns",
         Active: true,
-        Icon: "Icons/Title.png",
+        Icon: menuIcon,
         HoverText: "A contract bundles rules with their settings and conditions, authored in "
             + "your own BC+ and offered to someone else - nothing applies until they review "
             + "and countersign it. Signed contracts bind the rules until the contract expires "

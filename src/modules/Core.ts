@@ -1,3 +1,4 @@
+import menuIcon from "@/assets/icons/core.png";
 import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { ModuleConfig, PermissionDefinition } from "@/system/module/ModuleTypes";
 import { BCPLUS_APP_NAME, BCPLUS_AUTHOR, BCPLUS_REPO, BCPLUS_VERSION, BCPLUS_VERSION_ENDPOINT, BCPLUS_WEBSITE } from "@/system/Constants";
@@ -50,7 +51,7 @@ export default class Core extends ModuleInstance {
         Author: BCPLUS_AUTHOR,
         Description: "BC+ core housekeeping",
         Active: true,
-        Icon: "Icons/General.png",
+        Icon: menuIcon,
         HoverText: "General BC+ settings: notifications and core behavior.",
         PublicData: false,
         Reference: "core",

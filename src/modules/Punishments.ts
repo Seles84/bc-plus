@@ -1,3 +1,4 @@
+import menuIcon from "@/assets/icons/punishments.png";
 import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { ModuleConfig, PermissionDefinition } from "@/system/module/ModuleTypes";
 import { BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
@@ -59,7 +60,7 @@ export default class Punishments extends ModuleInstance {
         Author: BCPLUS_AUTHOR,
         Description: "Automatic punishments for broken rules",
         Active: true,
-        Icon: "Icons/Struggle.png",
+        Icon: menuIcon,
         HoverText: "Punishments are applied automatically when rules with punishments "
             + "attached are broken: an item is forced on (and comes back if removed), or "
             + "another rule is forced active for a while. Define punishments here, then "

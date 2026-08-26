@@ -1,3 +1,4 @@
+import menuIcon from "@/assets/icons/authority.png";
 import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { ModuleConfig, PermissionDefinition } from "@/system/module/ModuleTypes";
 import { BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
@@ -43,7 +44,7 @@ export default class Authority extends ModuleInstance {
         Author: BCPLUS_AUTHOR,
         Description: "Who is allowed to do what",
         Active: true,
-        Icon: "Icons/Preference.png",
+        Icon: menuIcon,
         HoverText: "Each entry controls one BC+ permission: the lowest role allowed to use it on you, "
             + "and whether you may use it on yourself. Roles are ordered BC Owner > Co-Owner > Lover > "
             + "Mistress > Whitelist > Friend > Public. Ghosted and blacklisted members are always denied.",

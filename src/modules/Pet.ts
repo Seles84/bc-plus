@@ -1,3 +1,4 @@
+import menuIcon from "@/assets/icons/pet.png";
 import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { ModuleConfig, PermissionDefinition } from "@/system/module/ModuleTypes";
 import { BCPLUS_AUTHOR, BCPLUS_STORAGE, BCPLUS_VERSION } from "@/system/Constants";
@@ -74,7 +75,7 @@ export default class Pet extends ModuleInstance {
         Author: BCPLUS_AUTHOR,
         Description: "Virtual pet needs: food, water, sleep and affection",
         Active: true,
-        Icon: "Icons/Horse.png",
+        Icon: menuIcon,
         HoverText: "Become a virtual pet: food, water, sleep and affection drain over time and "
             + "show as stat rings under your character. Being fed and watered (food items, pet "
             + "bowls), petted and cuddled, and sleeping (eyes closed with a sleepy emoticon - "

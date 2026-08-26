@@ -1,3 +1,4 @@
+import menuIcon from "@/assets/icons/welding.png";
 import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { ModuleConfig } from "@/system/module/ModuleTypes";
 import { BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
@@ -75,7 +76,7 @@ export default class Welding extends ModuleInstance {
         Author: BCPLUS_AUTHOR,
         Description: "Weld your collar shut - permanently",
         Active: true,
-        Icon: "Icons/Lock.png",
+        Icon: menuIcon,
         HoverText: "Welding locks your BC ownership beyond change: vetted by your owner, you and "
             + "a witness, undone only by your owner releasing you. Read the page carefully "
             + "before starting - this is meant to be as close to permanent as BC+ can make it.",

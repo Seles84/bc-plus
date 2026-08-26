@@ -4,6 +4,11 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- The main menu has its own icon set now: every module shows a matching flat lavender icon in BC+'s accent style, replacing the borrowed BC stock icons (Curses and Welding even shared the same padlock before). The icons ship inside the bundle, so they load instantly and work offline.
+
 ## [0.11.0] - 2026-08-25
 
 The UI overhaul concludes: remote views moved into the new window, the classic canvas interface is fully retired, and the window gained proper dialogs and wide-screen layouts.

@@ -1,3 +1,4 @@
+import menuIcon from "@/assets/icons/rules.png";
 import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { ModuleConfig, PermissionDefinition } from "@/system/module/ModuleTypes";
 import { BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
@@ -41,7 +42,7 @@ export default class Rules extends ModuleInstance {
         Author: BCPLUS_AUTHOR,
         Description: "Restrictions on the player's behavior",
         Active: true,
-        Icon: "Icons/Rules.png",
+        Icon: menuIcon,
         HoverText: "Rules restrict what you can do in the club. Each rule can be enforced "
             + "(the action is blocked) and/or logged (violations are recorded).",
         PublicData: true,

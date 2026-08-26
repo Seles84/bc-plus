@@ -11,3 +11,9 @@ declare module "*.css" {
     const css: string;
     export default css;
 }
+
+/** Images are bundled as data URIs (esbuild "dataurl" loader). */
+declare module "*.png" {
+    const dataUri: string;
+    export default dataUri;
+}

@@ -1,3 +1,4 @@
+import menuIcon from "@/assets/icons/commands.png";
 import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { ModuleConfig, PermissionDefinition } from "@/system/module/ModuleTypes";
 import { BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
@@ -22,7 +23,7 @@ export default class Commands extends ModuleInstance {
         Author: BCPLUS_AUTHOR,
         Description: "One-shot orders for other BC+ users",
         Active: true,
-        Icon: "Icons/Activity.png",
+        Icon: menuIcon,
         HoverText: "Commands are instant orders: poses, expressions, forced speech, movement, "
             + "lines and arousal. Who may command you is controlled by the commands.use "
             + "permission - those people can also whisper \"!bcp <command>\" to you.",

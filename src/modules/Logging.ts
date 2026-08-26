@@ -1,3 +1,4 @@
+import menuIcon from "@/assets/icons/logging.png";
 import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { ModuleConfig, PermissionDefinition } from "@/system/module/ModuleTypes";
 import { BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
@@ -34,7 +35,7 @@ export default class Logging extends ModuleInstance {
         Author: BCPLUS_AUTHOR,
         Description: "Records rule violations, curse triggers and remote changes",
         Active: true,
-        Icon: "Icons/Notifications.png",
+        Icon: menuIcon,
         HoverText: "The behavior log records rule violations, blocked attempts, curse triggers and "
             + "changes made by others. Who may read or clear it is controlled in Authority - "
             + "including whether you may read your own.",

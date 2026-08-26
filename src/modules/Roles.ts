@@ -1,3 +1,4 @@
+import menuIcon from "@/assets/icons/roles.png";
 import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { ModuleConfig, PermissionDefinition } from "@/system/module/ModuleTypes";
 import { BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
@@ -43,7 +44,7 @@ export default class Roles extends ModuleInstance {
         Author: BCPLUS_AUTHOR,
         Description: "Assign BC+ roles to other players",
         Active: true,
-        Icon: "Icons/Security.png",
+        Icon: menuIcon,
         HoverText: "Manage who holds BC+ roles: BC Owner and Lover always follow your actual in-game "
             + "relationships and cannot be assigned. Co-Owner and Mistress are assigned on this screen. "
             + "Whitelist and Friend follow your BC lists directly.",
