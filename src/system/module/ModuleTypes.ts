@@ -10,6 +10,8 @@ export interface PermissionDefinition {
     defaultRole: Role;
     /** Whether the player may perform this on themselves by default */
     defaultSelf: boolean;
+    /** Display name of the owning module, stamped by the ModuleManager at registration */
+    module?: string;
 }
 
 /** Renders extra widgets at the bottom of a module's settings page (own view only). */

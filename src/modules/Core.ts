@@ -1,3 +1,4 @@
+import menuIcon from "@/assets/icons/core.png";
 import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { ModuleConfig, PermissionDefinition } from "@/system/module/ModuleTypes";
 import { BCPLUS_APP_NAME, BCPLUS_AUTHOR, BCPLUS_REPO, BCPLUS_VERSION, BCPLUS_VERSION_ENDPOINT, BCPLUS_WEBSITE } from "@/system/Constants";
@@ -50,7 +51,7 @@ export default class Core extends ModuleInstance {
         Author: BCPLUS_AUTHOR,
         Description: "BC+ core housekeeping",
         Active: true,
-        Icon: "Icons/General.png",
+        Icon: menuIcon,
         HoverText: "General BC+ settings: notifications and core behavior.",
         PublicData: false,
         Reference: "core",
@@ -86,6 +87,7 @@ export default class Core extends ModuleInstance {
             {
                 type: "option",
                 name: "preset",
+                category: "General",
                 label: "Play preset",
                 hoverText: "Dominant: BC+ rules, curses and logging never apply to you and permissions start closed. "
                     + "Switch/Submissive: everything available with sensible permission defaults. "
@@ -99,6 +101,7 @@ export default class Core extends ModuleInstance {
             {
                 type: "checkbox",
                 name: "updateChecks",
+                category: "Updates",
                 label: "Check for updates online",
                 hoverText: "Fetches the BC+ release manifest at login and on the re-check interval "
                     + "below. The request carries only the BC+ version you are running - no member "
@@ -109,6 +112,7 @@ export default class Core extends ModuleInstance {
             {
                 type: "checkbox",
                 name: "updateNotify",
+                category: "Updates",
                 label: "Notify me in-club about BC+ updates",
                 hoverText: "Shows [BC+] chat messages once after BC+ updated and once per session "
                     + "when a newer version is available (a corner beep when you are not in a "
@@ -118,6 +122,7 @@ export default class Core extends ModuleInstance {
             {
                 type: "option",
                 name: "updateCheckInterval",
+                category: "Updates",
                 label: "Re-check for updates every",
                 hoverText: "How often BC+ re-reads the release manifest while you stay logged "
                     + "in, so long sessions still hear about new versions. \"Login only\" checks "
@@ -129,6 +134,7 @@ export default class Core extends ModuleInstance {
             {
                 type: "checkbox",
                 name: "modalMode",
+                category: "Appearance",
                 label: "Open BC+ as a floating window",
                 hoverText: "Checked, the BC+ window opens small and draggable on top of the club "
                     + "- you can keep reading and using chat while configuring. Unchecked, it "
@@ -139,6 +145,7 @@ export default class Core extends ModuleInstance {
             {
                 type: "option",
                 name: "uiTheme",
+                category: "Appearance",
                 label: "BC+ window theme",
                 hoverText: "Color scheme of the BC+ window when the Themed mod is not "
                     + "running - with Themed installed, its palette is used automatically.",
@@ -149,6 +156,7 @@ export default class Core extends ModuleInstance {
             {
                 type: "checkbox",
                 name: "roomIcons",
+                category: "Appearance",
                 label: "Show the BC+ icon above BC+ users in the room",
                 hoverText: "Draws the BC+ logo next to BC's status icons above every character "
                     + "running BC+ (including you). Hovering it shows their BC+ version; a grayed "
@@ -158,6 +166,7 @@ export default class Core extends ModuleInstance {
             {
                 type: "checkbox",
                 name: "petStatsOthers",
+                category: "Appearance",
                 label: "Show pet stats under pets who share them",
                 hoverText: "Draws the stat rings of every BC+ virtual pet in the room who "
                     + "broadcasts their levels (hover a ring for the exact value). Works "
@@ -167,6 +176,7 @@ export default class Core extends ModuleInstance {
             {
                 type: "checkbox",
                 name: "hardcoreSelf",
+                category: "Hardcore mode",
                 label: "Hardcore: block access to my BC+ while I am bound",
                 hoverText: "While your hands are bound, your own BC+ menus and /bcp commands "
                     + "refuse to open - no reconfiguring your way out of a scene. Others' remote "
@@ -178,6 +188,7 @@ export default class Core extends ModuleInstance {
             {
                 type: "checkbox",
                 name: "hardcoreOthers",
+                category: "Hardcore mode",
                 label: "Hardcore: block bound people from using my BC+",
                 hoverText: "Anyone whose hands are bound is refused when they try to change "
                     + "anything in your BC+ (rules, curses, punishments, roles, commands, ...) - "
@@ -190,6 +201,7 @@ export default class Core extends ModuleInstance {
             ...(this.bcxInstalled() ? [{
                 type: "checkbox" as const,
                 name: "tandemDefer",
+                category: "General",
                 label: "Defer to BCX in tandem mode",
                 hoverText: "When BCX's version of a BC+ rule is in effect, the BC+ rule pauses "
                     + "so both mods never police the same thing twice. BC+ curses also yield "
@@ -205,6 +217,7 @@ export default class Core extends ModuleInstance {
         return this.ModuleManager.Modules.filter((m) => m.CanDisable).map((m) => ({
             type: "checkbox" as const,
             name: `module.${m.Slug}`,
+            category: "Modules",
             label: `${m.Config.MenuString || m.Config.Name} module enabled`,
             default: m.DefaultEnabled,
             active: () => this.canManageModules(),

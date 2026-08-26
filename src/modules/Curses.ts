@@ -1,3 +1,4 @@
+import menuIcon from "@/assets/icons/curses.png";
 import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { ModuleConfig, PermissionDefinition } from "@/system/module/ModuleTypes";
 import { BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
@@ -59,7 +60,7 @@ export default class Curses extends ModuleInstance {
         Author: BCPLUS_AUTHOR,
         Description: "Curse item slots so only permitted items can be worn",
         Active: true,
-        Icon: "Icons/Lock.png",
+        Icon: menuIcon,
         HoverText: "A cursed slot only accepts its allowed items. Each allowed item has its own "
             + "rules: strict items restore their exact captured state (color, type, crafting), "
             + "loose items just have to be the same item. A slot cursed while empty stays empty. "

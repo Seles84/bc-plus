@@ -7,6 +7,12 @@ interface SettingBase {
     hoverText?: string;
     /** Whether the setting is currently editable (default: always) */
     active?: () => boolean;
+    /**
+     * Section this setting belongs to on the module's settings page. Settings
+     * sharing a category render under one header; modules without categories
+     * keep the plain single list.
+     */
+    category?: string;
 }
 
 export interface CheckboxSetting extends SettingBase {

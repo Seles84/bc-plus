@@ -19,6 +19,28 @@ const remote = props.member !== undefined;
 
 const settings = computed(() => module?.Settings ?? []);
 
+/**
+ * Settings grouped by their declared category (first-appearance order,
+ * untagged settings leading). A module without categories renders the
+ * classic single list.
+ */
+const groups = computed(() => {
+    const byTitle = new Map<string, AnySetting[]>();
+    for (const setting of settings.value) {
+        const title = setting.category ?? "";
+        const list = byTitle.get(title);
+        if (list) {
+            list.push(setting);
+        } else {
+            byTitle.set(title, [setting]);
+        }
+    }
+    const result = [...byTitle.entries()].map(([title, items]) => ({ title, items }));
+    result.sort((a, b) => (a.title === "" ? -1 : b.title === "" ? 1 : 0));
+    return result;
+});
+const grouped = computed(() => groups.value.some((g) => g.title !== ""));
+
 onMounted(() => {
     // Private modules' settings are not in the public mirror - ask the
     // target for a fresh view (the response bumps the version)
@@ -121,16 +143,38 @@ function factoryReset(): void {
 </script>
 
 <template>
-    <div v-if="module" class="mx-auto flex max-w-3xl flex-col gap-1">
-        <SettingRow
-            v-for="setting in settings"
-            :key="setting.name"
-            :setting="setting"
-            :value="value(setting)"
-            :disabled="!isActive(setting)"
-            @update="set(setting, $event)"
-            @pick-members="pickMembers(setting)"
-        />
+    <div v-if="module" :class="grouped ? '@container mx-auto flex max-w-6xl flex-col gap-1' : 'mx-auto flex max-w-3xl flex-col gap-1'">
+        <!-- Categorized modules: section cards flowing into columns as the window grows -->
+        <div v-if="grouped" class="gap-5 @3xl:columns-2">
+            <section
+                v-for="group in groups"
+                :key="group.title"
+                class="mb-5 break-inside-avoid rounded-lg p-2"
+                style="border: 1px solid var(--bcp-border);"
+            >
+                <h3 v-if="group.title" class="px-3 pb-1 pt-1 font-semibold text-accent">{{ group.title }}</h3>
+                <SettingRow
+                    v-for="setting in group.items"
+                    :key="setting.name"
+                    :setting="setting"
+                    :value="value(setting)"
+                    :disabled="!isActive(setting)"
+                    @update="set(setting, $event)"
+                    @pick-members="pickMembers(setting)"
+                />
+            </section>
+        </div>
+        <template v-else>
+            <SettingRow
+                v-for="setting in settings"
+                :key="setting.name"
+                :setting="setting"
+                :value="value(setting)"
+                :disabled="!isActive(setting)"
+                @update="set(setting, $event)"
+                @pick-members="pickMembers(setting)"
+            />
+        </template>
 
         <div v-if="isPetModule" class="mt-3 flex justify-start px-3">
             <button

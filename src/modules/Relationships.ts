@@ -1,3 +1,4 @@
+import menuIcon from "@/assets/icons/relationships.png";
 import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { ModuleConfig, PermissionDefinition } from "@/system/module/ModuleTypes";
 import { BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
@@ -47,7 +48,7 @@ export default class Relationships extends ModuleInstance {
         Author: BCPLUS_AUTHOR,
         Description: "Custom names for other people, optionally enforced in chat",
         Active: true,
-        Icon: "Icons/FriendList.png",
+        Icon: menuIcon,
         HoverText: "Give people custom names: the player sees that name instead of the real one "
             + "in the chat room, and enforced entries also block the player from using the "
             + "person's real name in chat or whispers.",

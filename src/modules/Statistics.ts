@@ -1,3 +1,4 @@
+import menuIcon from "@/assets/icons/statistics.png";
 import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { ModuleConfig, PermissionDefinition } from "@/system/module/ModuleTypes";
 import { BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
@@ -51,7 +52,7 @@ export default class Statistics extends ModuleInstance {
         Author: BCPLUS_AUTHOR,
         Description: "Tracks time spent bound, items worn, rule violations and more",
         Active: true,
-        Icon: "Icons/Wait.png",
+        Icon: menuIcon,
         HoverText: "BC+ counts how your play time is spent - restrained, gagged, welded, in which "
             + "items - plus rule violations, punishments and other events. Who may view or reset "
             + "the numbers is controlled in Authority.",
