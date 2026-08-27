@@ -112,7 +112,42 @@ export default class Statistics extends ModuleInstance {
         return authority?.hasPermission(Player.MemberNumber ?? -1, "stats.reset") ?? false;
     }
 
-    /** The current numbers with all pending time folded in. */
+    /**
+     * Like snapshot(), but read-only: pending time is folded into the RESULT
+     * without writing Data. The UI reads through this on every reactivity
+     * bump - snapshot()'s flush there turned unrelated sync events into
+     * server saves while the page was open.
+     */
+    peekSnapshot(): StatsSnapshot {
+        const states = jsonClone(this.Data.states as Record<string, number>);
+        for (const [id, ms] of this.pendingStates) {
+            states[id] = (states[id] ?? 0) + ms;
+        }
+        const items = jsonClone(this.Data.items as Record<string, number>);
+        for (const [name, ms] of this.pendingItems) {
+            if (items[name] !== undefined || Object.keys(items).length < ITEM_TIME_MAX_KEYS) {
+                items[name] = (items[name] ?? 0) + ms;
+            }
+        }
+        const rules = jsonClone(this.Data.rules as Record<string, number>);
+        for (const [id, count] of this.pendingRules) {
+            rules[id] = (rules[id] ?? 0) + count;
+        }
+        const counters = jsonClone(this.Data.counters as Record<string, number>);
+        for (const [id, count] of this.pendingCounters) {
+            counters[id] = (counters[id] ?? 0) + count;
+        }
+        return {
+            since: typeof this.Data.since === "number" ? this.Data.since : 0,
+            play: (typeof this.Data.play === "number" ? this.Data.play : 0) + this.pendingPlay,
+            states,
+            items,
+            rules,
+            counters,
+        };
+    }
+
+    /** The current numbers with all pending time folded in (flushes to storage first). */
     snapshot(): StatsSnapshot {
         this.flush();
         return {

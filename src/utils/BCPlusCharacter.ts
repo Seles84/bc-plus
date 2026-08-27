@@ -75,24 +75,30 @@ export class BCPlusPlayerCharacter extends BCPlusCharacter {
     }
 }
 
-const currentRoomCharacters: BCPlusCharacter[] = [];
-
 /**
- * Evicts wrappers for members no longer in the room, and re-points surviving
- * wrappers at BC's current Character objects (BC recreates them on syncs -
- * matching by object identity would constantly lose BC+ state).
+ * One wrapper per member for the whole session: open screens and access
+ * layers capture wrapper references, so a leave/rejoin/relog must land
+ * fresh sync data on the SAME instance they hold - evicting on departure
+ * orphaned every open remote view against a frozen mirror.
+ * getChatroomCharacter still returns null while the member is absent (the
+ * departed-target guards rely on that); the wrapper is simply reused, and
+ * re-pointed at BC's fresh Character object, when they come back.
  */
-function cleanOldCharacters(): void {
-    for (let i = currentRoomCharacters.length - 1; i >= 0; i--) {
-        const wrapper = currentRoomCharacters[i]!;
-        if (wrapper.isPlayer()) {
-            continue;
+const knownCharacters = new Map<number, BCPlusCharacter>();
+const KNOWN_CHARACTERS_MAX = 150;
+let playerWrapper: BCPlusPlayerCharacter | null = null;
+
+/** Bounds the cache: absent members only, oldest-known first. */
+function trimKnownCharacters(): void {
+    if (knownCharacters.size <= KNOWN_CHARACTERS_MAX) {
+        return;
+    }
+    for (const [member, wrapper] of knownCharacters) {
+        if (knownCharacters.size <= KNOWN_CHARACTERS_MAX) {
+            return;
         }
-        const fresh = ChatRoomCharacter.find((c) => c.MemberNumber === wrapper.Character.MemberNumber);
-        if (!fresh) {
-            currentRoomCharacters.splice(i, 1);
-        } else if (fresh !== wrapper.Character) {
-            wrapper.updateCharacter(fresh);
+        if (!wrapper.isPlayer() && !ChatRoomCharacter.some((c) => c.MemberNumber === member)) {
+            knownCharacters.delete(member);
         }
     }
 }
@@ -101,21 +107,23 @@ export function getChatroomCharacter(memberNumber: number): BCPlusCharacter | nu
     if (typeof memberNumber !== "number") {
         return null;
     }
-    cleanOldCharacters();
-    let character = currentRoomCharacters.find((c) => c.Character.MemberNumber === memberNumber);
-    if (!character) {
-        if (Player.MemberNumber === memberNumber) {
-            character = new BCPlusPlayerCharacter(Player);
-        } else {
-            const bcCharacter = ChatRoomCharacter.find((c) => c.MemberNumber === memberNumber);
-            if (!bcCharacter) {
-                return null;
-            }
-            character = new BCPlusCharacter(bcCharacter);
-        }
-        currentRoomCharacters.push(character);
+    if (Player.MemberNumber === memberNumber) {
+        return getPlayerCharacter();
     }
-    return character;
+    const bcCharacter = ChatRoomCharacter.find((c) => c.MemberNumber === memberNumber);
+    if (!bcCharacter) {
+        return null;
+    }
+    let wrapper = knownCharacters.get(memberNumber);
+    if (!wrapper) {
+        wrapper = new BCPlusCharacter(bcCharacter);
+        knownCharacters.set(memberNumber, wrapper);
+        trimKnownCharacters();
+    } else if (wrapper.Character !== bcCharacter) {
+        // BC recreates Character objects on syncs; keep BC+ state attached
+        wrapper.updateCharacter(bcCharacter);
+    }
+    return wrapper;
 }
 
 export function getAllCharactersInRoom(): BCPlusCharacter[] {
@@ -128,10 +136,6 @@ export function getAllCharactersInRoom(): BCPlusCharacter[] {
 }
 
 export function getPlayerCharacter(): BCPlusPlayerCharacter {
-    let character = currentRoomCharacters.find((c) => c.Character === Player) as BCPlusPlayerCharacter | undefined;
-    if (!character) {
-        character = new BCPlusPlayerCharacter(Player);
-        currentRoomCharacters.push(character);
-    }
-    return character;
+    playerWrapper ??= new BCPlusPlayerCharacter(Player);
+    return playerWrapper;
 }

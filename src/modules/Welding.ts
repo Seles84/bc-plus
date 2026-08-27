@@ -420,7 +420,7 @@ export default class Welding extends ModuleInstance {
             name: String(this.Data.weldOwnerName ?? "Welding"),
         };
         for (const id of this.lockedRuleIds()) {
-            if (!rules.ruleState(id).active) {
+            if (!rules.peekRuleState(id).active) {
                 rules.setRuleActive(id, true, by);
             }
             rules.setRuleEnforce(id, true);

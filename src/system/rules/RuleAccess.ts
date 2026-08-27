@@ -58,7 +58,7 @@ export class LocalRuleAccess implements RuleAccess {
     }
 
     state(id: string): RuleStateData {
-        return this.rules.ruleState(id);
+        return this.rules.peekRuleState(id);
     }
 
     order(): string[] {

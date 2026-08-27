@@ -94,7 +94,9 @@ export default class DataSync extends ModuleInstance {
             if (!module.Config.PublicData || !module.Config.Active) {
                 continue;
             }
-            const snapshot = JSON.stringify(jsonClone(module.Data));
+            // Stringifying the proxied data directly is equivalent for change
+            // detection - the jsonClone here was a full extra parse+stringify
+            const snapshot = JSON.stringify(module.Data);
             if (this.lastBroadcast.get(module.Slug) !== snapshot) {
                 this.lastBroadcast.set(module.Slug, snapshot);
                 this.categorySync(module);

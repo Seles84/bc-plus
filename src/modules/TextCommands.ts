@@ -78,7 +78,7 @@ export default class TextCommands extends ModuleInstance {
                     return;
                 }
                 const lines = rules.Definitions.map((definition) => {
-                    const state = rules.ruleState(definition.id);
+                    const state = rules.peekRuleState(definition.id);
                     const status = state.active
                         ? `active${state.enforce ? ", enforced" : ""}${state.log ? ", logged" : ""}`
                         : "inactive";

@@ -48,17 +48,21 @@ export default class StorageManager {
      * Returns a module's data slice, creating it from `defaults` when absent.
      * Saved values win over defaults; new default keys are added.
      */
+    /** Slugs whose defaults were already merged into this save file - the merge is a one-time migration, not a per-access cost. */
+    private readonly mergedDefaults = new Set<string>();
+
     getModuleData(slug: string, defaults: Record<string, unknown> = {}): Record<string, unknown> {
         const modules = this.Data.modules;
         if (modules[slug] === undefined) {
             modules[slug] = { ...defaults };
-        } else {
+        } else if (!this.mergedDefaults.has(slug)) {
             for (const [key, value] of Object.entries(defaults)) {
                 if (!(key in modules[slug])) {
                     modules[slug][key] = value;
                 }
             }
         }
+        this.mergedDefaults.add(slug);
         return modules[slug];
     }
 
@@ -169,12 +173,17 @@ export default class StorageManager {
         if (!this.saveFile) {
             throw new Error("Save file not loaded");
         }
-        const data = this.serialize(this.saveFile);
+        const json = JSON.stringify(this.saveFile);
+        const data = LZString.compressToBase64(json);
+        if (!data) {
+            throw new Error("Failed to serialize save file");
+        }
 
-        // Round-trip sanity check before overwriting good data
-        const reparsed = this.deserialize(data);
-        if (JSON.stringify(reparsed) !== JSON.stringify(this.saveFile)) {
-            err("Save file round-trip mismatch, refusing to save", { reparsed, saveFile: this.saveFile });
+        // Round-trip sanity check before overwriting good data: comparing
+        // the decompressed string against the source JSON gives the same
+        // guarantee as reparsing, without a parse and two more stringifies
+        if (LZString.decompressFromBase64(data) !== json) {
+            err("Save file round-trip mismatch, refusing to save");
             throw new Error("Save file round-trip mismatch");
         }
         if (data.includes(":")) {
@@ -273,14 +282,6 @@ export default class StorageManager {
         }
     }
 
-    private serialize(data: SaveFile): string {
-        const compressed = LZString.compressToBase64(JSON.stringify(data));
-        if (!compressed) {
-            throw new Error("Failed to serialize save file");
-        }
-        return compressed;
-    }
-
     private deserialize(data: string): SaveFile {
         const json = LZString.decompressFromBase64(data);
         if (!json) {
@@ -346,6 +347,8 @@ export default class StorageManager {
     }
 
     private setSaveFile(data: SaveFile): void {
+        // A replaced save file (load, backup restore, reset) re-earns its merges
+        this.mergedDefaults.clear();
         this.saveFile = data;
         this.proxiedSaveFile = this.makeAutoSyncProxy(this.saveFile);
     }

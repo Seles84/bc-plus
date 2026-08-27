@@ -19,7 +19,7 @@ const character = bcpCharacter(props.member);
 // Never fall back to local access for a departed remote target
 const dead = computed(() => {
     version.value;
-    return props.member !== undefined && bcpCharacter(props.member) === null;
+    return props.member !== undefined && (character === null || bcpCharacter(props.member) === null);
 });
 const access = character
     ? new RemotePunishmentAccess(core.ModuleManager.getModule<Authority>("authority"), character)

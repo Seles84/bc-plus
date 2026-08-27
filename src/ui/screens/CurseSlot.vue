@@ -21,7 +21,7 @@ const character = bcpCharacter(props.member);
 // names are universal, so the editor would open the viewer's own curse.
 const dead = computed(() => {
     version.value;
-    return props.member !== undefined && bcpCharacter(props.member) === null;
+    return props.member !== undefined && (character === null || bcpCharacter(props.member) === null);
 });
 const access = character
     ? new RemoteCurseAccess(curses, core.ModuleManager.getModule<Authority>("authority"), character)

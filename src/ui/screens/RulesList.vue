@@ -21,7 +21,7 @@ const character = bcpCharacter(props.member);
 /** Remote target left the room before this screen opened. */
 const dead = computed(() => {
     version.value;
-    return !local && bcpCharacter(props.member) === null;
+    return !local && (character === null || bcpCharacter(props.member) === null);
 });
 const access = character
     ? new RemoteRuleAccess(rules, core.ModuleManager.getModule<Authority>("authority"), character)

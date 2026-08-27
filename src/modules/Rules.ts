@@ -90,7 +90,7 @@ export default class Rules extends ModuleInstance {
 
     /** The conditions that actually gate this rule: its own, or the shared global set. */
     effectiveConditions(id: string): ConditionData | undefined {
-        const state = this.ruleState(id);
+        const state = this.peekRuleState(id);
         return state.useGlobal === true ? this.GlobalConditions : state.conditions;
     }
 
@@ -141,24 +141,46 @@ export default class Rules extends ModuleInstance {
         return this.registry.get(id);
     }
 
-    /** The rule's persisted state, created from defaults on first access. */
-    ruleState(id: string): RuleStateData {
+    /** Ids whose stored state had new-version defaults merged in already (one-time migration, not a per-call cost). */
+    private readonly migratedRules = new Set<string>();
+
+    /**
+     * The rule's state WITHOUT persisting anything: an untouched rule gets a
+     * transient default object. Reads go through here - Rules is public
+     * data, so materializing all ~85 defaults into storage bloated every
+     * save and room-wide sync message.
+     */
+    peekRuleState(id: string): RuleStateData {
         const definition = this.registry.get(id);
         if (!definition) {
             throw new Error(`Unknown rule: ${id}`);
         }
         const store = this.Data.rules as Record<string, RuleStateData>;
-        if (store[id] === undefined) {
-            store[id] = defaultRuleState(definition);
-        } else {
+        const existing = store[id];
+        if (existing === undefined) {
+            return defaultRuleState(definition);
+        }
+        if (!this.migratedRules.has(id)) {
+            this.migratedRules.add(id);
             // New settings/fields added by updates get their defaults merged in
-            store[id].announce ??= true;
+            existing.announce ??= true;
             const defaults = defaultRuleState(definition).settings;
             for (const [key, value] of Object.entries(defaults)) {
-                if (!(key in store[id].settings)) {
-                    store[id].settings[key] = value;
+                if (!(key in existing.settings)) {
+                    existing.settings[key] = value;
                 }
             }
+        }
+        return existing;
+    }
+
+    /** The rule's persisted state, created from defaults on first access (mutation paths only - readers use peekRuleState). */
+    ruleState(id: string): RuleStateData {
+        const state = this.peekRuleState(id);
+        const store = this.Data.rules as Record<string, RuleStateData>;
+        if (store[id] === undefined) {
+            store[id] = state;
+            this.migratedRules.add(id);
         }
         return store[id];
     }
@@ -310,7 +332,7 @@ export default class Rules extends ModuleInstance {
             }
         } else {
             for (const id of this.registry.keys()) {
-                if (this.ruleState(id).active) {
+                if (this.peekRuleState(id).active) {
                     this.installRule(id);
                 }
             }
@@ -356,7 +378,7 @@ export default class Rules extends ModuleInstance {
         if (this.isRulePunishmentForced(id)) {
             return true;
         }
-        const state = this.ruleState(id);
+        const state = this.peekRuleState(id);
         // Weld-locked rules apply unconditionally: no conditions, no BCX
         // deferral - the lock must not be escapable through either
         if (this.isRuleWeldLocked(id)) {
@@ -479,9 +501,20 @@ export default class Rules extends ModuleInstance {
     }
 
     override Load(): void {
+        // One-time slim-down: stored records identical to the rule's defaults
+        // carry no information - older builds mass-materialized all ~85 of
+        // them, bloating every save and room-wide sync message
+        const store = this.Data.rules as Record<string, RuleStateData>;
+        for (const [id, state] of Object.entries(store)) {
+            const definition = this.registry.get(id);
+            if (definition && JSON.stringify(state) === JSON.stringify(defaultRuleState(definition))) {
+                delete store[id];
+            }
+        }
+
         if (this.Preset !== "Dominant") {
             for (const id of this.registry.keys()) {
-                if (this.ruleState(id).active) {
+                if (this.peekRuleState(id).active) {
                     this.installRule(id);
                 }
             }
@@ -490,7 +523,7 @@ export default class Rules extends ModuleInstance {
         // Timer expiry: an expired rule deactivates itself
         this.timerCheck = setInterval(() => {
             for (const id of this.registry.keys()) {
-                const state = this.ruleState(id);
+                const state = this.peekRuleState(id);
                 // Rules following the global set have no live timer (it is
                 // stripped from global conditions); a stale timer in their
                 // dormant custom conditions must not expire them
@@ -586,7 +619,7 @@ export default class Rules extends ModuleInstance {
     }
 
     private buildContext(definition: RuleDefinition): RuleContext {
-        const state = (): RuleStateData => this.ruleState(definition.id);
+        const state = (): RuleStateData => this.peekRuleState(definition.id);
         return {
             hook: (functionName, priority, hook) => {
                 this.SDK.addHook(this.hookOwner(definition.id), functionName, priority, hook);
@@ -649,7 +682,7 @@ export default class Rules extends ModuleInstance {
 
     /** Announces a breach to the room as an action message, when the rule wants it. */
     private announceBreach(definition: RuleDefinition, type: "trigger" | "triggerAttempt"): void {
-        if (!this.ruleState(definition.id).announce || !ServerPlayerIsInChatRoom()) {
+        if (!this.peekRuleState(definition.id).announce || !ServerPlayerIsInChatRoom()) {
             return;
         }
         const template = type === "triggerAttempt"

@@ -216,7 +216,7 @@ export default class Punishments extends ModuleInstance {
         // Strip the id from every rule attachment so lists stay clean
         const rules = this.ModuleManager.getModule<Rules>("rules");
         for (const definition of rules?.Definitions ?? []) {
-            const punish = rules!.ruleState(definition.id).punish;
+            const punish = rules!.peekRuleState(definition.id).punish;
             if (punish?.punishments.includes(id)) {
                 rules!.setRulePunish(definition.id, {
                     ...punish,
@@ -275,7 +275,7 @@ export default class Punishments extends ModuleInstance {
         if (!rules?.getDefinition(rule)) {
             return;
         }
-        const punish = rules.ruleState(rule).punish;
+        const punish = rules.peekRuleState(rule).punish;
         if (!punish || punish.punishments.length === 0) {
             return;
         }
@@ -379,7 +379,7 @@ export default class Punishments extends ModuleInstance {
                 active.priorActive = existing.priorActive;
                 active.priorEnforce = existing.priorEnforce;
             } else {
-                const state = rules.ruleState(definition.rule);
+                const state = rules.peekRuleState(definition.rule);
                 active.priorActive = state.active;
                 active.priorEnforce = state.enforce;
             }

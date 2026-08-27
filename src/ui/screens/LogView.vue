@@ -16,7 +16,10 @@ const logging = core.ModuleManager.getModule<Logging>("logging")!;
 const authority = core.ModuleManager.getModule<Authority>("authority");
 const local = props.member === undefined;
 const character = bcpCharacter(props.member);
-const dead = !local && character === null;
+const dead = computed(() => {
+    version.value;
+    return !local && (character === null || bcpCharacter(props.member) === null);
+});
 
 onMounted(() => {
     if (!character) {
