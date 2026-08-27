@@ -5,6 +5,7 @@ import tokensCss from "@/ui/tokens.css";
 import tailwindCss from "@/ui/generated/tailwind.css";
 import { BCPLUS_KEY, NAV_KEY, Navigator, WINDOW_KEY } from "@/ui/nav";
 import { handleModalEscape } from "@/ui/modal-escape";
+import { modalOpen } from "@/gui/Modal";
 import { BCPLUS_STORAGE } from "@/system/Constants";
 import { debug } from "@/system/Console";
 import type { BCPlus } from "@/index";
@@ -37,6 +38,7 @@ export class UIWindow {
     private resizeObserver: ResizeObserver | null = null;
     private persistTimer: ReturnType<typeof setTimeout> | null = null;
     private restoreRect: WindowRect | null = null;
+    private escListener: ((event: KeyboardEvent) => void) | null = null;
 
     /** Reactive for the Vue chrome. */
     readonly minimized = ref(false);
@@ -97,12 +99,24 @@ export class UIWindow {
         const containedEvents = ["keydown", "keyup", "keypress", "pointerdown", "mousedown", "mouseup", "click", "wheel", "touchstart"] as const;
         for (const type of containedEvents) {
             host.addEventListener(type, (event) => {
-                if (type === "keydown" && (event as KeyboardEvent).key === "Escape") {
-                    this.escapePressed();
-                }
                 event.stopPropagation();
             });
         }
+
+        // Esc works from ANYWHERE while the window is open, not only when
+        // focus already sits inside it: back one screen, close from the
+        // main menu. Document capture so it runs before BC's own handlers;
+        // BC+ DOM dialogs keep their own Esc handling, and a minimized
+        // window leaves the key to BC.
+        this.escListener = (event: KeyboardEvent): void => {
+            if (event.key !== "Escape" || this.minimized.value || modalOpen()) {
+                return;
+            }
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            this.escapePressed();
+        };
+        document.addEventListener("keydown", this.escListener, true);
 
         document.body.appendChild(host);
         this.host = host;
@@ -156,6 +170,10 @@ export class UIWindow {
             return;
         }
         this.persistNow();
+        if (this.escListener) {
+            document.removeEventListener("keydown", this.escListener, true);
+            this.escListener = null;
+        }
         this.resizeObserver?.disconnect();
         this.resizeObserver = null;
         if (this.persistTimer !== null) {

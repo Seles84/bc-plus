@@ -20,6 +20,12 @@ interface ModalResult {
 }
 
 let queue: Promise<unknown> = Promise.resolve();
+let openModals = 0;
+
+/** Whether a BC+ DOM dialog is on screen (its own Esc/Enter handling wins then). */
+export function modalOpen(): boolean {
+    return openModals > 0;
+}
 
 function buildModal(options: ModalOptions, resolve: (result: ModalResult) => void): void {
     const overlay = document.createElement("div");
@@ -61,6 +67,7 @@ function buildModal(options: ModalOptions, resolve: (result: ModalResult) => voi
     row.style.cssText = "display:flex;gap:10px;justify-content:flex-end;";
 
     const finish = (button: string): void => {
+        openModals--;
         document.removeEventListener("keydown", onKey, true);
         overlay.remove();
         resolve({ button, value: input?.value ?? "" });
@@ -98,6 +105,7 @@ function buildModal(options: ModalOptions, resolve: (result: ModalResult) => voi
 
     overlay.appendChild(card);
     document.body.appendChild(overlay);
+    openModals++;
     (input ?? card).focus();
     input?.select();
 }

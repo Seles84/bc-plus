@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+- Escape now works from anywhere while the BC+ window is open - it goes back one screen (like the back button) and closes the window from the main menu. Previously the key only registered after clicking inside the window first. A minimized window leaves Escape to BC.
+
 ### Fixed
 - A corrupt save now offers restoring the intact backup kept on this device before anything destructive - previously the only choice was a full reset, which also deleted that backup. Restoring a backup no longer strands your data in this browser either: it flows back to the BC server, so the save keeps roaming across devices.
 - A mistyped password no longer kills BC+ for the whole session - it now waits through failed login attempts and boots on the successful one.
