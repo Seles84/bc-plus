@@ -31,7 +31,10 @@ const roles = core.ModuleManager.getModule<Roles>("roles")!;
 const authority = core.ModuleManager.getModule<Authority>("authority");
 const local = props.member === undefined;
 const character = bcpCharacter(props.member);
-const dead = !local && character === null;
+const dead = computed(() => {
+    version.value;
+    return !local && (character === null || bcpCharacter(props.member) === null);
+});
 
 const canAssign = computed(() => {
     version.value;

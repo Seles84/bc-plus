@@ -12,7 +12,10 @@ const { version, touch, core } = useBcpVersion();
 const statistics = core.ModuleManager.getModule<Statistics>("statistics")!;
 const local = props.member === undefined;
 const character = bcpCharacter(props.member);
-const dead = !local && character === null;
+const dead = computed(() => {
+    version.value;
+    return !local && (character === null || bcpCharacter(props.member) === null);
+});
 
 onMounted(() => {
     if (!character) {
@@ -49,7 +52,9 @@ const canReset = computed(() => {
 const stats = computed(() => {
     version.value;
     if (local) {
-        return canView.value ? statistics.snapshot() : null;
+        // peek, not snapshot: a computed must not flush-to-Data (that made
+        // every sync event trigger a server save while this page was open)
+        return canView.value ? statistics.peekSnapshot() : null;
     }
     const fetched = remoteState.value;
     return typeof fetched === "object" && fetched !== null ? fetched : null;

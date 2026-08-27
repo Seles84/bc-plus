@@ -295,7 +295,7 @@ export function scanBCXMigration(rules: Rules, curses: Curses | undefined, api: 
             // Review: BCX carries configuration but the BC+ side would run on
             // defaults (untranslated), and the rule actually has settings
             review: settings === null && customData !== undefined && (definition.settings?.length ?? 0) > 0,
-            alreadyActive: rules.ruleState(bcpId).active,
+            alreadyActive: rules.peekRuleState(bcpId).active,
             locked: rules.isRuleWeldLocked(bcpId) || rules.isRuleContractBound(bcpId)
                 || rules.isRulePunishmentForced(bcpId),
         });

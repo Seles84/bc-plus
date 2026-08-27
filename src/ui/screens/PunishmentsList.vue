@@ -25,7 +25,7 @@ const local = props.member === undefined;
 const character = bcpCharacter(props.member);
 const dead = computed(() => {
     version.value;
-    return !local && bcpCharacter(props.member) === null;
+    return !local && (character === null || bcpCharacter(props.member) === null);
 });
 const access = character
     ? new RemotePunishmentAccess(core.ModuleManager.getModule<Authority>("authority"), character)

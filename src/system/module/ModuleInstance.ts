@@ -86,6 +86,13 @@ export abstract class ModuleInstance {
         return settingDefaults(this.Settings);
     }
 
+    /**
+     * Defaults are static after boot, but the getters rebuild the whole
+     * Settings declaration on every evaluation - and Data is read from
+     * per-frame draw hooks, so the memo matters.
+     */
+    private cachedDefaults: Record<string, unknown> | null = null;
+
     getSetting<T>(name: string): T {
         return this.Data[name] as T;
     }
@@ -99,7 +106,8 @@ export abstract class ModuleInstance {
      * Available from Init() onwards (storage loads before modules).
      */
     get Data(): Record<string, unknown> {
-        return this.core.Storage.getModuleData(this.Slug, this.Defaults);
+        this.cachedDefaults ??= this.Defaults;
+        return this.core.Storage.getModuleData(this.Slug, this.cachedDefaults);
     }
 
     get Config(): ModuleConfig {

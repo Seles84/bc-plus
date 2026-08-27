@@ -10,7 +10,10 @@ const { version, touch, core } = useBcpVersion();
 const commands = core.ModuleManager.getModule<Commands>("commands")!;
 const local = props.member === undefined;
 const character = bcpCharacter(props.member);
-const dead = !local && character === null;
+const dead = computed(() => {
+    version.value;
+    return !local && (character === null || bcpCharacter(props.member) === null);
+});
 
 const canUse = computed(() => {
     version.value;

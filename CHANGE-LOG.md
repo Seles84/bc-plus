@@ -25,6 +25,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Closing the BC+ window with unsent remote rule changes now asks whether to send, discard or stay - previously the changes looked applied but were silently left unsent.
 - Malformed module data inside a crafted save is dropped at load instead of breaking every subsequent login with console errors only.
 
+## [Unreleased]
+
+### Fixed
+- Remote views survive the target leaving and coming back (or relogging): the screen picks them up again live instead of freezing on stale data forever. Previously a rejoin silently orphaned every open view - it showed your edits as applied but never received their client's answers again. All remote pages now also show "They are no longer in this room" the moment the person leaves.
+
+### Changed
+- Performance: module settings are no longer rebuilt from scratch on every read - this ran hundreds of times per second on the drawing path (room icons, pet rings) and is now cached.
+- Performance: untouched rules no longer store ~85 default records in your synced data. New saves stay slim, existing saves are slimmed on load - room-join sync messages shrink by roughly 10-20KB.
+- Performance: viewing your own Statistics page no longer triggers a server save on every sync event; saving itself does less redundant re-serialization work.
+
 ## [0.11.1] - 2026-08-27
 
 Custom menu icons, sectioned settings pages, and a security hardening pass across the remote command surface.

@@ -39,7 +39,7 @@ const character = props.access ? null : bcpCharacter(props.member);
 // silently apply to the viewer's own rules.
 const dead = computed(() => {
     version.value;
-    return props.access === undefined && props.member !== undefined && bcpCharacter(props.member) === null;
+    return props.access === undefined && props.member !== undefined && (character === null || bcpCharacter(props.member) === null);
 });
 const access = props.access
     ?? (character

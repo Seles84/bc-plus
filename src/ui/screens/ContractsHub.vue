@@ -19,7 +19,10 @@ const { version, touch, core } = useBcpVersion();
 const contracts = core.ModuleManager.getModule<Contracts>("contracts")!;
 const local = props.member === undefined;
 const character = bcpCharacter(props.member);
-const dead = !local && character === null;
+const dead = computed(() => {
+    version.value;
+    return !local && (character === null || bcpCharacter(props.member) === null);
+});
 
 onMounted(() => {
     if (character) {

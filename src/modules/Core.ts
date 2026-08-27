@@ -300,7 +300,7 @@ export default class Core extends ModuleInstance {
             return false;
         }
         try {
-            return rules.ruleState(HARDCORE_RULE).enforce && rules.ruleInEffect(HARDCORE_RULE);
+            return rules.peekRuleState(HARDCORE_RULE).enforce && rules.ruleInEffect(HARDCORE_RULE);
         } catch {
             return false;
         }

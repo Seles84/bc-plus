@@ -14,7 +14,10 @@ const { version, touch, core } = useBcpVersion();
 const relationships = core.ModuleManager.getModule<Relationships>("relationships")!;
 const local = props.member === undefined;
 const character = bcpCharacter(props.member);
-const dead = !local && character === null;
+const dead = computed(() => {
+    version.value;
+    return !local && (character === null || bcpCharacter(props.member) === null);
+});
 
 onMounted(() => {
     if (!character) {
