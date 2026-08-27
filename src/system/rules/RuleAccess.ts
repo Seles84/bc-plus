@@ -145,6 +145,22 @@ interface PendingRuleEdit {
  */
 const pendingRuleEdits = new Map<number, PendingRuleEdit[]>();
 
+/** Queued-but-unsent remote rule edit counts per member (window close guard). */
+export function pendingRuleEditCounts(): Map<number, number> {
+    const counts = new Map<number, number>();
+    for (const [member, edits] of pendingRuleEdits) {
+        if (edits.length > 0) {
+            counts.set(member, edits.length);
+        }
+    }
+    return counts;
+}
+
+/** Drops a member's queued remote rule edits without sending them. */
+export function discardPendingRuleEdits(member: number): void {
+    pendingRuleEdits.delete(member);
+}
+
 /** Applies one queued edit onto a rule state (shared by the read overlay and the optimistic save). */
 function applyEditToState(state: RuleStateData, edit: PendingRuleEdit): void {
     switch (edit.action) {

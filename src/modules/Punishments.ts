@@ -370,10 +370,19 @@ export default class Punishments extends ModuleInstance {
             if (!definition.rule || !rules?.getDefinition(definition.rule)) {
                 return false;
             }
-            const state = rules.ruleState(definition.rule);
             active.forcedRule = definition.rule;
-            active.priorActive = state.active;
-            active.priorEnforce = state.enforce;
+            // Another punishment may already force this rule - its snapshot
+            // holds the TRUE pre-punishment state; the rule's current state
+            // is the forced one and must not be captured as "prior"
+            const existing = Object.values(this.Active).find((a) => a.forcedRule === definition.rule);
+            if (existing) {
+                active.priorActive = existing.priorActive;
+                active.priorEnforce = existing.priorEnforce;
+            } else {
+                const state = rules.ruleState(definition.rule);
+                active.priorActive = state.active;
+                active.priorEnforce = state.enforce;
+            }
             rules.setRuleActive(definition.rule, true, { member: Player.MemberNumber ?? -1, name: byName ?? "Punishment" });
             rules.setRuleEnforce(definition.rule, true);
         }
@@ -423,7 +432,11 @@ export default class Punishments extends ModuleInstance {
 
         if (active.forcedRule) {
             const rules = this.ModuleManager.getModule<Rules>("rules");
-            if (rules?.getDefinition(active.forcedRule)) {
+            // Another active punishment may still force the same rule - the
+            // restore then belongs to whichever ends last (they share the
+            // true prior snapshot), and attempting it now would only bounce
+            // off the force guards with a spurious notification
+            if (!this.isRuleForced(active.forcedRule) && rules?.getDefinition(active.forcedRule)) {
                 rules.setRuleEnforce(active.forcedRule, active.priorEnforce !== false);
                 rules.setRuleActive(active.forcedRule, active.priorActive === true);
             }
@@ -502,9 +515,26 @@ export default class Punishments extends ModuleInstance {
         }
     }
 
+    /** The active item punishment that owns a slot: the most recently started one. */
+    private groupOwner(group: string): ActivePunishment | null {
+        let owner: ActivePunishment | null = null;
+        for (const a of Object.values(this.Active)) {
+            if (a.kind === "item" && a.group === group && (!owner || a.startedAt > owner.startedAt)) {
+                owner = a;
+            }
+        }
+        return owner;
+    }
+
     /** Keeps the punishment item on: re-applies (asset-level check) if missing. */
     private enforceItem(active: ActivePunishment): void {
         if (!active.group || !active.item) {
+            return;
+        }
+        // Two item punishments on the same slot would swap items every tick
+        // (two server pushes per 1.5s) - only the slot's owner enforces; the
+        // others resume if it ends first
+        if (this.groupOwner(active.group)?.punishment !== active.punishment) {
             return;
         }
         const id = active.punishment;

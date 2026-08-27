@@ -1,4 +1,5 @@
 import { RuleDefinition } from "@/system/rules/RuleTypes";
+import { sendAsRule } from "@/rules/speechUtils";
 
 /** Automatically says the configured greeting when entering a room. */
 export const GreetRoom: RuleDefinition = {
@@ -21,7 +22,7 @@ export const GreetRoom: RuleDefinition = {
                 setTimeout(() => {
                     const greeting = ctx.setting<string>("greeting").trim();
                     if (ctx.isEnforced() && greeting.length > 0) {
-                        ServerSend("ChatRoomChat", { Content: greeting, Type: "Chat" });
+                        sendAsRule(() => ServerSend("ChatRoomChat", { Content: greeting, Type: "Chat" }));
                     }
                 }, 1500);
             });

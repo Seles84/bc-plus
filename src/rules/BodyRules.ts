@@ -8,6 +8,23 @@ const ALL_POSE_NAMES: readonly string[] = [
     "Hogtied", "AllFours", "Suspension", "TapedHands",
 ];
 
+let poseOverrideDepth = 0;
+
+/**
+ * Runs a BC+ pose correction with the pose-block clamps bypassed: the
+ * forcing rules (ForceKneeling/ForcedPosition/ForcedAfk) must not be
+ * silenced by BC+'s own ForbidPoseChanges/ForbiddenPoses clamps - those
+ * police the PLAYER's changes, not corrections other rules make.
+ */
+export function withPoseOverride<T>(fn: () => T): T {
+    poseOverrideDepth++;
+    try {
+        return fn();
+    } finally {
+        poseOverrideDepth--;
+    }
+}
+
 type PoseClickStatus = (C: Character, pose: Pose) => string | null;
 
 /** Registers a status callback on the self pose menu; removed when the rule deactivates. */
@@ -53,7 +70,7 @@ function poseBlockRule(
             ctx.hook("PoseCanChangeUnaidedStatus", 0, (args, next) => {
                 const status = next(args) as PoseChangeStatus;
                 const [C, poseName] = args as unknown as [Character, string];
-                if (ctx.isEnforced() && C?.IsPlayer() && applies(ctx, poseName)) {
+                if (poseOverrideDepth === 0 && ctx.isEnforced() && C?.IsPlayer() && applies(ctx, poseName)) {
                     return Math.min(status, PoseChangeStatus.NEVER_WITHOUT_AID) as PoseChangeStatus;
                 }
                 return status;
@@ -143,11 +160,19 @@ export const ForceKneeling: RuleDefinition = {
                 return;
             }
             // Only correct what the player could correct themselves - a pose
-            // held by restraints/items is not theirs to change (or ours)
-            if (!PoseCanChangeUnaided(Player, "Kneel")) {
+            // held by restraints/items is not theirs to change (or ours).
+            // Own pose-block clamps are bypassed: they police the player,
+            // not this rule's corrections.
+            const corrected = withPoseOverride(() => {
+                if (!PoseCanChangeUnaided(Player, "Kneel")) {
+                    return false;
+                }
+                PoseSetActive(Player, "Kneel", true);
+                return true;
+            });
+            if (!corrected) {
                 return;
             }
-            PoseSetActive(Player, "Kneel", true);
             if (ServerPlayerIsInChatRoom()) {
                 ChatRoomCharacterUpdate(Player);
             }
@@ -289,12 +314,18 @@ export const ForcedPosition: RuleDefinition = {
                     continue;
                 }
                 // Only correct what the player could correct themselves - a
-                // pose held by restraints/items is not theirs to change (or ours)
-                if (!PoseCanChangeUnaided(Player, pose)) {
-                    continue;
+                // pose held by restraints/items is not theirs to change (or
+                // ours). Own pose-block clamps are bypassed for the check.
+                const done = withPoseOverride(() => {
+                    if (!PoseCanChangeUnaided(Player, pose)) {
+                        return false;
+                    }
+                    PoseSetActive(Player, pose, true);
+                    return true;
+                });
+                if (done) {
+                    corrected = true;
                 }
-                PoseSetActive(Player, pose, true);
-                corrected = true;
             }
             if (corrected) {
                 if (ServerPlayerIsInChatRoom()) {

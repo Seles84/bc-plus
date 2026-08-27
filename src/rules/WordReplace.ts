@@ -39,7 +39,9 @@ export const WordReplace: RuleDefinition = {
             data.Content = transformSpoken(data.Content, (text) => {
                 let result = text;
                 for (const [word, replacement] of replacements) {
-                    result = result.replace(new RegExp(`(^|\\W)${escapeRegExp(word)}($|\\W)`, "gi"), `$1${replacement}$2`);
+                    // Trailing boundary as a lookahead: consuming it would
+                    // skip every other occurrence in runs like "i i i"
+                    result = result.replace(new RegExp(`(^|\\W)${escapeRegExp(word)}(?=$|\\W)`, "gi"), `$1${replacement}`);
                 }
                 return result;
             });

@@ -4,7 +4,10 @@ import { Role } from "@/system/Roles";
 import { BCPLUS_AUTHOR, BCPLUS_SHORT_NAME, BCPLUS_VERSION } from "@/system/Constants";
 import { UIWindow } from "@/ui/Shell";
 import { BCPlusCharacter, getChatroomCharacter } from "@/utils/BCPlusCharacter";
-import { BCPNotifyPlayer } from "@/utils/Messaging";
+import { BCPNotifyPlayer, MemberNumberToName } from "@/utils/Messaging";
+import { RemoteRuleAccess, discardPendingRuleEdits, pendingRuleEditCounts } from "@/system/rules/RuleAccess";
+import { modalChoice } from "@/gui/Modal";
+import type Rules from "@/modules/Rules";
 import { debug } from "@/system/Console";
 import type Authority from "@/modules/Authority";
 import type Core from "@/modules/Core";
@@ -45,8 +48,38 @@ export class GUI extends ModuleInstance {
 
     /** Opens (or focuses) the BC+ window - own BC+, or another member's. */
     openWindow(member?: number): void {
-        this.uiWindow ??= new UIWindow(this.Core);
+        if (!this.uiWindow) {
+            this.uiWindow = new UIWindow(this.Core);
+            this.uiWindow.closeGuard = () => this.confirmPendingRuleEdits();
+        }
         this.uiWindow.open(member);
+    }
+
+    /**
+     * Window close guard: unsent batched rule edits would otherwise vanish
+     * into the queue with the dom believing they took effect (the UI shows
+     * them applied optimistically).
+     */
+    private async confirmPendingRuleEdits(): Promise<boolean> {
+        for (const [member, count] of pendingRuleEditCounts()) {
+            const name = MemberNumberToName(member);
+            const character = getChatroomCharacter(member);
+            const choice = await modalChoice(
+                `You have ${count} unsent rule change${count === 1 ? "" : "s"} for ${name} (#${member}).`
+                + `${character ? "" : "\nThey are no longer in this room, so the changes cannot be sent."}`,
+                character ? ["Send", "Discard", "Stay"] : ["Discard", "Stay"],
+            );
+            if (choice === "Stay") {
+                return false;
+            }
+            const rules = this.ModuleManager.getModule<Rules>("rules");
+            if (choice === "Send" && character && rules) {
+                new RemoteRuleAccess(rules, this.ModuleManager.getModule<Authority>("authority"), character).save();
+            } else {
+                discardPendingRuleEdits(member);
+            }
+        }
+        return true;
     }
 
     /** Opens the own main menu, for /bcp menu. False when hardcore blocks it. */
