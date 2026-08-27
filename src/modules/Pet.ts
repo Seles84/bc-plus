@@ -443,10 +443,13 @@ export default class Pet extends ModuleInstance {
     }
 
     /**
-     * The coarse public view of this pet for room broadcast: rounded levels of
-     * the active needs plus the declared settings (so remote settings mirrors
-     * stay complete when this category replaces them). A minimal record while
-     * not a pet or not sharing, so viewers drop stale rings.
+     * The coarse public view of this pet for room broadcast: ONLY the rounded
+     * levels of the active needs plus the sharing flag. The full settings
+     * (sexPet, masochist, clicker triggers, ...) are private and reach a
+     * viewer solely through the pet.edit-gated SettingsRequest path - the
+     * mirror merges this category instead of replacing it, and ring display
+     * is gated on the shareStats flag, so a false tombstone hides stale
+     * levels without wiping a permitted editor's settings view.
      */
     publicPetData(): Record<string, unknown> {
         if (!this.isPet() || this.getSetting<boolean>("shareStats") === false) {
@@ -457,8 +460,7 @@ export default class Pet extends ModuleInstance {
         for (const stat of this.activeStats()) {
             levels[stat.id] = coarseLevel(current[stat.id]);
         }
-        const values = Object.fromEntries(this.Settings.map((s) => [s.name, this.getSetting(s.name)]));
-        return { ...values, levels };
+        return { shareStats: true, levels };
     }
 
     override Load(): void {

@@ -17,6 +17,7 @@ import { Role, RoleNames } from "@/system/Roles";
 import type Authority from "@/modules/Authority";
 import type Welding from "@/modules/Welding";
 import type Rules from "@/modules/Rules";
+import type Contracts from "@/modules/Contracts";
 import type { GUI as GUIModule } from "@/modules/GUI";
 
 export type BCPPreset = "Dominant" | "Switch" | "Submissive" | "Slave";
@@ -233,9 +234,9 @@ export default class Core extends ModuleInstance {
 
     /** Whether the player has this feature module switched on. */
     isModuleEnabled(slug: string): boolean {
-        // A welded collar keeps the Rules module on - switching it off would
-        // silently disarm the weld-locked rules
-        if (slug === "rules" && this.isWelded()) {
+        // A welded collar or a signed contract keeps the Rules module on -
+        // switching it off would silently disarm the locked/bound rules
+        if (slug === "rules" && this.rulesModuleLocked() !== null) {
             return true;
         }
         return this.getSetting<boolean>(`module.${slug}`) !== false;
@@ -245,16 +246,28 @@ export default class Core extends ModuleInstance {
         return this.ModuleManager.getModule<Welding>("welding")?.isWelded() ?? false;
     }
 
+    /** Why the Rules module cannot be switched off right now, or null when it can. */
+    private rulesModuleLocked(): string | null {
+        if (this.isWelded()) {
+            return "your collar is welded";
+        }
+        if (this.ModuleManager.getModule<Contracts>("contracts")?.hasBoundRules() === true) {
+            return "a signed contract binds your rules";
+        }
+        return null;
+    }
+
     /** Live-applies a toggle: unload stops the module's hooks/listeners immediately. */
     private applyModuleEnabled(slug: string, enabled: boolean): void {
         const module = this.ModuleManager.getModule(slug);
         if (!module?.CanDisable) {
             return;
         }
-        if (slug === "rules" && !enabled && this.isWelded()) {
+        const rulesLock = slug === "rules" && !enabled ? this.rulesModuleLocked() : null;
+        if (rulesLock !== null) {
             // Snap the checkbox back too - the stored setting must match
             this.setSetting("module.rules", true);
-            BCPNotifyPlayer("The Rules module stays on while your collar is welded.");
+            BCPNotifyPlayer(`The Rules module stays on while ${rulesLock}.`);
             return;
         }
         module.Config.Active = enabled;

@@ -215,7 +215,19 @@ export default class DataSync extends ModuleInstance {
             this.settingSync(true, character.MemberNumber);
             return;
         }
-        character.BCPData[content.category] = (content.value ?? {}) as Record<string, unknown>;
+        if (content.category === "pet") {
+            // Synthetic pet category MERGES: a pet.edit-gated SettingsResponse
+            // may have put the full settings into this mirror slot, and the
+            // coarse level broadcast must not wipe them. Stale levels after a
+            // shareStats:false tombstone stay hidden - ring display is gated
+            // on that flag.
+            character.BCPData[content.category] = {
+                ...character.BCPData[content.category],
+                ...(content.value ?? {}) as Record<string, unknown>,
+            };
+        } else {
+            character.BCPData[content.category] = (content.value ?? {}) as Record<string, unknown>;
+        }
         this.Events.emit("characterSyncReceived", { memberNumber: character.MemberNumber });
     }
 

@@ -15,7 +15,13 @@ const character = bcpCharacter(props.member);
 const dead = !local && character === null;
 
 onMounted(() => {
-    if (character && statistics.getRemoteStats(character.MemberNumber) === undefined) {
+    if (!character) {
+        return;
+    }
+    const cached = statistics.getRemoteStats(character.MemberNumber);
+    // Denials and timeouts are retried on open - permissions may have
+    // changed since (a cached denial otherwise sticks for the session)
+    if (cached === undefined || cached === "denied" || cached === "timeout") {
         statistics.requestStats(character.MemberNumber);
     }
 });
@@ -95,12 +101,18 @@ function refresh(): void {
     <div v-else class="flex h-full flex-col gap-3">
         <p v-if="local && !canView" class="px-2 text-fg-dim">You are not permitted to view your own statistics.</p>
         <p v-else-if="remoteState === 'pending'" class="px-2 text-fg-dim">Requesting statistics...</p>
-        <p v-else-if="remoteState === 'denied'" class="px-2 text-fg-dim">
-            {{ character!.Nickname }} does not permit you to view their statistics.
-        </p>
-        <p v-else-if="remoteState === 'timeout'" class="px-2 text-fg-dim">
-            No response - they may be busy, disconnected, or running an older BC+.
-        </p>
+        <div v-else-if="remoteState === 'denied' || remoteState === 'timeout'" class="flex flex-wrap items-center gap-3 px-2">
+            <p class="text-fg-dim">
+                {{ remoteState === 'denied'
+                    ? `${character!.Nickname} does not permit you to view their statistics.`
+                    : "No response - they may be busy, disconnected, or running an older BC+." }}
+            </p>
+            <button
+                class="rounded-lg bg-surface px-3 py-1.5 hover:bg-surface-hover"
+                style="border: 1px solid var(--bcp-border);"
+                @click="refresh()"
+            >Try again</button>
+        </div>
         <template v-else-if="stats">
             <div class="flex flex-wrap items-center gap-3 px-2 text-sm text-fg-dim">
                 <span>Recording since {{ stats.since > 0 ? new Date(stats.since).toLocaleDateString() : "-" }}</span>

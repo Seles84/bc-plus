@@ -20,6 +20,8 @@ export interface RelationshipEntry {
 }
 
 export const NICKNAME_MAX = 20;
+/** Cap on total entries - each lives in the auto-synced save. */
+export const MAX_ENTRIES = 200;
 
 /** Same constraints BC applies to its own nicknames. */
 export function isValidCustomName(nickname: string): boolean {
@@ -100,9 +102,16 @@ export default class Relationships extends ModuleInstance {
         return this.Entries[memberNumber.toString()]?.nickname ?? null;
     }
 
-    /** Creates or updates an entry; returns false when the nickname is invalid. */
+    /** Creates or updates an entry; returns false when the nickname is invalid or the list is full. */
     setEntry(memberNumber: number, nickname: string, enforce: boolean): boolean {
         if (!Number.isInteger(memberNumber) || memberNumber < 0 || !isValidCustomName(nickname)) {
+            return false;
+        }
+        // Entries live in the auto-synced save - cap growth (updates to an
+        // existing member always pass). Covers UI, import codes and remote
+        // RelationshipCommand alike.
+        if (this.Entries[memberNumber.toString()] === undefined
+            && Object.keys(this.Entries).length >= MAX_ENTRIES) {
             return false;
         }
         this.Entries[memberNumber.toString()] = { nickname, enforce };

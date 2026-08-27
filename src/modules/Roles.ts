@@ -239,9 +239,37 @@ export default class Roles extends ModuleInstance {
                 reject("no permission");
                 return;
             }
+            // Rank ceiling: holding roles.assign/revoke (possibly via a
+            // lowered threshold or custom grant) must not let a requester
+            // manage a role above their own standing - otherwise assigning
+            // themselves or a confederate bootstraps Co-Owner authority.
+            if (role === "owners" || role === "mistresses") {
+                const granted = role === "owners" ? Role.Owner : Role.Mistress;
+                if (this.highestRole(senderNumber) > granted) {
+                    reject("that role is above your own standing");
+                    return;
+                }
+            } else {
+                // A custom role may only be managed by someone who already
+                // holds every permission it grants (scoped grants included)
+                const lacking = (this.getCustomRole(role)?.grants ?? []).find((grant) => {
+                    const separator = grant.indexOf(":");
+                    const perm = separator === -1 ? grant : grant.slice(0, separator);
+                    const scope = separator === -1 ? undefined : grant.slice(separator + 1);
+                    return !authority.hasPermission(senderNumber, perm, scope);
+                });
+                if (lacking !== undefined) {
+                    reject("that role grants permissions you do not hold yourself");
+                    return;
+                }
+            }
             if (action === "assign") {
                 if (member === Player.MemberNumber) {
                     reject("cannot assign you to your own roles");
+                    return;
+                }
+                if (member === senderNumber) {
+                    reject("you cannot assign yourself to a role");
                     return;
                 }
                 if (list.includes(member)) {

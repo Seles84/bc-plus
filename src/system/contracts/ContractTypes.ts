@@ -66,6 +66,39 @@ export const MAX_DRAFTS = 20;
 /** 30 days */
 export const MAX_DURATION_MIN = 43_200;
 
+const MAX_SPEC_SETTINGS = 32;
+const MAX_SETTING_STRING = 1000;
+const MAX_SETTING_LIST = 100;
+
+/**
+ * Rule settings are only ever booleans, strings, numbers, member lists or
+ * string lists. Anything else in an untrusted payload is dropped, and sizes
+ * are capped - a signed contract persists into the signer's auto-synced
+ * save, so a crafted offer must not be able to smuggle a large blob in.
+ */
+function sanitizeSpecSettings(raw: Record<string, unknown>): Record<string, unknown> {
+    const settings: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(raw)) {
+        if (Object.keys(settings).length >= MAX_SPEC_SETTINGS) {
+            break;
+        }
+        if (key.length > 60) {
+            continue;
+        }
+        if (typeof value === "boolean" || (typeof value === "number" && Number.isFinite(value))) {
+            settings[key] = value;
+        } else if (typeof value === "string") {
+            settings[key] = value.slice(0, MAX_SETTING_STRING);
+        } else if (Array.isArray(value)) {
+            settings[key] = value
+                .slice(0, MAX_SETTING_LIST)
+                .filter((v) => typeof v === "string" || (typeof v === "number" && Number.isInteger(v)))
+                .map((v) => (typeof v === "string" ? v.slice(0, 200) : v));
+        }
+    }
+    return settings;
+}
+
 function sanitizeSpec(raw: unknown): ContractRuleSpec | null {
     if (typeof raw !== "object" || raw === null) {
         return null;
@@ -79,7 +112,7 @@ function sanitizeSpec(raw: unknown): ContractRuleSpec | null {
         enforce: spec.enforce !== false,
         log: spec.log !== false,
         announce: spec.announce !== false,
-        settings: spec.settings as Record<string, unknown>,
+        settings: sanitizeSpecSettings(spec.settings as Record<string, unknown>),
     };
     if (typeof spec.useGlobal === "boolean") {
         result.useGlobal = spec.useGlobal;
