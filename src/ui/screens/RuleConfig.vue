@@ -37,7 +37,10 @@ const character = props.access ? null : bcpCharacter(props.member);
 // A remote target that no longer resolves must NEVER fall back to local
 // access - rule ids are identical on every client, so the edits would
 // silently apply to the viewer's own rules.
-const dead = props.access === undefined && props.member !== undefined && character === null;
+const dead = computed(() => {
+    version.value;
+    return props.access === undefined && props.member !== undefined && bcpCharacter(props.member) === null;
+});
 const access = props.access
     ?? (character
         ? new RemoteRuleAccess(rules, core.ModuleManager.getModule<Authority>("authority"), character)

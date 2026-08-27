@@ -16,7 +16,10 @@ const { version, core } = useBcpVersion();
 const rules = core.ModuleManager.getModule<Rules>("rules")!;
 const character = bcpCharacter(props.member);
 // Never fall back to local access for a departed remote target
-const dead = props.member !== undefined && character === null;
+const dead = computed(() => {
+    version.value;
+    return props.member !== undefined && bcpCharacter(props.member) === null;
+});
 const access = character
     ? new RemoteRuleAccess(rules, core.ModuleManager.getModule<Authority>("authority"), character)
     : new LocalRuleAccess(rules);

@@ -25,6 +25,8 @@ export function useBcpVersion(): { version: ReturnType<typeof ref<number>>; touc
     onMounted(() => {
         unsubscribers.push(core.Events.on("saveSynced", touch));
         unsubscribers.push(core.Events.on("characterSyncReceived", () => touch()));
+        // Remote views re-resolve their target when the room roster changes
+        unsubscribers.push(core.Events.on("roomMembersChanged", () => touch()));
         // Remote request-response flows (log/stats/relationships fetches)
         unsubscribers.push(core.Events.on("logReceived", () => touch()));
         unsubscribers.push(core.Events.on("statsReceived", () => touch()));

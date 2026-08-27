@@ -17,7 +17,10 @@ const { version, touch, core } = useBcpVersion();
 const punishments = core.ModuleManager.getModule<Punishments>("punishments")!;
 const character = bcpCharacter(props.member);
 // Never fall back to local access for a departed remote target
-const dead = props.member !== undefined && character === null;
+const dead = computed(() => {
+    version.value;
+    return props.member !== undefined && bcpCharacter(props.member) === null;
+});
 const access = character
     ? new RemotePunishmentAccess(core.ModuleManager.getModule<Authority>("authority"), character)
     : new LocalPunishmentAccess(punishments);

@@ -19,7 +19,10 @@ const curses = core.ModuleManager.getModule<Curses>("curses")!;
 const character = bcpCharacter(props.member);
 // A departed remote target must NEVER fall back to local access - group
 // names are universal, so the editor would open the viewer's own curse.
-const dead = props.member !== undefined && character === null;
+const dead = computed(() => {
+    version.value;
+    return props.member !== undefined && bcpCharacter(props.member) === null;
+});
 const access = character
     ? new RemoteCurseAccess(curses, core.ModuleManager.getModule<Authority>("authority"), character)
     : new LocalCurseAccess(curses);
