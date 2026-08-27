@@ -1,6 +1,6 @@
 import { RuleDefinition } from "@/system/rules/RuleTypes";
 import { stringListValue } from "@/system/gui/Settings";
-import { spokenText } from "@/rules/speechUtils";
+import { isRuleSend, spokenText } from "@/rules/speechUtils";
 
 function findForbiddenWord(content: string, words: string[]): string | null {
     const lower = content.toLocaleLowerCase();
@@ -37,6 +37,9 @@ export const ForbiddenWords: RuleDefinition = {
     }],
     load(ctx) {
         ctx.hook("ServerSend", 5, (args, next) => {
+            if (isRuleSend()) {
+                return next(args);
+            }
             const [event, data] = args as unknown as [string, { Type?: string; Content?: string }];
             if (event !== "ChatRoomChat" || (data?.Type !== "Chat" && data?.Type !== "Whisper") || typeof data.Content !== "string") {
                 return next(args);

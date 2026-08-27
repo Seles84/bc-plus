@@ -1,4 +1,6 @@
 import { RuleDefinition } from "@/system/rules/RuleTypes";
+import { sendAsRule } from "@/rules/speechUtils";
+import { withPoseOverride } from "@/rules/BodyRules";
 
 const AFK_CHECK_MS = 5000;
 /** Same activity events BC's own AfkTimer watches, plus keydown for non-printing keys. */
@@ -112,11 +114,17 @@ export const ForcedAfkBehavior: RuleDefinition = {
                 CharacterSetFacialExpression(Player, "Eyes", "Closed");
             }
             // Like ForceKneeling: only correct what the player could correct
-            // themselves - never fight restraints
-            if (ctx.setting<boolean>("kneel") && !Player.IsKneeling()
-                && PoseCanChangeUnaided(Player, "Kneel")) {
-                PoseSetActive(Player, "Kneel", true);
-                if (ServerPlayerIsInChatRoom()) {
+            // themselves - never fight restraints. Own pose-block clamps are
+            // bypassed: they police the player, not rule corrections.
+            if (ctx.setting<boolean>("kneel") && !Player.IsKneeling()) {
+                const kneeled = withPoseOverride(() => {
+                    if (!PoseCanChangeUnaided(Player, "Kneel")) {
+                        return false;
+                    }
+                    PoseSetActive(Player, "Kneel", true);
+                    return true;
+                });
+                if (kneeled && ServerPlayerIsInChatRoom()) {
                     ChatRoomCharacterUpdate(Player);
                 }
             }
@@ -167,11 +175,11 @@ export const ForcedAfkBehavior: RuleDefinition = {
                     // and the leading parenthesis rules out command injection
                     const text = ctx.setting<string>("replyText")
                         .replace(/[\r\n()]/g, " ").trim().slice(0, 150);
-                    ServerSend("ChatRoomChat", {
+                    sendAsRule(() => ServerSend("ChatRoomChat", {
                         Content: `(AFK auto-reply: ${text.length > 0 ? text : "I am away right now."})`,
                         Type: "Whisper",
                         Target: data.Sender,
-                    });
+                    }));
                 }
             }
             return next(args);

@@ -27,7 +27,10 @@ function buildModal(options: ModalOptions, resolve: (result: ModalResult) => voi
         + "z-index:100000;display:flex;align-items:center;justify-content:center;";
 
     const card = document.createElement("div");
-    card.style.cssText = "background:#241c2e;color:#e8e2f0;border:1px solid #8469b6;"
+    // Focusable so the modal actually holds keyboard focus - the key
+    // handler below only acts while it does
+    card.tabIndex = -1;
+    card.style.cssText = "outline:none;background:#241c2e;color:#e8e2f0;border:1px solid #8469b6;"
         + "border-left:5px solid #8469b6;border-radius:8px;max-width:520px;min-width:340px;"
         + "padding:20px 24px;font-family:system-ui,sans-serif;font-size:17px;line-height:1.5;"
         + "box-shadow:0 8px 40px rgba(0,0,0,0.6);";
@@ -76,7 +79,14 @@ function buildModal(options: ModalOptions, resolve: (result: ModalResult) => voi
     card.appendChild(row);
 
     const onKey = (event: KeyboardEvent): void => {
-        if (event.key === "Enter") {
+        // Only steal keys while focus is actually inside the modal - a stray
+        // Enter meant for BC's chat must not confirm a dialog (a destructive
+        // one especially: those take no Enter at all), nor a stray Escape
+        // silently dismiss one
+        if (!overlay.contains(document.activeElement)) {
+            return;
+        }
+        if (event.key === "Enter" && options.danger !== true) {
             event.stopPropagation();
             finish(options.buttons[0]!);
         } else if (event.key === "Escape") {
@@ -88,7 +98,7 @@ function buildModal(options: ModalOptions, resolve: (result: ModalResult) => voi
 
     overlay.appendChild(card);
     document.body.appendChild(overlay);
-    (input ?? overlay).focus?.();
+    (input ?? card).focus();
     input?.select();
 }
 

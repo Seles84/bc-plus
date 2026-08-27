@@ -1,4 +1,5 @@
 import { RuleDefinition } from "@/system/rules/RuleTypes";
+import { isRuleSend } from "@/rules/speechUtils";
 import { Role } from "@/system/Roles";
 
 /**
@@ -21,6 +22,9 @@ export const ForbidWhisper: RuleDefinition = {
     }],
     load(ctx) {
         ctx.hook("ServerSend", 5, (args, next) => {
+            if (isRuleSend()) {
+                return next(args);
+            }
             const [event, data] = args as unknown as [string, { Type?: string; Target?: number }];
             if (event !== "ChatRoomChat" || data?.Type !== "Whisper") {
                 return next(args);

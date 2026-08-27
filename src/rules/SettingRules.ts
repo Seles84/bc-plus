@@ -74,16 +74,19 @@ function forcedSettingRule<T>(spec: ForcedSettingSpec<T>): RuleDefinition {
             // is persisted internal state so relog cannot lose the original)
             let applied = false;
             const restore = (): void => {
-                if (!applied) {
+                applied = false;
+                // The persisted snapshot is the authority on whether there is
+                // anything to undo - after a relog `applied` starts false
+                // while the BC setting is still pinned, so gating on it left
+                // the pin stuck (and the stale snapshot could later clobber a
+                // manual change)
+                const previous = ctx.getInternal<T>("previous");
+                if (previous === undefined) {
                     return;
                 }
-                applied = false;
-                if (ctx.setting<boolean>("restore")) {
-                    const previous = ctx.getInternal<T>("previous");
-                    if (previous !== undefined && spec.get() !== undefined) {
-                        spec.set(previous);
-                        preferenceSync();
-                    }
+                if (ctx.setting<boolean>("restore") && spec.get() !== undefined) {
+                    spec.set(previous);
+                    preferenceSync();
                 }
                 ctx.setInternal("previous", undefined);
             };

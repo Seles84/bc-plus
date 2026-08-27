@@ -83,6 +83,13 @@ export default class SDK {
             debug("Waiting for login...");
             const removeHook = this.modAPI.hookFunction("LoginResponse", 0, (args, next) => {
                 next(args);
+                // BC also calls LoginResponse for FAILED attempts (the payload
+                // is then an error string like "InvalidNamePassword") - keep
+                // waiting through those, or a mistyped password would boot
+                // BC+ on the login screen and kill it for the session
+                if (typeof args[0] !== "object" || args[0] === null) {
+                    return;
+                }
                 removeHook();
                 // Give BC a moment to finish populating the Player object
                 setTimeout(resolve, 1000);

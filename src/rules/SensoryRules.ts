@@ -52,6 +52,8 @@ export const HearingWhitelist: RuleDefinition = {
             type: "checkbox",
             name: "includeGagged",
             label: "Understand them even while they are gagged",
+            hoverText: "Gag garbling happens on the speaker's client, so this only works "
+                + "when their message carries the ungarbled original alongside it.",
             default: false,
         },
     ],
@@ -62,21 +64,25 @@ export const HearingWhitelist: RuleDefinition = {
             && member !== Player.MemberNumber
             && membersValue(ctx.setting<unknown>("members")).includes(member);
 
-        ctx.hook("SpeechGarble", 2, (args, next) => {
-            const [character, text] = args;
-            if (ctx.isEnforced() && whitelisted(character.MemberNumber)
-                && (character.CanTalk() || ctx.setting<boolean>("includeGagged"))) {
-                return text;
-            }
-            return next(args);
-        });
         ctx.hook("ChatRoomMessage", 9, (args, next) => {
-            if (ctx.isEnforced() && whitelisted(args[0]?.Sender)) {
+            const data = args[0] as (ServerChatRoomMessage & { OriginalMsg?: string }) | undefined;
+            if (ctx.isEnforced() && data && whitelisted(data.Sender)) {
                 bypassDeaf = true;
+                // Gag bypass: since R131 garbling happens on the SPEAKER's
+                // client (SpeechGarble on the receive path is dead), the
+                // clear text is only recoverable when the message carries
+                // the ungarbled original alongside the garbled Content
+                if (ctx.setting<boolean>("includeGagged")
+                    && (data.Type === "Chat" || data.Type === "Whisper")
+                    && typeof data.OriginalMsg === "string") {
+                    data.Content = data.OriginalMsg;
+                }
             }
-            const result = next(args);
-            bypassDeaf = false;
-            return result;
+            try {
+                return next(args);
+            } finally {
+                bypassDeaf = false;
+            }
         });
         ctx.hook("Player.GetDeafLevel", 9, (args, next) => (bypassDeaf ? 0 : next(args)));
     },
@@ -131,9 +137,12 @@ export const SeeingWhitelist: RuleDefinition = {
             if (ctx.isEnforced() && whitelisted(member)) {
                 bypassBlind = true;
             }
-            const result = next(args as never);
-            bypassBlind = false;
-            return result;
+            // finally: a throw below must not leave the bypass latched on
+            try {
+                return next(args as never);
+            } finally {
+                bypassBlind = false;
+            }
         };
 
         ctx.hook("DrawCharacter", 0, (args, next) => bypassFor(args[0]?.MemberNumber, args, next) as void);

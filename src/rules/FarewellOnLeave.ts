@@ -1,4 +1,5 @@
 import { RuleDefinition } from "@/system/rules/RuleTypes";
+import { sendAsRule } from "@/rules/speechUtils";
 
 /** Automatically says the configured farewell when leaving a room. */
 export const FarewellOnLeave: RuleDefinition = {
@@ -18,7 +19,7 @@ export const FarewellOnLeave: RuleDefinition = {
         ctx.hook("ChatRoomAttemptLeave", 4, (args, next) => {
             const farewell = ctx.setting<string>("farewell").trim();
             if (ctx.isEnforced() && farewell.length > 0 && ServerPlayerIsInChatRoom()) {
-                ServerSend("ChatRoomChat", { Content: farewell, Type: "Chat" });
+                sendAsRule(() => ServerSend("ChatRoomChat", { Content: farewell, Type: "Chat" }));
             }
             return next(args);
         });

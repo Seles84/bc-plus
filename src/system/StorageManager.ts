@@ -88,7 +88,9 @@ export default class StorageManager {
             const backup = localStorage.getItem(this.getLocalStorageName(true));
             if (typeof backup === "string" && await modalConfirm("A backup of your data was found, would you like to use it?")) {
                 saved = backup;
-                this.storageLocation = StorageType.LocalStorage;
+                // Recovery, not a mode choice: stay in ExtensionSettings mode
+                // so the next sync repopulates the server copy and the save
+                // keeps roaming across devices
             }
         }
 
@@ -111,6 +113,24 @@ export default class StorageManager {
             return true;
         } catch (e) {
             err("Failed to load save data:", e);
+            // The primary save is corrupt - offer the last-known-good backup
+            // BEFORE anything destructive (this is exactly what it is for)
+            const backup = localStorage.getItem(this.getLocalStorageName(true));
+            if (typeof backup === "string" && backup !== saved) {
+                try {
+                    const verdict = await this.verifySaveFile(backup);
+                    if (verdict !== "Failed" && await modalConfirm(
+                        "Your BC+ save could not be loaded, but an intact backup from this device exists.\n"
+                        + "Restore the backup?",
+                    )) {
+                        this.load(backup, verdict);
+                        void this.safeSync();
+                        return true;
+                    }
+                } catch (backupError) {
+                    err("Backup is also unreadable:", backupError);
+                }
+            }
             if (await modalConfirm(`Failed to load save data...\n${String(e)}\nContinue with a full reset?`, true)) {
                 this.clear();
                 await this.firstBoot();
@@ -216,7 +236,16 @@ export default class StorageManager {
         if (typeof parsed !== "object" || parsed === null || typeof parsed.version !== "string") {
             throw new Error("Invalid save file contents");
         }
-        parsed.modules ??= {};
+        // ??= keeps truthy non-objects; a malformed modules shape would only
+        // blow up later, deep inside module loading, past the recovery dialog
+        if (typeof parsed.modules !== "object" || parsed.modules === null || Array.isArray(parsed.modules)) {
+            parsed.modules = {};
+        }
+        for (const [slug, value] of Object.entries(parsed.modules)) {
+            if (typeof value !== "object" || value === null || Array.isArray(value)) {
+                delete parsed.modules[slug];
+            }
+        }
 
         this.isApplying = true;
         try {

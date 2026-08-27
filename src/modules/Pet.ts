@@ -34,6 +34,8 @@ const ONLINE_STAMP_MS = 10_000;
 const FLUSH_MS = 5 * 60_000;
 /** How often the sleep-state check (appearance scan) is refreshed. */
 const SLEEP_CHECK_MS = 1_000;
+/** Elapsed time beyond this is OS sleep / a frozen tab, not play - it follows the offline rules. */
+const SUSPENSION_GAP_MS = 60_000;
 
 /**
  * Virtual pet needs, inspired by MPA by Maya: food, water, sleep and affection
@@ -553,6 +555,15 @@ export default class Pet extends ModuleInstance {
         if (elapsed <= 0 || !this.isPet()) {
             return;
         }
+        // Timers freeze while the OS sleeps or the browser suspends the tab,
+        // so the first update after waking sees the whole gap at once. Only a
+        // small window drains at the online rate; the rest follows the
+        // offline mode + floor - a closed laptop lid must not zero the pet
+        // past its own offline rules.
+        const onlineMs = Math.min(elapsed, SUSPENSION_GAP_MS);
+        const suspendedMs = elapsed - onlineMs;
+        const drainSuspended = this.getSetting<string>("offlineMode") === OFFLINE_MODE_DRAIN;
+        const floor = offlineFloorValue(this.getSetting<string>("offlineFloor"));
         for (const stat of PET_STATS) {
             const hours = this.statHours(stat.id);
             if (hours === null) {
@@ -566,8 +577,20 @@ export default class Pet extends ModuleInstance {
                     this.dirty = true;
                 }
             }
-            const delta = (elapsed / (hours * 3_600_000)) * 100 * factor;
-            this.live[stat.id] = clampLevel(this.live[stat.id] + delta);
+            let level = clampLevel(this.live[stat.id] + (onlineMs / (hours * 3_600_000)) * 100 * factor);
+            if (suspendedMs > 0 && drainSuspended && factor < 0) {
+                // Never below the floor - unless the stat already was
+                level = Math.max(drainedLevel(level, hours, suspendedMs), Math.min(level, floor));
+            }
+            this.live[stat.id] = level;
+        }
+        if (suspendedMs > 0) {
+            // The pause/floor outcome is a real change pure derivation cannot
+            // reproduce - persist promptly, or a relog after the wake would
+            // re-derive the whole gap as full-rate online drain
+            this.dirty = true;
+            this.lastFlush = 0;
+            debug(`Pet suspension catch-up: ${Math.round(suspendedMs / 1000)}s ${drainSuspended ? `drained with floor ${floor}` : "paused"}`);
         }
     }
 

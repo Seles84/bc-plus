@@ -1,4 +1,5 @@
 import { RuleDefinition } from "@/system/rules/RuleTypes";
+import { isRuleSend } from "@/rules/speechUtils";
 
 /** Blocks chat messages containing out-of-character segments (parentheses). */
 export const ForbidOOC: RuleDefinition = {
@@ -12,6 +13,9 @@ export const ForbidOOC: RuleDefinition = {
     announceViolation: "{Name} used OOC in a message, which a rule forbids.",
     load(ctx) {
         ctx.hook("ServerSend", 5, (args, next) => {
+            if (isRuleSend()) {
+                return next(args);
+            }
             const [event, data] = args as unknown as [string, { Type?: string; Content?: string }];
             if (event !== "ChatRoomChat" || data?.Type !== "Chat" || typeof data.Content !== "string") {
                 return next(args);

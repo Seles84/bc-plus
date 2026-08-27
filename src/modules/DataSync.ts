@@ -16,6 +16,7 @@ import type Logging from "@/modules/Logging";
 import type Core from "@/modules/Core";
 import type Pet from "@/modules/Pet";
 import { getChatroomCharacter } from "@/utils/BCPlusCharacter";
+import { membersValue, stringListValue } from "@/system/gui/Settings";
 import { jsonClone } from "@/utils/BCUtils";
 
 /**
@@ -263,13 +264,23 @@ export default class DataSync extends ModuleInstance {
             (setting.type === "checkbox" && typeof value === "boolean")
             || (setting.type === "option" && typeof value === "string" && setting.options.includes(value))
             || (setting.type === "text" && typeof value === "string" && value.length <= (setting.maxChars ?? 256))
+            || (setting.type === "stringList" && Array.isArray(value)
+                && value.length <= (setting.maxEntries ?? 50)
+                && value.every((v) => typeof v === "string" && v.length <= (setting.maxChars ?? 200)))
+            || (setting.type === "members" && Array.isArray(value)
+                && value.length <= 500
+                && value.every((v) => typeof v === "number" && Number.isInteger(v) && v >= 0))
         );
         if (!valid) {
             reject("invalid setting");
             return;
         }
 
-        module.setSetting(setting.name, value);
+        // List values go through the shared coercers (trim, drop empties)
+        const sanitized = setting.type === "stringList" ? stringListValue(value)
+            : setting.type === "members" ? membersValue(value)
+                : value;
+        module.setSetting(setting.name, sanitized);
         BCPNotifyPlayer(`${sender.Name} (#${senderNumber}) changed your ${module.Config.MenuString || module.Config.Name} setting "${setting.label}".`);
         this.ModuleManager.getModule<Logging>("logging")
             ?.log("authority", `${sender.Name} (#${senderNumber}) changed ${module.Config.Name} setting "${setting.label}"`);

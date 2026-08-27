@@ -70,7 +70,7 @@ onMounted(() => {
             <button
                 class="rounded px-2 py-0.5 text-fg-dim hover:bg-surface-hover hover:text-fg"
                 title="Close"
-                @click="win.close()"
+                @click="win.requestClose()"
             >&#10005;</button>
         </header>
         <main v-show="!win.minimized.value" class="min-h-0 flex-1 overflow-y-auto p-5">

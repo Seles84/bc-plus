@@ -130,6 +130,27 @@ export class UIWindow {
         debug("BC+ window opened");
     }
 
+    /**
+     * Consulted before a user-intent close (X button, Esc at the root);
+     * resolves false to keep the window open. Force paths (hardcore sweep,
+     * module unload) call close() directly and skip it.
+     */
+    closeGuard: (() => Promise<boolean>) | null = null;
+
+    /** User-intent close: runs the guard (e.g. unsent-edits prompt) first. */
+    requestClose(): void {
+        const guard = this.closeGuard;
+        if (!guard || !this.host) {
+            this.close();
+            return;
+        }
+        void guard().then((proceed) => {
+            if (proceed) {
+                this.close();
+            }
+        });
+    }
+
     close(): void {
         if (!this.host) {
             return;
@@ -157,7 +178,7 @@ export class UIWindow {
         if (this.nav && this.nav.depth > 1) {
             this.nav.pop();
         } else {
-            this.close();
+            this.requestClose();
         }
     }
 
@@ -259,10 +280,18 @@ export class UIWindow {
             host.style.height = `${TITLE_BAR_H + 2}px`;
             host.style.minHeight = "0";
             host.style.resize = "none";
+        } else if (this.maximized.value) {
+            // Still maximized: restore the maximized geometry and KEEP the
+            // remembered floating rect - nulling it here made the later
+            // un-maximize fall back to the default rect and persist it over
+            // the user's saved position
+            host.style.height = "calc(100vh - 20px)";
+            host.style.minHeight = `${MIN_H}px`;
+            host.style.resize = "none";
         } else {
             host.style.height = `${(this.restoreRect ?? this.clampRect(null)).h}px`;
             host.style.minHeight = `${MIN_H}px`;
-            host.style.resize = this.maximized.value ? "none" : "both";
+            host.style.resize = "both";
             this.restoreRect = null;
         }
     }

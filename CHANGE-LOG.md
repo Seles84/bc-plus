@@ -4,6 +4,24 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- A corrupt save now offers restoring the intact backup kept on this device before anything destructive - previously the only choice was a full reset, which also deleted that backup. Restoring a backup no longer strands your data in this browser either: it flows back to the BC server, so the save keeps roaming across devices.
+- A mistyped password no longer kills BC+ for the whole session - it now waits through failed login attempts and boots on the successful one.
+- Remotely editing list settings (like the pet clicker trigger phrases) works now - the target's validator rejected every list-typed setting as invalid.
+- Messages a rule sends on your behalf (room greeting, farewell, AFK auto-reply) are no longer blocked, logged or punished by your own speech rules.
+- Word replacement no longer skips every other occurrence when the same word repeats ("i i i" now replaces all three).
+- Forced BC settings restore correctly after a relog: the pinned value is released from the persisted snapshot even when the rule never re-enforced in the new session (previously it could stay pinned, and a stale snapshot could later clobber a manual change).
+- "Forced to kneel" / "Forced position" (and the AFK kneel) work again while "Forbid changing poses" is also enforced - BC+'s own pose blocks no longer silence its own pose corrections.
+- The hearing whitelist's "understand them even while gagged" option works again on BC R131 (garbling moved to the speaker's client; the clear text is recovered when their message carries it).
+- Two punishments forcing the same rule no longer corrupt the "restore previous state" snapshot, and two item punishments on the same slot no longer swap items every 1.5 seconds - the most recent one holds the slot and the other resumes when it ends.
+- A laptop lid closed overnight (or a frozen tab) no longer drains the pet at the full online rate for the whole gap - anything beyond a minute follows the offline mode and floor settings.
+- Minimizing a maximized BC+ window no longer breaks its geometry and overwrites your remembered window position.
+- BC+ dialogs only react to Enter/Escape while they actually have keyboard focus, and destructive confirms (like the reset-after-corrupt-save one) never confirm on Enter at all - a stray key press meant for chat could previously trigger them.
+- Closing the BC+ window with unsent remote rule changes now asks whether to send, discard or stay - previously the changes looked applied but were silently left unsent.
+- Malformed module data inside a crafted save is dropped at load instead of breaking every subsequent login with console errors only.
+
 ## [0.11.1] - 2026-08-27
 
 Custom menu icons, sectioned settings pages, and a security hardening pass across the remote command surface.

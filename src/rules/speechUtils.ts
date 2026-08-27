@@ -51,8 +51,33 @@ export function lettersOfWords(text: string): string[] {
         .filter((w) => w.length > 0);
 }
 
-/** Extracts an outgoing ChatRoomChat payload when it is a spoken message. */
+let ruleSendDepth = 0;
+
+/**
+ * Runs a rule-originated ServerSend (greeting, farewell, AFK auto-reply)
+ * with the speech-rule exemption: the ServerSend hooks below skip
+ * enforcement for it, so a message a rule sends on the player's behalf is
+ * never blocked, transformed, logged or punished by another rule.
+ */
+export function sendAsRule(send: () => void): void {
+    ruleSendDepth++;
+    try {
+        send();
+    } finally {
+        ruleSendDepth--;
+    }
+}
+
+/** Whether the ServerSend currently being hooked was sent by a rule. */
+export function isRuleSend(): boolean {
+    return ruleSendDepth > 0;
+}
+
+/** Extracts an outgoing ChatRoomChat payload when it is a spoken message. Rule-originated sends are exempt (never "spoken"). */
 export function spokenPayload(args: unknown[], types: string[] = ["Chat", "Whisper"]): { Type: string; Content: string } | null {
+    if (ruleSendDepth > 0) {
+        return null;
+    }
     const [event, data] = args as [string, { Type?: string; Content?: string }];
     if (event !== "ChatRoomChat" || typeof data?.Content !== "string" || !types.includes(data.Type ?? "")) {
         return null;
