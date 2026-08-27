@@ -4,7 +4,7 @@ import { ModuleConfig, PermissionDefinition } from "@/system/module/ModuleTypes"
 import { BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
 import { Role } from "@/system/Roles";
 import { LOG_MAX_ENTRIES, LOG_REMOTE_LIMIT, LogCategory, LogEntry } from "@/system/logging/LogTypes";
-import { BCPNotifyPlayer, SendBCPMessage } from "@/utils/Messaging";
+import { BCPNotifyPlayer, SafeReasonSuffix, SendBCPMessage } from "@/utils/Messaging";
 import { jsonClone } from "@/utils/BCUtils";
 import { AnySetting } from "@/system/gui/Settings";
 import { debug, warn } from "@/system/Console";
@@ -282,7 +282,7 @@ export default class Logging extends ModuleInstance {
         this.addSyncListener("LogClearResult", (sender, content) => {
             const senderNumber = sender.MemberNumber;
             if (content.ok === false) {
-                BCPNotifyPlayer(`${sender.Name} rejected the clear${typeof content.reason === "string" ? `: ${content.reason}` : "."}`);
+                BCPNotifyPlayer(`${sender.Name} rejected the clear${SafeReasonSuffix(content.reason)}`);
             } else if (typeof senderNumber === "number") {
                 BCPNotifyPlayer(`${sender.Name}'s log has been cleared.`);
                 this.requestLog(senderNumber);
@@ -340,7 +340,7 @@ export default class Logging extends ModuleInstance {
         this.addSyncListener("LogAddResult", (sender, content) => {
             const senderNumber = sender.MemberNumber;
             if (content.ok === false) {
-                BCPNotifyPlayer(`${sender.Name} rejected the log entry${typeof content.reason === "string" ? `: ${content.reason}` : "."}`);
+                BCPNotifyPlayer(`${sender.Name} rejected the log entry${SafeReasonSuffix(content.reason)}`);
             } else if (typeof senderNumber === "number") {
                 BCPNotifyPlayer("Delivered.");
                 // Refresh our view of their log

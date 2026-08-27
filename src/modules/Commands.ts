@@ -7,7 +7,7 @@ import { COMMAND_DEFINITIONS, CommandDefinition } from "@/system/commands/Comman
 import { BindLineTaskStore, GetLineTask, LineTask, NormalizeLineText, SetLineTask } from "@/system/commands/LineTask";
 import { err } from "@/system/Console";
 import { AnySetting } from "@/system/gui/Settings";
-import { BCPMessageContent, BCPNotifyPlayer, FindCharacterInRoom, SendAction, SendBCPMessage } from "@/utils/Messaging";
+import { BCPMessageContent, BCPNotifyPlayer, FindCharacterInRoom, SafeReasonSuffix, SendAction, SendBCPMessage } from "@/utils/Messaging";
 import { WELD_WHISPER_COMMANDS } from "@/modules/Welding";
 import type { BCPlusCharacter } from "@/utils/BCPlusCharacter";
 import type Authority from "@/modules/Authority";
@@ -109,7 +109,7 @@ export default class Commands extends ModuleInstance {
         this.addSyncListener("CommandInvoke", (sender, content) => this.onCommandInvoke(sender, content));
         this.addSyncListener("CommandInvokeResult", (sender, content) => {
             if (content.ok === false) {
-                BCPNotifyPlayer(`${sender.Name} rejected the command${typeof content.reason === "string" ? `: ${content.reason}` : "."}`);
+                BCPNotifyPlayer(`${sender.Name} rejected the command${SafeReasonSuffix(content.reason)}`);
             }
         });
 

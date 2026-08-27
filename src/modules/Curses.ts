@@ -7,7 +7,7 @@ import {
     CURSE_LOCKS, CurseItemSpec, CurseSlotData, adoptRestoredState, captureItemSpec, itemMatchesSpec,
     lockApplicableFor, stripLockState,
 } from "@/system/curses/CurseTypes";
-import { BCPMessageContent, BCPNotifyPlayer, MemberNumberToName, SendAction, SendBCPMessage } from "@/utils/Messaging";
+import { BCPMessageContent, BCPNotifyPlayer, MemberNumberToName, SafeReasonSuffix, SendAction, SendBCPMessage } from "@/utils/Messaging";
 import { decodeExport, encodeExport } from "@/utils/ExportImport";
 import { jsonClone } from "@/utils/BCUtils";
 import { conditionsExpired, conditionsMet, sanitizeConditions } from "@/system/conditions/Conditions";
@@ -317,7 +317,7 @@ export default class Curses extends ModuleInstance {
         this.addSyncListener("CurseCommand", (sender, content) => this.onCurseCommand(sender, content));
         this.addSyncListener("CurseCommandResult", (sender, content) => {
             if (content.ok === false) {
-                BCPNotifyPlayer(`${sender.Name} rejected the curse change${typeof content.reason === "string" ? `: ${content.reason}` : "."}`);
+                BCPNotifyPlayer(`${sender.Name} rejected the curse change${SafeReasonSuffix(content.reason)}`);
             }
         });
     }

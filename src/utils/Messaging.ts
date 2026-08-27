@@ -70,6 +70,22 @@ export function SendEmote(content: string, target?: Character): void {
     });
 }
 
+/** HTML-escapes a string so it renders as plain text in the notify sinks below. */
+export function EscapeHtml(text: string): string {
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+/**
+ * Formats a remote rejection reason for a notify message: ": <reason>" or a
+ * bare ".". The notify sinks render innerHTML and remote strings are
+ * attacker-controlled, so the reason is escaped and length-capped here -
+ * every `*CommandResult` handler must go through this (or EscapeHtml) rather
+ * than interpolating `content.reason` directly.
+ */
+export function SafeReasonSuffix(reason: unknown): string {
+    return typeof reason === "string" ? `: ${EscapeHtml(reason.slice(0, 200))}` : ".";
+}
+
 /** Displays text to the local player only, in BC+'s muted purple style. */
 export function NotifyPlayer(content: string, timeout?: number): void {
     const darkTheme = Player.ChatSettings?.ColorTheme === "Dark" || Player.ChatSettings?.ColorTheme === "Dark2";

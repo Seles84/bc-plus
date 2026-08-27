@@ -34,6 +34,10 @@ const { version, touch, core } = useBcpVersion();
 
 const rules = core.ModuleManager.getModule<Rules>("rules")!;
 const character = props.access ? null : bcpCharacter(props.member);
+// A remote target that no longer resolves must NEVER fall back to local
+// access - rule ids are identical on every client, so the edits would
+// silently apply to the viewer's own rules.
+const dead = props.access === undefined && props.member !== undefined && character === null;
 const access = props.access
     ?? (character
         ? new RemoteRuleAccess(rules, core.ModuleManager.getModule<Authority>("authority"), character)
@@ -200,7 +204,8 @@ function pickMembers(setting: AnySetting): void {
 </script>
 
 <template>
-    <div v-if="definition" class="mx-auto flex max-w-3xl flex-col gap-4">
+    <p v-if="dead" class="text-fg-dim">They are no longer in this room.</p>
+    <div v-else-if="definition" class="mx-auto flex max-w-3xl flex-col gap-4">
         <p class="text-sm text-fg-dim">{{ definition.description }}</p>
 
         <div v-if="pendingCount > 0" class="flex items-center gap-3 rounded-lg bg-surface px-3 py-2" style="border: 1px solid var(--bcp-border);">

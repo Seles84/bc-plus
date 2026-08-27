@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Fixed
+- Security: rejection reasons arriving in remote command results (rule/curse/punishment/setting/role/log/relationship/stats/welding/command replies) are now HTML-escaped and length-capped before being shown in chat. A modified client could previously embed raw HTML in a "rejected" notice and have it render - including script-bearing markup - in your chat log.
+- Viewing another player's rule, curse slot or punishment config no longer silently falls back to YOUR OWN data when they leave the room mid-edit: the screen now shows "They are no longer in this room" instead. Previously a click on a rule or cursed slot after the target departed opened your own matching entry, so edits (or "Remove this curse") landed on yourself. The rule catalog got the same guard.
+
 ### Changed
 - The main menu has its own icon set now: every module shows a matching flat lavender icon in BC+'s accent style, replacing the borrowed BC stock icons (Curses and Welding even shared the same padlock before). The icons ship inside the bundle, so they load instantly and work offline.
 - The General page is organized into sections now - General, Updates, Appearance, Hardcore mode and Modules - and the Pet settings into Being a pet, Needs & drain, Low-stat effects and Clicker & bells. Sections flow into two columns when the window is wide enough, so a maximized window no longer shows one endless single-file list.
