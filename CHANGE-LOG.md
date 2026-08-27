@@ -4,7 +4,9 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.11.1] - 2026-08-27
+
+Custom menu icons, sectioned settings pages, and a security hardening pass across the remote command surface.
 
 ### Fixed
 - Security: remote role assignment now has a rank ceiling - someone holding the assign/revoke permission can no longer manage a role above their own standing, assign themselves to any role, or hand out a custom role granting permissions they do not hold themselves. Previously, extending `roles.assign` below Co-Owner (via a lowered threshold or a custom-role grant) let that person add themselves or an accomplice to your Co-Owner list and inherit nearly every permission.
