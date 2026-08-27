@@ -6,7 +6,7 @@ import { Role } from "@/system/Roles";
 import {
     ITEM_TIME_MAX_KEYS, REMOTE_MAP_CAPS, StatsSnapshot, sanitizeStatMap,
 } from "@/system/statistics/StatTypes";
-import { BCPNotifyPlayer, SendBCPMessage } from "@/utils/Messaging";
+import { BCPNotifyPlayer, SafeReasonSuffix, SendBCPMessage } from "@/utils/Messaging";
 import { jsonClone } from "@/utils/BCUtils";
 import { debug } from "@/system/Console";
 import type Authority from "@/modules/Authority";
@@ -268,7 +268,7 @@ export default class Statistics extends ModuleInstance {
 
         this.addSyncListener("StatsResetResult", (sender, content) => {
             if (content.ok === false) {
-                BCPNotifyPlayer(`${sender.Name} rejected the reset${typeof content.reason === "string" ? `: ${content.reason}` : "."}`);
+                BCPNotifyPlayer(`${sender.Name} rejected the reset${SafeReasonSuffix(content.reason)}`);
             } else {
                 BCPNotifyPlayer(`${sender.Name}'s statistics have been reset.`);
             }

@@ -7,7 +7,7 @@ import { captureItemSpec } from "@/system/curses/CurseTypes";
 import {
     ActivePunishment, PUNISHMENT_LOCKS, PunishmentDefinition, describeDuration,
 } from "@/system/punishments/PunishmentTypes";
-import { BCPMessageContent, BCPNotifyPlayer, SendAction, SendBCPMessage } from "@/utils/Messaging";
+import { BCPMessageContent, BCPNotifyPlayer, SafeReasonSuffix, SendAction, SendBCPMessage } from "@/utils/Messaging";
 import { jsonClone } from "@/utils/BCUtils";
 import { debug, err, warn } from "@/system/Console";
 import type { Originator } from "@/system/module/ModuleTypes";
@@ -458,7 +458,7 @@ export default class Punishments extends ModuleInstance {
         this.addSyncListener("PunishmentCommand", (sender, content) => this.onPunishmentCommand(sender, content));
         this.addSyncListener("PunishmentCommandResult", (sender, content) => {
             if (content.ok === false) {
-                BCPNotifyPlayer(`${sender.Name} rejected the punishment change${typeof content.reason === "string" ? `: ${content.reason}` : "."}`);
+                BCPNotifyPlayer(`${sender.Name} rejected the punishment change${SafeReasonSuffix(content.reason)}`);
             }
         });
     }

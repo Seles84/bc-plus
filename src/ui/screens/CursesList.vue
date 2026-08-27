@@ -17,7 +17,10 @@ const { version, touch, core } = useBcpVersion();
 const curses = core.ModuleManager.getModule<Curses>("curses")!;
 const local = props.member === undefined;
 const character = bcpCharacter(props.member);
-const dead = !local && character === null;
+const dead = computed(() => {
+    version.value;
+    return !local && bcpCharacter(props.member) === null;
+});
 const access = character
     ? new RemoteCurseAccess(curses, core.ModuleManager.getModule<Authority>("authority"), character)
     : new LocalCurseAccess(curses);

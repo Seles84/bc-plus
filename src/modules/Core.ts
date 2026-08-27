@@ -573,6 +573,7 @@ export default class Core extends ModuleInstance {
         this.addHook("ChatRoomSync", 0, (args, next) => {
             const result = next(args);
             this.captureRoomMembers();
+            this.Events.emit("roomMembersChanged", undefined);
             if (this.pendingChatNotices.length > 0) {
                 const notices = this.pendingChatNotices.splice(0);
                 setTimeout(() => notices.forEach((lines) => BCPNotifyLines(lines)), 500);
@@ -582,6 +583,14 @@ export default class Core extends ModuleInstance {
         this.addHook("ChatRoomSyncMemberJoin", 0, (args, next) => {
             const result = next(args);
             this.captureRoomMembers();
+            this.Events.emit("roomMembersChanged", undefined);
+            return result;
+        });
+        this.addHook("ChatRoomSyncMemberLeave", 0, (args, next) => {
+            const result = next(args);
+            // Open remote views re-check their target on this bump and show
+            // the departed message the moment the member is gone
+            this.Events.emit("roomMembersChanged", undefined);
             return result;
         });
         const mode = this.BCMode === "tandem"

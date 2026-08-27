@@ -15,6 +15,11 @@ const { version, core } = useBcpVersion();
 
 const rules = core.ModuleManager.getModule<Rules>("rules")!;
 const character = bcpCharacter(props.member);
+// Never fall back to local access for a departed remote target
+const dead = computed(() => {
+    version.value;
+    return props.member !== undefined && bcpCharacter(props.member) === null;
+});
 const access = character
     ? new RemoteRuleAccess(rules, core.ModuleManager.getModule<Authority>("authority"), character)
     : new LocalRuleAccess(rules);
@@ -53,7 +58,8 @@ function pick(definition: RuleDefinition): void {
 </script>
 
 <template>
-    <div class="flex h-full flex-col gap-3">
+    <p v-if="dead" class="text-fg-dim">They are no longer in this room.</p>
+    <div v-else class="flex h-full flex-col gap-3">
         <input
             v-model="search"
             type="text"

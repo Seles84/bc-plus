@@ -3,7 +3,7 @@ import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { ModuleConfig, PermissionDefinition } from "@/system/module/ModuleTypes";
 import { BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
 import { Role, roleName } from "@/system/Roles";
-import { BCPNotifyPlayer, MemberNumberToName, SendBCPMessage } from "@/utils/Messaging";
+import { BCPNotifyPlayer, MemberNumberToName, SafeReasonSuffix, SendBCPMessage } from "@/utils/Messaging";
 import type Authority from "@/modules/Authority";
 import type Logging from "@/modules/Logging";
 import type DataSync from "@/modules/DataSync";
@@ -271,7 +271,7 @@ export default class Roles extends ModuleInstance {
 
         this.addSyncListener("RoleCommandResult", (sender, content) => {
             if (content.ok === false) {
-                BCPNotifyPlayer(`${sender.Name} rejected the role change${typeof content.reason === "string" ? `: ${content.reason}` : "."}`);
+                BCPNotifyPlayer(`${sender.Name} rejected the role change${SafeReasonSuffix(content.reason)}`);
             }
         });
     }

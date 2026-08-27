@@ -3,7 +3,7 @@ import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { ModuleConfig, PermissionDefinition } from "@/system/module/ModuleTypes";
 import { BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
 import { Role } from "@/system/Roles";
-import { BCPNotifyPlayer, MemberNumberToName, SendBCPMessage } from "@/utils/Messaging";
+import { BCPNotifyPlayer, MemberNumberToName, SafeReasonSuffix, SendBCPMessage } from "@/utils/Messaging";
 import { containsWord, spokenPayload, spokenText } from "@/rules/speechUtils";
 import { decodeExport, encodeExport } from "@/utils/ExportImport";
 import { jsonClone } from "@/utils/BCUtils";
@@ -267,7 +267,7 @@ export default class Relationships extends ModuleInstance {
 
         this.addSyncListener("RelationshipCommandResult", (sender, content) => {
             if (content.ok === false) {
-                BCPNotifyPlayer(`${sender.Name} rejected the change${typeof content.reason === "string" ? `: ${content.reason}` : "."}`);
+                BCPNotifyPlayer(`${sender.Name} rejected the change${SafeReasonSuffix(content.reason)}`);
             }
         });
     }

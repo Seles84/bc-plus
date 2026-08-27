@@ -17,6 +17,12 @@ const { version, touch, core } = useBcpVersion();
 
 const curses = core.ModuleManager.getModule<Curses>("curses")!;
 const character = bcpCharacter(props.member);
+// A departed remote target must NEVER fall back to local access - group
+// names are universal, so the editor would open the viewer's own curse.
+const dead = computed(() => {
+    version.value;
+    return props.member !== undefined && bcpCharacter(props.member) === null;
+});
 const access = character
     ? new RemoteCurseAccess(curses, core.ModuleManager.getModule<Authority>("authority"), character)
     : new LocalCurseAccess(curses);
@@ -86,7 +92,8 @@ function removeCurse(): void {
 </script>
 
 <template>
-    <div v-if="slot" class="mx-auto flex max-w-3xl flex-col gap-4">
+    <p v-if="dead" class="text-fg-dim">They are no longer in this room.</p>
+    <div v-else-if="slot" class="mx-auto flex max-w-3xl flex-col gap-4">
         <section class="flex flex-col gap-1">
             <label class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 hover:bg-surface" :class="{ 'opacity-50': !canEdit }">
                 <input

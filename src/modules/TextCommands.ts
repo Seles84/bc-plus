@@ -3,7 +3,7 @@ import { ModuleConfig } from "@/system/module/ModuleTypes";
 import { BCPLUS_APP_NAME, BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
 import { LOG_MAX_ENTRIES, formatLogTime } from "@/system/logging/LogTypes";
 import { STATE_LABELS, formatStatDuration } from "@/system/statistics/StatTypes";
-import { ListSyncListeners, NotifyPlayer } from "@/utils/Messaging";
+import { EscapeHtml, ListSyncListeners, NotifyPlayer } from "@/utils/Messaging";
 import { getAllCharactersInRoom } from "@/utils/BCPlusCharacter";
 import { parseBCPVersion } from "@/utils/Version";
 import type Rules from "@/modules/Rules";
@@ -22,10 +22,6 @@ interface BCPCommand {
     name: string;
     description: string;
     handler: (args: string[]) => void;
-}
-
-function escapeHtml(text: string): string {
-    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
 
 /** Chat command interface: /bcp <subcommand>. All output is local-only. */
@@ -69,7 +65,7 @@ export default class TextCommands extends ModuleInstance {
                     return;
                 }
                 this.reply(["BC+ users here:", ...users.map((c) =>
-                    `- ${escapeHtml(c.toNicknamedString())} (v${escapeHtml(c.BCPVersion ?? "?")})`,
+                    `- ${EscapeHtml(c.toNicknamedString())} (v${EscapeHtml(c.BCPVersion ?? "?")})`,
                 )].join("<br>"));
             },
         },
@@ -86,7 +82,7 @@ export default class TextCommands extends ModuleInstance {
                     const status = state.active
                         ? `active${state.enforce ? ", enforced" : ""}${state.log ? ", logged" : ""}`
                         : "inactive";
-                    return `- ${escapeHtml(definition.name)}: ${status}`;
+                    return `- ${EscapeHtml(definition.name)}: ${status}`;
                 });
                 this.reply(["Your rules:", ...lines].join("<br>"));
             },
@@ -109,7 +105,7 @@ export default class TextCommands extends ModuleInstance {
                     const summary = slot.items.length === 0
                         ? "cursed empty"
                         : `${slot.items.length} allowed item${slot.items.length === 1 ? "" : "s"}`;
-                    return `- ${escapeHtml(label)}: ${slot.active ? summary : "inactive"}`;
+                    return `- ${EscapeHtml(label)}: ${slot.active ? summary : "inactive"}`;
                 });
                 this.reply(["Your curses:", ...lines].join("<br>"));
             },
@@ -135,7 +131,7 @@ export default class TextCommands extends ModuleInstance {
                 }
                 this.reply([
                     `Newest ${entries.length} log entr${entries.length === 1 ? "y" : "ies"} (of max ${LOG_MAX_ENTRIES}):`,
-                    ...entries.map((e) => `- ${formatLogTime(e.time)} [${e.category}] ${escapeHtml(e.message)}`),
+                    ...entries.map((e) => `- ${formatLogTime(e.time)} [${e.category}] ${EscapeHtml(e.message)}`),
                 ].join("<br>"));
             },
         },
@@ -253,8 +249,8 @@ export default class TextCommands extends ModuleInstance {
                 }
                 const info = welding.WeldInfo;
                 if (info) {
-                    this.reply(`Your collar is welded shut - owner ${escapeHtml(info.ownerName)} (#${info.owner}), `
-                        + `witnessed by ${escapeHtml(info.witnessName)}. Only your owner releasing you undoes it.`);
+                    this.reply(`Your collar is welded shut - owner ${EscapeHtml(info.ownerName)} (#${info.owner}), `
+                        + `witnessed by ${EscapeHtml(info.witnessName)}. Only your owner releasing you undoes it.`);
                     return;
                 }
                 const ceremony = welding.Ceremony;
@@ -267,7 +263,7 @@ export default class TextCommands extends ModuleInstance {
                 this.reply(result === true
                     ? "Welding initiated - all three of you must accept within 10 minutes. "
                         + "Choose your witness on the BC+ Welding page."
-                    : `Cannot start a welding: ${escapeHtml(result)}.`);
+                    : `Cannot start a welding: ${EscapeHtml(result)}.`);
             },
         },
         {
@@ -276,7 +272,7 @@ export default class TextCommands extends ModuleInstance {
             handler: () => {
                 const result = this.ModuleManager.getModule<Welding>("welding")?.acceptAsPlayer()
                     ?? "welding is unavailable";
-                this.reply(result === true ? "Acceptance sent." : escapeHtml(result));
+                this.reply(result === true ? "Acceptance sent." : EscapeHtml(result));
             },
         },
         {
@@ -285,7 +281,7 @@ export default class TextCommands extends ModuleInstance {
             handler: () => {
                 const result = this.ModuleManager.getModule<Welding>("welding")?.declineAsPlayer()
                     ?? "welding is unavailable";
-                this.reply(result === true ? "Declined." : escapeHtml(result));
+                this.reply(result === true ? "Declined." : EscapeHtml(result));
             },
         },
         {
@@ -355,12 +351,12 @@ export default class TextCommands extends ModuleInstance {
                     .filter((c) => !c.isPlayer())
                     .map((c) => {
                         const data = c.BCPData ? Object.keys(c.BCPData).join("/") : "none";
-                        return `- ${escapeHtml(c.toNicknamedString())}: ${c.BCPVersion ? `v${escapeHtml(c.BCPVersion)}` : "no BC+"}, mirror: ${escapeHtml(data)}`;
+                        return `- ${EscapeHtml(c.toNicknamedString())}: ${c.BCPVersion ? `v${EscapeHtml(c.BCPVersion)}` : "no BC+"}, mirror: ${EscapeHtml(data)}`;
                     });
                 this.reply([
                     `BC+ v${BCPLUS_VERSION} (${this.Core.Mode} mode)`,
-                    `Modules: ${escapeHtml(modules)}`,
-                    `Listeners: ${escapeHtml(listeners)}`,
+                    `Modules: ${EscapeHtml(modules)}`,
+                    `Listeners: ${EscapeHtml(listeners)}`,
                     "Room:",
                     ...(room.length > 0 ? room : ["- nobody else here"]),
                 ].join("<br>"));
@@ -394,7 +390,7 @@ export default class TextCommands extends ModuleInstance {
         const sub = (args[0] ?? "help").toLocaleLowerCase();
         const command = this.commands.find((c) => c.name === sub);
         if (!command) {
-            this.reply(`Unknown command "${escapeHtml(sub)}" - try /bcp help.`);
+            this.reply(`Unknown command "${EscapeHtml(sub)}" - try /bcp help.`);
             return;
         }
         if (!TextCommands.HARDCORE_ALLOWED.includes(sub)
@@ -431,11 +427,11 @@ export default class TextCommands extends ModuleInstance {
             }
             fake = `${current.major}.${current.minor}.${current.patch + 1}`;
         } else if (parseBCPVersion(fake) === null) {
-            this.reply(`"${escapeHtml(fake)}" is not a valid version - use x.y.z or clear.`);
+            this.reply(`"${EscapeHtml(fake)}" is not a valid version - use x.y.z or clear.`);
             return;
         }
         core.devSetLatestVersion(fake);
-        this.reply(`Pretending v${escapeHtml(fake)} is the latest release - check the beep and the main menu. `
+        this.reply(`Pretending v${EscapeHtml(fake)} is the latest release - check the beep and the main menu. `
             + "Undo with /bcp test version clear.");
     }
 

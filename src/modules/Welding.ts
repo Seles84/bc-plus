@@ -7,6 +7,7 @@ import {
     BCPMessageContent,
     BCPNotifyPlayer,
     FindCharacterInRoom,
+    SafeReasonSuffix,
     SendAction,
     SendBCPMessage,
 } from "@/utils/Messaging";
@@ -150,7 +151,7 @@ export default class Welding extends ModuleInstance {
         this.addSyncListener("WeldCommand", (sender, content) => this.onWeldCommand(sender, content));
         this.addSyncListener("WeldCommandResult", (sender, content) => {
             if (content.ok === false) {
-                BCPNotifyPlayer(`${sender.Name} could not apply the welding action${typeof content.reason === "string" ? `: ${content.reason}` : "."}`);
+                BCPNotifyPlayer(`${sender.Name} could not apply the welding action${SafeReasonSuffix(content.reason)}`);
             } else {
                 BCPNotifyPlayer(`Welding action accepted by ${sender.Name}.`);
             }

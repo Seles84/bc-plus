@@ -5,7 +5,7 @@ import { BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
 import { Role } from "@/system/Roles";
 import { RuleContext, RuleDefinition, RuleStateData, defaultRuleState } from "@/system/rules/RuleTypes";
 import { RULE_DEFINITIONS } from "@/rules/index";
-import { BCPMessageContent, BCPNotifyPlayer, SendAction, SendBCPMessage } from "@/utils/Messaging";
+import { BCPMessageContent, BCPNotifyPlayer, EscapeHtml, SafeReasonSuffix, SendAction, SendBCPMessage } from "@/utils/Messaging";
 import { decodeExport, encodeExport } from "@/utils/ExportImport";
 import { jsonClone } from "@/utils/BCUtils";
 import { ConditionData, conditionsExpired, conditionsMet, sanitizeConditions } from "@/system/conditions/Conditions";
@@ -520,7 +520,7 @@ export default class Rules extends ModuleInstance {
         this.addSyncListener("RuleCommandBatch", (sender, content) => this.onRuleCommandBatch(sender, content));
         this.addSyncListener("RuleCommandResult", (sender, content) => {
             if (content.ok === false) {
-                BCPNotifyPlayer(`${sender.Name} rejected the rule change${typeof content.reason === "string" ? `: ${content.reason}` : "."}`);
+                BCPNotifyPlayer(`${sender.Name} rejected the rule change${SafeReasonSuffix(content.reason)}`);
                 // Our optimistic mirror is wrong - ask for a fresh sync
                 this.ModuleManager.getModule<DataSync>("data-sync")?.settingSync(true, sender.MemberNumber);
             }
@@ -530,7 +530,7 @@ export default class Rules extends ModuleInstance {
             if (content.ok === false && failures.length > 0) {
                 const first = failures[0] as { reason?: string } | undefined;
                 BCPNotifyPlayer(`${sender.Name} rejected ${failures.length} of your rule change${failures.length === 1 ? "" : "s"}`
-                    + `${typeof first?.reason === "string" ? ` (${first.reason})` : ""}.`);
+                    + `${typeof first?.reason === "string" ? ` (${EscapeHtml(first.reason.slice(0, 200))})` : ""}.`);
                 // Some optimistic mirror edits are wrong - ask for a fresh sync
                 this.ModuleManager.getModule<DataSync>("data-sync")?.settingSync(true, sender.MemberNumber);
             }

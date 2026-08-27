@@ -29,6 +29,8 @@ export interface BCPlusEvents {
     relationshipsReceived: { memberNumber: number };
     /** Fired after the save file has been persisted (any data change). */
     saveSynced: undefined;
+    /** Fired when the room roster changes (full sync, member join/leave). */
+    roomMembersChanged: undefined;
 }
 
 type Listener<T> = (data: T) => void;

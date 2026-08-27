@@ -16,6 +16,11 @@ const { version, touch, core } = useBcpVersion();
 
 const punishments = core.ModuleManager.getModule<Punishments>("punishments")!;
 const character = bcpCharacter(props.member);
+// Never fall back to local access for a departed remote target
+const dead = computed(() => {
+    version.value;
+    return props.member !== undefined && bcpCharacter(props.member) === null;
+});
 const access = character
     ? new RemotePunishmentAccess(core.ModuleManager.getModule<Authority>("authority"), character)
     : new LocalPunishmentAccess(punishments);
@@ -83,7 +88,8 @@ function remove(): void {
 </script>
 
 <template>
-    <div v-if="definition" class="mx-auto flex max-w-3xl flex-col gap-4">
+    <p v-if="dead" class="text-fg-dim">They are no longer in this room.</p>
+    <div v-else-if="definition" class="mx-auto flex max-w-3xl flex-col gap-4">
         <section class="flex flex-col gap-2">
             <div class="flex items-center gap-3">
                 <span class="w-56">Name:</span>

@@ -8,6 +8,7 @@ import {
     DispatchBCPMessage,
     FindCharacterInRoom,
     GetBCPMessageFromChat,
+    SafeReasonSuffix,
     SendBCPMessage,
 } from "@/utils/Messaging";
 import type Authority from "@/modules/Authority";
@@ -131,7 +132,7 @@ export default class DataSync extends ModuleInstance {
         this.addSyncListener("SettingCommand", (sender, content) => this.onSettingCommand(sender, content));
         this.addSyncListener("SettingCommandResult", (sender, content) => {
             if (content.ok === false) {
-                BCPNotifyPlayer(`${sender.Name} rejected the settings change${typeof content.reason === "string" ? `: ${content.reason}` : "."}`);
+                BCPNotifyPlayer(`${sender.Name} rejected the settings change${SafeReasonSuffix(content.reason)}`);
             }
         });
         this.addSyncListener("SettingsRequest", (sender, content) => this.onSettingsRequest(sender, content));
