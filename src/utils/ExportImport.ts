@@ -3,6 +3,12 @@ import { modalPrompt } from "@/gui/Modal";
 
 const CODE_PREFIX = "BCP1";
 const MAX_CODE_LENGTH = 30_000;
+/**
+ * Cap on the DECOMPRESSED payload: LZ codes expand super-linearly, so a
+ * 30KB code crafted as a decompression bomb could otherwise freeze the tab
+ * inside JSON.parse. Far above any legitimate export.
+ */
+const MAX_DECOMPRESSED_LENGTH = 2_000_000;
 
 /** Encodes a payload as a shareable `BCP1:<type>:<data>` code. */
 export function encodeExport(type: string, payload: unknown): string {
@@ -21,7 +27,10 @@ export function decodeExport(code: string, expectedType: string): unknown | null
     }
     try {
         const json = LZString.decompressFromBase64(match[2]!);
-        return json ? JSON.parse(json) as unknown : null;
+        if (!json || json.length > MAX_DECOMPRESSED_LENGTH) {
+            return null;
+        }
+        return JSON.parse(json) as unknown;
     } catch {
         return null;
     }

@@ -29,6 +29,9 @@ const SUSPEND_MS = 60_000;
 /** How long a cursed slot is asked to yield while an item punishment owns it. */
 const CURSE_YIELD_MS = 10_000;
 
+/** Cap on stored definitions - each lives in the auto-synced save, and the remote create paths must not grow it unboundedly. */
+const MAX_DEFINITIONS = 24;
+
 /** Message fragments gathered across one trigger's punishments, so the caller sends one combined notify/announcement. */
 interface AnnounceCollector {
     player: string[];
@@ -134,10 +137,14 @@ export default class Punishments extends ModuleInstance {
         return id;
     }
 
+    private atDefinitionCap(): boolean {
+        return Object.keys(this.Definitions).length >= MAX_DEFINITIONS;
+    }
+
     /** Creates an item punishment from the item currently worn in the group. */
     createFromWorn(group: AssetGroupName, by?: Originator): PunishmentDefinition | null {
         const worn = InventoryGet(Player, group);
-        if (!worn) {
+        if (!worn || this.atDefinitionCap()) {
             return null;
         }
         const definition: PunishmentDefinition = {
@@ -162,7 +169,7 @@ export default class Punishments extends ModuleInstance {
      */
     createFromCatalog(group: AssetGroupName, assetName: string, by?: Originator): PunishmentDefinition | null {
         const asset = AssetGet(Player.AssetFamily, group, assetName);
-        if (!asset || !asset.Wear || asset.IsLock) {
+        if (!asset || !asset.Wear || asset.IsLock || this.atDefinitionCap()) {
             return null;
         }
         const definition: PunishmentDefinition = {
@@ -184,7 +191,7 @@ export default class Punishments extends ModuleInstance {
     createRulePunishment(ruleId: string, by?: Originator): PunishmentDefinition | null {
         const rules = this.ModuleManager.getModule<Rules>("rules");
         const ruleDefinition = rules?.getDefinition(ruleId);
-        if (!ruleDefinition) {
+        if (!ruleDefinition || this.atDefinitionCap()) {
             return null;
         }
         const definition: PunishmentDefinition = {

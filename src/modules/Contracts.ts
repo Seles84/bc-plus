@@ -87,6 +87,11 @@ export default class Contracts extends ModuleInstance {
         return Object.values(this.Signed).some((c) => c.rules[ruleId]?.active === true);
     }
 
+    /** Whether ANY signed contract currently binds a rule (keeps the Rules module locked on). */
+    hasBoundRules(): boolean {
+        return Object.values(this.Signed).some((c) => Object.values(c.rules).some((r) => r.active === true));
+    }
+
     /** The contract binding a rule, for UI notes. */
     boundBy(ruleId: string): SignedContract | undefined {
         return Object.values(this.Signed).find((c) => c.rules[ruleId]?.active === true);

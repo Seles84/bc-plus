@@ -15,6 +15,11 @@ export function ringEntriesFromMirror(mirror: unknown): PetRingEntry[] {
     if (!mirror || typeof mirror !== "object") {
         return [];
     }
+    // The pet mirror category merges instead of replacing, so levels can
+    // outlive sharing being switched off - the flag is the authority
+    if ((mirror as Record<string, unknown>)["shareStats"] !== true) {
+        return [];
+    }
     const levels = (mirror as Record<string, unknown>)["levels"];
     if (!levels || typeof levels !== "object") {
         return [];
