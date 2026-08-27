@@ -19,7 +19,13 @@ const character = bcpCharacter(props.member);
 const dead = !local && character === null;
 
 onMounted(() => {
-    if (character && logging.getRemoteLog(character.MemberNumber) === undefined) {
+    if (!character) {
+        return;
+    }
+    const cached = logging.getRemoteLog(character.MemberNumber);
+    // Denials and timeouts are retried on open - permissions may have
+    // changed since (a cached denial otherwise sticks for the session)
+    if (cached === undefined || cached === "denied" || cached === "timeout") {
         logging.requestLog(character.MemberNumber);
     }
 });
@@ -109,12 +115,18 @@ function sendEntry(): void {
     <div v-else class="flex h-full flex-col gap-3">
         <p v-if="local && !canView" class="px-2 text-fg-dim">You are not permitted to view your own log.</p>
         <p v-else-if="remoteState === 'pending'" class="px-2 text-fg-dim">Requesting log...</p>
-        <p v-else-if="remoteState === 'denied'" class="px-2 text-fg-dim">
-            {{ character!.Nickname }} does not permit you to view their log.
-        </p>
-        <p v-else-if="remoteState === 'timeout'" class="px-2 text-fg-dim">
-            No response - they may be busy, disconnected, or running an older BC+.
-        </p>
+        <div v-else-if="remoteState === 'denied' || remoteState === 'timeout'" class="flex flex-wrap items-center gap-3 px-2">
+            <p class="text-fg-dim">
+                {{ remoteState === 'denied'
+                    ? `${character!.Nickname} does not permit you to view their log.`
+                    : "No response - they may be busy, disconnected, or running an older BC+." }}
+            </p>
+            <button
+                class="rounded-lg bg-surface px-3 py-1.5 hover:bg-surface-hover"
+                style="border: 1px solid var(--bcp-border);"
+                @click="logging.requestLog(character!.MemberNumber); touch()"
+            >Try again</button>
+        </div>
         <template v-else>
             <p v-if="entries.length === 0" class="px-2 text-fg-dim">The log is empty.</p>
             <div class="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto">
