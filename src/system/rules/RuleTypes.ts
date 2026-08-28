@@ -23,6 +23,13 @@ export interface RuleContext {
     interval(callback: () => void, ms: number): void;
 
     /**
+     * Runs a callback once after a delay, cancelled if the rule deactivates
+     * first - a bare setTimeout would still fire after the rule (or the
+     * whole Rules module) was switched off.
+     */
+    timeout(callback: () => void, ms: number): void;
+
+    /**
      * Registers a callback run when the rule deactivates - for undoing
      * side effects that are not hooks or intervals (e.g. entries added
      * to BC registries).

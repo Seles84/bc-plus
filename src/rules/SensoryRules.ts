@@ -153,14 +153,15 @@ export const SeeingWhitelist: RuleDefinition = {
 
         // While blinded, BC collapses the room view to just the player -
         // re-add whitelisted characters to the draw list
+        let bypassForced = false;
         ctx.hook("ChatRoomUpdateDisplay", 0, (args, next) => {
             const result = next(args);
+            let added = false;
             if (ctx.isEnforced()) {
                 const members = membersValue(ctx.setting<unknown>("members"));
                 if (members.length > 0 && ChatRoomCharacterViewCharacterCount === 1) {
                     ChatRoomCharacterDrawlist = [Player];
                 }
-                let added = false;
                 for (const character of ChatRoomCharacter) {
                     if (typeof character.MemberNumber === "number"
                         && !ChatRoomCharacterDrawlist.includes(character)
@@ -171,11 +172,25 @@ export const SeeingWhitelist: RuleDefinition = {
                 }
                 if (added) {
                     ChatRoomSenseDepBypass = true;
+                    bypassForced = true;
                     ChatRoomCharacterDrawlist.sort((a, b) => ChatRoomCharacter.indexOf(a) - ChatRoomCharacter.indexOf(b));
                     ChatRoomCharacterViewCharacterCount = ChatRoomCharacterDrawlist.length;
                 }
             }
+            // BC rebuilds the draw list each pass; a bypass WE forced must
+            // not outlive the pass that needed it (it weakens item-based
+            // sensory deprivation for everything else)
+            if (!added && bypassForced) {
+                ChatRoomSenseDepBypass = false;
+                bypassForced = false;
+            }
             return result;
+        });
+        ctx.cleanup(() => {
+            if (bypassForced) {
+                ChatRoomSenseDepBypass = false;
+                bypassForced = false;
+            }
         });
     },
 };

@@ -19,7 +19,8 @@ export const GreetRoom: RuleDefinition = {
         ctx.hook("ChatRoomSync", 0, (args, next) => {
             const result = next(args);
             void Promise.resolve(result as unknown).then(() => {
-                setTimeout(() => {
+                // Tracked: never fires after the rule was switched off
+                ctx.timeout(() => {
                     const greeting = ctx.setting<string>("greeting").trim();
                     if (ctx.isEnforced() && greeting.length > 0) {
                         sendAsRule(() => ServerSend("ChatRoomChat", { Content: greeting, Type: "Chat" }));

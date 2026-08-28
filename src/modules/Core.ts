@@ -752,6 +752,15 @@ export default class Core extends ModuleInstance {
         const authority = this.ModuleManager.getModule<Authority>("authority");
         const access = authority?.remoteHasPermission(character, "gui.view") ?? false;
         this.roomIconAccess.set(member, { access, until: now + 1000 });
+        // Bounded: entries for members long gone would otherwise pile up
+        // across rooms for the whole session
+        if (this.roomIconAccess.size > 120) {
+            for (const [m, entry] of this.roomIconAccess) {
+                if (entry.until <= now) {
+                    this.roomIconAccess.delete(m);
+                }
+            }
+        }
         return access;
     }
 
@@ -762,6 +771,11 @@ export default class Core extends ModuleInstance {
         const current = parseBCPVersion(BCPLUS_VERSION);
         if (savedVersion === null || current === null) {
             warn(`Could not compare versions (save: ${save.version}, current: ${BCPLUS_VERSION})`);
+            // Still re-stamp an unparsable saved version, or this warning
+            // repeats every login forever
+            if (current !== null && save.version !== BCPLUS_VERSION) {
+                save.version = BCPLUS_VERSION;
+            }
             return;
         }
         if (BCPVersionCompare(current, savedVersion) > 0 && this.getSetting<boolean>("updateNotify")) {

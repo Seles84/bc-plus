@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, inject, ref } from "vue";
 import { NAV_KEY } from "@/ui/nav";
-import { useBcpVersion } from "@/ui/composables";
+import { useBcpVersion, useNow } from "@/ui/composables";
 import {
     describeContractDuration, describeContractPolicy,
 } from "@/system/contracts/ContractTypes";
@@ -17,6 +17,7 @@ type ReviewSubject =
 const props = defineProps<{ subject: ReviewSubject }>();
 const nav = inject(NAV_KEY)!;
 const { version, touch, core } = useBcpVersion();
+const now = useNow();
 
 const contracts = core.ModuleManager.getModule<Contracts>("contracts")!;
 const rules = core.ModuleManager.getModule<Rules>("rules");
@@ -148,30 +149,30 @@ function release(): void {
         <section v-if="props.subject.kind === 'offer'" class="flex flex-wrap items-center gap-2 border-t pt-3" style="border-color: var(--bcp-border);">
             <button
                 class="rounded-lg px-5 py-2.5 font-semibold"
-                :style="Date.now() < signArmedUntil
+                :style="now < signArmedUntil
                     ? 'background: #e05252; color: #fff;'
                     : 'background: var(--bcp-accent); color: var(--bcp-on-accent);'"
                 title="Apply and seal every listed rule"
                 @click="sign()"
-            >{{ Date.now() < signArmedUntil ? "Click again to SIGN" : "Sign the contract" }}</button>
+            >{{ now < signArmedUntil ? "Click again to SIGN" : "Sign the contract" }}</button>
             <button
                 class="rounded-lg bg-surface px-4 py-2.5 hover:bg-surface-hover"
                 style="border: 1px solid var(--bcp-border);"
                 @click="decline()"
             >Decline</button>
-            <span v-if="Date.now() < signArmedUntil" class="text-sm text-fg-dim">
+            <span v-if="now < signArmedUntil" class="text-sm text-fg-dim">
                 Every listed rule applies immediately and stays sealed until the contract ends.
             </span>
         </section>
         <section v-else-if="canRelease" class="flex border-t pt-3" style="border-color: var(--bcp-border);">
             <button
                 class="rounded-lg px-4 py-2"
-                :style="Date.now() < releaseArmedUntil
+                :style="now < releaseArmedUntil
                     ? 'background: rgba(224,82,82,0.25); border: 1px solid #e05252; color: #e05252;'
                     : 'background: var(--bcp-surface); border: 1px solid var(--bcp-border);'"
                 title="Its policy allows either side to end it - the rules return to how they were"
                 @click="release()"
-            >{{ Date.now() < releaseArmedUntil ? "Confirm ending it" : "End the contract" }}</button>
+            >{{ now < releaseArmedUntil ? "Confirm ending it" : "End the contract" }}</button>
         </section>
         <p v-if="signError" class="px-3 text-sm" style="color: #e05252;">Cannot sign: {{ signError }}.</p>
     </div>

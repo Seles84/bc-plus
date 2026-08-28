@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { useBcpVersion } from "@/ui/composables";
+import { useBcpVersion, useNow } from "@/ui/composables";
 import {
     CurseMigrationItem, MigrationPlan, RuleMigrationItem, applyMigration, scanBCXMigration,
 } from "@/system/migration/BCXMigration";
@@ -9,6 +9,7 @@ import type Curses from "@/modules/Curses";
 import type Rules from "@/modules/Rules";
 
 const { version, touch, core } = useBcpVersion();
+const now = useNow();
 
 const rules = core.ModuleManager.getModule<Rules>("rules");
 const curses = core.ModuleManager.getModule<Curses>("curses");
@@ -158,7 +159,7 @@ function migrate(): void {
                 >Select none</button>
                 <button
                     class="rounded-lg px-4 py-1.5 font-semibold disabled:opacity-50"
-                    :style="Date.now() < migrateArmedUntil
+                    :style="now < migrateArmedUntil
                         ? 'background: #e05252; color: #fff;'
                         : 'background: var(--bcp-accent); color: var(--bcp-on-accent);'"
                     :disabled="!canEdit || selected.size === 0"
@@ -166,7 +167,7 @@ function migrate(): void {
                         ? 'Apply every ticked item to your BC+ configuration (BCX is not changed)'
                         : 'Requires permission to edit your own rules and curses'"
                     @click="migrate()"
-                >{{ Date.now() < migrateArmedUntil ? "Click again to migrate" : "Migrate" }}</button>
+                >{{ now < migrateArmedUntil ? "Click again to migrate" : "Migrate" }}</button>
             </div>
 
             <div v-if="resultLines.length > 0" class="flex flex-col gap-1 rounded-lg bg-surface p-3 text-sm" style="border: 1px solid var(--bcp-border);">

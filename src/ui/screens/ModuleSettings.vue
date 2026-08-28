@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, inject, onMounted } from "vue";
 import { PICKER_KEY } from "@/ui/picker";
-import { bcpCharacter, useBcpVersion } from "@/ui/composables";
+import { bcpCharacter, useBcpVersion, useNow } from "@/ui/composables";
 import SettingRow from "@/ui/components/SettingRow.vue";
 import { membersValue } from "@/system/gui/Settings";
 import { SendBCPMessage } from "@/utils/Messaging";
@@ -13,6 +13,7 @@ import type Pet from "@/modules/Pet";
 const props = defineProps<{ slug: string; member?: number }>();
 const picker = inject(PICKER_KEY)!;
 const { version, touch, core } = useBcpVersion();
+const now = useNow();
 const module = core.ModuleManager.getModule(props.slug);
 const character = bcpCharacter(props.member);
 const remote = props.member !== undefined;
@@ -188,7 +189,7 @@ function factoryReset(): void {
         <div v-if="props.slug === 'core' && !remote" class="mt-3 flex items-center gap-3 px-3">
             <button
                 class="rounded-lg px-4 py-2 disabled:opacity-50"
-                :style="Date.now() < resetArmedUntil
+                :style="now < resetArmedUntil
                     ? 'background: rgba(224,82,82,0.25); border: 1px solid #e05252; color: #e05252;'
                     : 'background: rgba(224,82,82,0.12); border: 1px solid #e05252; color: #e05252;'"
                 :disabled="!canFactoryReset"
@@ -196,7 +197,7 @@ function factoryReset(): void {
                     ? 'Factory reset - wipes every BC+ setting, rule, curse, role and log entry, then reloads'
                     : 'Disabled - your collar is welded'"
                 @click="factoryReset()"
-            >{{ Date.now() < resetArmedUntil ? "Confirm reset" : "Reset BC+" }}</button>
+            >{{ now < resetArmedUntil ? "Confirm reset" : "Reset BC+" }}</button>
         </div>
         <p v-if="remote && !canEdit" class="mt-3 px-3 text-sm text-fg-dim">
             {{ module.Config.PublicData

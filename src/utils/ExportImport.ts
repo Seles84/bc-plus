@@ -38,6 +38,12 @@ export function decodeExport(code: string, expectedType: string): unknown | null
 
 /** Copies a code to the clipboard, falling back to a copyable modal. */
 export function copyExportCode(code: string): void {
+    // decodeExport rejects oversized codes - handing out one nobody can
+    // import would be a silent trap
+    if (code.length > MAX_CODE_LENGTH) {
+        BCPNotifyPlayer("This export is too large to be imported - trim some data (e.g. export categories separately) and try again.");
+        return;
+    }
     const clipboard = navigator.clipboard;
     if (clipboard?.writeText) {
         clipboard.writeText(code).then(

@@ -300,18 +300,7 @@ export default class Curses extends ModuleInstance {
         this.migrateCapturedLocks();
         this.tickTimer = setInterval(() => this.check(), TICK_MS);
 
-        // Tandem mode: a BCX curse acting on a group we also curse means both
-        // mods would fight over the slot every tick - yield ours and let BCX
-        // own it. Guarded: a BCX API failure must never break the module.
-        if (!this.bcxSubscribed) {
-            try {
-                const bcxAPI = this.SDK.bcxAPI();
-                bcxAPI?.on("curseTrigger", (data) => this.onBCXCurseTrigger(data.group));
-                this.bcxSubscribed = bcxAPI !== undefined && bcxAPI !== null;
-            } catch (e) {
-                debug("Could not subscribe to BCX curse triggers:", e);
-            }
-        }
+        this.subscribeBCXCurses();
 
         // Remote curse management - validated here, never trusting the requester
         this.addSyncListener("CurseCommand", (sender, content) => this.onCurseCommand(sender, content));
@@ -459,7 +448,28 @@ export default class Curses extends ModuleInstance {
     }
 
     /** Enforcement pass: restore any cursed slot whose contents violate its specs. */
+    /**
+     * Tandem mode: a BCX curse acting on a group we also curse means both
+     * mods would fight over the slot every tick - yield ours and let BCX
+     * own it. Retried from the tick because BCX may load AFTER BC+ (a
+     * one-shot attempt at Load left doubly-cursed groups fighting all
+     * session). Guarded: a BCX API failure must never break the module.
+     */
+    private subscribeBCXCurses(): void {
+        if (this.bcxSubscribed) {
+            return;
+        }
+        try {
+            const bcxAPI = this.SDK.bcxAPI();
+            bcxAPI?.on("curseTrigger", (data) => this.onBCXCurseTrigger(data.group));
+            this.bcxSubscribed = bcxAPI !== undefined && bcxAPI !== null;
+        } catch (e) {
+            debug("Could not subscribe to BCX curse triggers:", e);
+        }
+    }
+
     private check(): void {
+        this.subscribeBCXCurses();
         // Pause enforcement entirely while disconnected/relogging, and never
         // enforce on a Dominant preset
         if (typeof Player === "undefined" || !Player.MemberNumber || !Array.isArray(Player.Appearance) || !ServerIsConnected

@@ -1,5 +1,5 @@
 import { RuleDefinition } from "@/system/rules/RuleTypes";
-import { isRuleSend } from "@/rules/speechUtils";
+import { isRuleSend, spokenText, transformSpoken } from "@/rules/speechUtils";
 
 function isShouting(content: string): boolean {
     const letters = content.replace(/[^\p{L}]/gu, "");
@@ -26,11 +26,13 @@ export const ForbidShouting: RuleDefinition = {
             if (event !== "ChatRoomChat" || (data?.Type !== "Chat" && data?.Type !== "Whisper") || typeof data.Content !== "string") {
                 return next(args);
             }
-            if (!isShouting(data.Content)) {
+            // Judge and quiet only the SPOKEN part - OOC text is exempt from
+            // every speech rule, and "(BRB AFK)" is not a shout
+            if (!isShouting(spokenText(data.Content))) {
                 return next(args);
             }
             if (ctx.isEnforced()) {
-                data.Content = data.Content.toLocaleLowerCase();
+                data.Content = transformSpoken(data.Content, (text) => text.toLocaleLowerCase());
                 ctx.triggerAttempt();
                 ctx.notify("A rule keeps you from shouting - your message was quieted.");
             } else {

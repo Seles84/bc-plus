@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
-import { bcpCharacter, useBcpVersion } from "@/ui/composables";
+import { bcpCharacter, useBcpVersion, useNow } from "@/ui/composables";
 import { COUNTER_LABELS, STATE_LABELS, formatStatDuration } from "@/system/statistics/StatTypes";
 import type Authority from "@/modules/Authority";
 import type Rules from "@/modules/Rules";
@@ -8,6 +8,7 @@ import type Statistics from "@/modules/Statistics";
 
 const props = defineProps<{ member?: number }>();
 const { version, touch, core } = useBcpVersion();
+const now = useNow();
 
 const statistics = core.ModuleManager.getModule<Statistics>("statistics")!;
 const local = props.member === undefined;
@@ -188,12 +189,12 @@ function refresh(): void {
                 <button
                     v-if="canReset"
                     class="rounded-lg px-4 py-2"
-                    :style="Date.now() < resetArmedUntil
+                    :style="now < resetArmedUntil
                         ? 'background: rgba(224,82,82,0.25); border: 1px solid #e05252; color: #e05252;'
                         : 'background: var(--bcp-surface); border: 1px solid var(--bcp-border);'"
                     :title="local ? 'Wipes all counters and starts over' : 'Wipes their counters (their client validates)'"
                     @click="resetStats()"
-                >{{ Date.now() < resetArmedUntil ? "Confirm reset" : "Reset stats" }}</button>
+                >{{ now < resetArmedUntil ? "Confirm reset" : "Reset stats" }}</button>
                 <button
                     v-if="!local"
                     class="rounded-lg bg-surface px-4 py-2 hover:bg-surface-hover"

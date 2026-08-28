@@ -6,7 +6,9 @@ function parseReplacements(entries: string[]): [string, string][] {
     return entries
         .map((pair) => pair.split(":").map((s) => s.trim()))
         .filter((parts): parts is [string, string] => parts.length === 2 && parts[0]!.length > 0)
-        .map((parts) => [parts[0].toLocaleLowerCase(), parts[1]] as [string, string]);
+        // $ is special in String.replace replacement patterns ($&, $1, $$) -
+        // escape it so "price:$100" replaces literally instead of corrupting
+        .map((parts) => [parts[0].toLocaleLowerCase(), parts[1].replace(/\$/g, "$$$$")] as [string, string]);
 }
 
 /** Replaces configured words in spoken text (e.g. "i:this doll"). OOC text is exempt. */

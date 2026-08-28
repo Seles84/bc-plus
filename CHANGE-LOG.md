@@ -28,7 +28,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Fixed
-- Remote views survive the target leaving and coming back (or relogging): the screen picks them up again live instead of freezing on stale data forever. Previously a rejoin silently orphaned every open view - it showed your edits as applied but never received their client's answers again. All remote pages now also show "They are no longer in this room" the moment the person leaves.
+- Two-click confirm buttons (factory reset, log clear, stats reset, contract delete/sign/end, migration) no longer wedge in "Confirm..." after the arm window lapses - the label now tracks the clock, so a click always does what it says. Deleting a custom role also asks for the confirming second click now, like every other destructive button.
+- The seeing whitelist no longer weakens item-based sensory deprivation for the rest of the room stay - the display bypass it sets is handed back when no whitelisted character needs it.
+- "Forbid shouting" ignores OOC text now - "(BRB AFK)" is no longer treated as a shout, and quieting a real shout leaves OOC segments untouched.
+- Word replacements containing "$" (like "price:$100") no longer corrupt the output.
+- Item punishments created before 0.8.4 no longer resurrect a phantom padlock captured with the item.
+- Clicking the BC+ button (or /bcp menu) while the window is minimized restores it instead of doing nothing.
+- Minimizing the window while a member picker is open no longer discards the selections in progress.
+- Copying an export code that is too large to ever be imported now says so instead of handing out a dead code.
+- Tandem: the yield-to-BCX handling for doubly-cursed slots now also engages when BCX loads after BC+ (previously the two mods fought over the slot all session).
+- Assorted hardening: one broken event listener no longer stops the others; a summon or greeting no longer fires after its rule (or the Rules module) was switched off; a rule that fails halfway through installing is fully torn down; role member lists are capped; a save with an unreadable version stamp no longer warns on every login; small internal caches are bounded. (or relogging): the screen picks them up again live instead of freezing on stale data forever. Previously a rejoin silently orphaned every open view - it showed your edits as applied but never received their client's answers again. All remote pages now also show "They are no longer in this room" the moment the person leaves.
 
 ### Changed
 - Performance: module settings are no longer rebuilt from scratch on every read - this ran hundreds of times per second on the drawing path (room icons, pet rings) and is now cached.

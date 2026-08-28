@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, inject, onMounted, ref } from "vue";
 import { NAV_KEY } from "@/ui/nav";
-import { bcpCharacter, useBcpVersion } from "@/ui/composables";
+import { bcpCharacter, useBcpVersion, useNow } from "@/ui/composables";
 import ModuleSettings from "@/ui/screens/ModuleSettings.vue";
 import { formatLogTime } from "@/system/logging/LogTypes";
 import { MemberNumberToName, SendBCPMessage } from "@/utils/Messaging";
@@ -11,6 +11,7 @@ import type Logging from "@/modules/Logging";
 const props = defineProps<{ member?: number }>();
 const nav = inject(NAV_KEY)!;
 const { version, touch, core } = useBcpVersion();
+const now = useNow();
 
 const logging = core.ModuleManager.getModule<Logging>("logging")!;
 const authority = core.ModuleManager.getModule<Authority>("authority");
@@ -165,12 +166,12 @@ function sendEntry(): void {
                 <button
                     v-if="canClear && entries.length > 0"
                     class="rounded-lg px-4 py-2"
-                    :style="Date.now() < clearArmedUntil
+                    :style="now < clearArmedUntil
                         ? 'background: rgba(224,82,82,0.25); border: 1px solid #e05252; color: #e05252;'
                         : 'background: var(--bcp-surface); border: 1px solid var(--bcp-border);'"
                     title="Removes all entries"
                     @click="clearLog()"
-                >{{ Date.now() < clearArmedUntil ? "Confirm clear" : "Clear log" }}</button>
+                >{{ now < clearArmedUntil ? "Confirm clear" : "Clear log" }}</button>
                 <button
                     class="rounded-lg bg-surface px-4 py-2 hover:bg-surface-hover"
                     style="border: 1px solid var(--bcp-border);"
@@ -203,13 +204,13 @@ function sendEntry(): void {
                 <span class="flex-1"></span>
                 <button
                     class="rounded-lg px-4 py-2 disabled:opacity-50"
-                    :style="Date.now() < clearArmedUntil
+                    :style="now < clearArmedUntil
                         ? 'background: rgba(224,82,82,0.25); border: 1px solid #e05252; color: #e05252;'
                         : 'background: var(--bcp-surface); border: 1px solid var(--bcp-border);'"
                     :disabled="!canClear"
                     :title="`Removes all entries from ${MemberNumberToName(props.member!)}'s log (their client validates)`"
                     @click="clearLog()"
-                >{{ Date.now() < clearArmedUntil ? "Confirm clear" : "Clear log" }}</button>
+                >{{ now < clearArmedUntil ? "Confirm clear" : "Clear log" }}</button>
             </template>
         </div>
     </div>

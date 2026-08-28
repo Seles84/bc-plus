@@ -175,7 +175,7 @@ export default class DataSync extends ModuleInstance {
         // Keep others' mirrors fresh: whenever the save persists, broadcast
         // any public module whose data changed (e.g. a role assignment made
         // after the join handshake).
-        this.Events.on("saveSynced", () => this.broadcastChangedCategories());
+        this.saveSyncedUnsub = this.Events.on("saveSynced", () => this.broadcastChangedCategories());
 
         // The hardcore flag can flip without any data write (the Hardcore
         // Mode rule's conditions coming and going), so also compare on a slow
@@ -184,12 +184,17 @@ export default class DataSync extends ModuleInstance {
     }
 
     private freshnessTimer: ReturnType<typeof setInterval> | null = null;
+    private saveSyncedUnsub: (() => void) | null = null;
 
     override Unload(): void {
         if (this.freshnessTimer !== null) {
             clearInterval(this.freshnessTimer);
             this.freshnessTimer = null;
         }
+        // Latent while CanDisable is false, but a Reload must never double
+        // the broadcast subscription
+        this.saveSyncedUnsub?.();
+        this.saveSyncedUnsub = null;
         super.Unload();
     }
 
@@ -208,9 +213,13 @@ export default class DataSync extends ModuleInstance {
         }
     }
 
+    /** Keys that would reparent the mirror object instead of storing data. */
+    private static readonly UNSAFE_MIRROR_KEYS = ["__proto__", "constructor", "prototype"];
+
     private onCategorySync(sender: Character, content: BCPMessageContent): void {
         const character = typeof sender.MemberNumber === "number" ? getChatroomCharacter(sender.MemberNumber) : null;
-        if (!character || typeof content.category !== "string") {
+        if (!character || typeof content.category !== "string"
+            || DataSync.UNSAFE_MIRROR_KEYS.includes(content.category)) {
             return;
         }
         if (character.BCPData === null) {
@@ -338,6 +347,7 @@ export default class DataSync extends ModuleInstance {
     private onSettingsResponse(sender: Character, content: BCPMessageContent): void {
         const character = typeof sender.MemberNumber === "number" ? getChatroomCharacter(sender.MemberNumber) : null;
         if (!character || typeof content.module !== "string"
+            || DataSync.UNSAFE_MIRROR_KEYS.includes(content.module)
             || typeof content.values !== "object" || content.values === null) {
             return;
         }

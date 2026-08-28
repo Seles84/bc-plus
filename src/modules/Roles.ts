@@ -31,6 +31,8 @@ export interface CustomRoleData {
 
 const MAX_CUSTOM_ROLES = 12;
 const MAX_ROLE_NAME = 30;
+/** Cap per manual/custom role member list - Roles Data is public-synced. */
+const MAX_ROLE_MEMBERS = 100;
 
 /**
  * Determines which BC+ roles a member holds, combining BC relationships
@@ -274,6 +276,10 @@ export default class Roles extends ModuleInstance {
                 }
                 if (list.includes(member)) {
                     reject("already assigned");
+                    return;
+                }
+                if (list.length >= MAX_ROLE_MEMBERS) {
+                    reject("that role list is full");
                     return;
                 }
                 list.push(member);

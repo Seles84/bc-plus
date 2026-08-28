@@ -1,3 +1,5 @@
+import { err } from "@/system/Console";
+
 /** All events BC+ can emit internally. Extend this map as new systems are added. */
 export interface BCPlusEvents {
     /** Fired once after login when the run mode has been determined. */
@@ -63,7 +65,13 @@ export class EventBus<Events extends object = BCPlusEvents> {
 
     emit<K extends keyof Events>(event: K, data: Events[K]): void {
         this.listeners.get(event)?.forEach((listener) => {
-            (listener as Listener<Events[K]>)(data);
+            // Isolate subscribers: one throwing must not skip the rest or
+            // unwind into the BC hook that fired the event
+            try {
+                (listener as Listener<Events[K]>)(data);
+            } catch (e) {
+                err(`Event listener for "${String(event)}" failed:`, e);
+            }
         });
     }
 }
