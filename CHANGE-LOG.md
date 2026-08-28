@@ -4,10 +4,15 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.12.0] - 2026-08-28
+
+The great bug-hunt release: a top-to-bottom review of the whole project, with every confirmed find fixed - correctness, performance and hardening alike - plus Escape navigation.
 
 ### Changed
 - Escape now works from anywhere while the BC+ window is open - it goes back one screen (like the back button) and closes the window from the main menu. Previously the key only registered after clicking inside the window first. A minimized window leaves Escape to BC.
+- Performance: module settings are no longer rebuilt from scratch on every read - this ran hundreds of times per second on the drawing path (room icons, pet rings) and is now cached.
+- Performance: untouched rules no longer store ~85 default records in your synced data. New saves stay slim, existing saves are slimmed on load - room-join sync messages shrink by roughly 10-20KB.
+- Performance: viewing your own Statistics page no longer triggers a server save on every sync event; saving itself does less redundant re-serialization work.
 
 ### Fixed
 - A corrupt save now offers restoring the intact backup kept on this device before anything destructive - previously the only choice was a full reset, which also deleted that backup. Restoring a backup no longer strands your data in this browser either: it flows back to the BC server, so the save keeps roaming across devices.
@@ -24,10 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - BC+ dialogs only react to Enter/Escape while they actually have keyboard focus, and destructive confirms (like the reset-after-corrupt-save one) never confirm on Enter at all - a stray key press meant for chat could previously trigger them.
 - Closing the BC+ window with unsent remote rule changes now asks whether to send, discard or stay - previously the changes looked applied but were silently left unsent.
 - Malformed module data inside a crafted save is dropped at load instead of breaking every subsequent login with console errors only.
-
-## [Unreleased]
-
-### Fixed
+- Remote views survive the target leaving and coming back (or relogging): the screen picks them up again live instead of freezing on stale data forever. Previously a rejoin silently orphaned every open view - it showed your edits as applied but never received their client's answers again. All remote pages now also show "They are no longer in this room" the moment the person leaves.
 - Two-click confirm buttons (factory reset, log clear, stats reset, contract delete/sign/end, migration) no longer wedge in "Confirm..." after the arm window lapses - the label now tracks the clock, so a click always does what it says. Deleting a custom role also asks for the confirming second click now, like every other destructive button.
 - The seeing whitelist no longer weakens item-based sensory deprivation for the rest of the room stay - the display bypass it sets is handed back when no whitelisted character needs it.
 - "Forbid shouting" ignores OOC text now - "(BRB AFK)" is no longer treated as a shout, and quieting a real shout leaves OOC segments untouched.
@@ -37,12 +39,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - Minimizing the window while a member picker is open no longer discards the selections in progress.
 - Copying an export code that is too large to ever be imported now says so instead of handing out a dead code.
 - Tandem: the yield-to-BCX handling for doubly-cursed slots now also engages when BCX loads after BC+ (previously the two mods fought over the slot all session).
-- Assorted hardening: one broken event listener no longer stops the others; a summon or greeting no longer fires after its rule (or the Rules module) was switched off; a rule that fails halfway through installing is fully torn down; role member lists are capped; a save with an unreadable version stamp no longer warns on every login; small internal caches are bounded. (or relogging): the screen picks them up again live instead of freezing on stale data forever. Previously a rejoin silently orphaned every open view - it showed your edits as applied but never received their client's answers again. All remote pages now also show "They are no longer in this room" the moment the person leaves.
-
-### Changed
-- Performance: module settings are no longer rebuilt from scratch on every read - this ran hundreds of times per second on the drawing path (room icons, pet rings) and is now cached.
-- Performance: untouched rules no longer store ~85 default records in your synced data. New saves stay slim, existing saves are slimmed on load - room-join sync messages shrink by roughly 10-20KB.
-- Performance: viewing your own Statistics page no longer triggers a server save on every sync event; saving itself does less redundant re-serialization work.
+- Assorted hardening: one broken event listener no longer stops the others; a summon or greeting no longer fires after its rule (or the Rules module) was switched off; a rule that fails halfway through installing is fully torn down; role member lists are capped; a save with an unreadable version stamp no longer warns on every login; small internal caches are bounded.
 
 ## [0.11.1] - 2026-08-27
 
