@@ -9,6 +9,8 @@ An extension for the web game *Bondage Club*, providing additional features and 
    - **Stable**: `https://seles84.github.io/bc-plus/bcplusLoader.user.js`
 3. Open the club — BC+ loads automatically.
 
+Alternatively, BC+ can be launched per-session via a bookmark (no extension needed) — see the [install page](https://seles84.github.io/bc-plus/) for the bookmarklet.
+
 ## Update checks & anonymous usage count
 
 BC+ checks for new releases by fetching a small version manifest at login and periodically afterwards (interval configurable on the General page). The request carries only the BC+ version you are running and whether it is a login or interval check — **no member number, no account data, nothing identifying**. The endpoint's request count is used as an anonymous "how many people use BC+" figure; no per-user information is stored.

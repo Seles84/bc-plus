@@ -4,6 +4,11 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- The install page (https://seles84.github.io/bc-plus/) offers a launch-by-bookmark option now: drag the "Launch BC+" link onto the bookmarks bar and click it in the club tab to load BC+ for that session - no browser extension needed. The userscript remains the recommended set-and-forget install.
+
 ## [0.12.0] - 2026-08-28
 
 The great bug-hunt release: a top-to-bottom review of the whole project, with every confirmed find fixed - correctness, performance and hardening alike - plus Escape navigation.

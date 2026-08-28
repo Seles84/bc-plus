@@ -111,6 +111,15 @@ copyFileSync(
 // latest released version (always pkg.version; displayVersion is dev-only)
 writeFileSync("dist/version.json", JSON.stringify({ version: pkg.version }) + "\n");
 
+// One-click launcher for the landing page: injects the bundle into the club
+// tab on demand, same as the loader userscript but without an extension.
+// Single-quoted strings only - it is interpolated into an HTML attribute.
+const bookmarklet = "javascript:(()=>{if(window.BCPlus===undefined)"
+    + "{var n=document.createElement('script');"
+    + "n.setAttribute('crossorigin','anonymous');"
+    + "n.src='https://seles84.github.io/bc-plus/bcplus.js?_='+Date.now();"
+    + "n.onload=()=>n.remove();document.head.appendChild(n);}})();";
+
 // Landing page for GitHub Pages (the deploy serves dist/ as the site root)
 writeFileSync("dist/index.html", `<!DOCTYPE html>
 <html lang="en">
@@ -124,6 +133,8 @@ writeFileSync("dist/index.html", `<!DOCTYPE html>
     h1 { color: #b794e6; }
     a { color: #b794e6; }
     code { background: #2a2135; padding: 2px 6px; border-radius: 4px; }
+    code.wrap { display: block; padding: 8px 10px; word-break: break-all;
+                font-size: 0.8rem; user-select: all; }
     .card { background: #241c2e; border-left: 4px solid #8469b6; border-radius: 6px;
             padding: 1rem 1.25rem; margin: 1.5rem 0; }
     .version { color: #9a8fb0; font-size: 0.9rem; }
@@ -136,12 +147,22 @@ writeFileSync("dist/index.html", `<!DOCTYPE html>
 fine-grained permissions, conditions and timers, one-shot commands, presets, and a behavior log.
 Runs standalone or in tandem with BCX.</p>
 <div class="card">
-    <strong>Install</strong>
+    <strong>Install (recommended)</strong>
     <ol>
         <li>Install a userscript manager such as <a href="https://www.tampermonkey.net/">Tampermonkey</a>.</li>
         <li>Open <a href="bcplusLoader.user.js">the BC+ loader</a> and confirm the installation.</li>
         <li>Open the club &mdash; BC+ loads automatically and updates itself on every visit.</li>
     </ol>
+</div>
+<div class="card">
+    <strong>Or launch via bookmark</strong>
+    <p>No extension needed: drag this link onto your bookmarks bar &mdash;
+    <a href="${bookmarklet}">Launch BC+</a> &mdash; then click the bookmark in the
+    club tab whenever you want BC+ (before or after logging in). It loads the
+    current version each time, but only for that session &mdash; the userscript
+    above is the set-and-forget option.</p>
+    <p>If dragging does not work, create a bookmark by hand and paste this as its address:</p>
+    <p><code class="wrap">${bookmarklet}</code></p>
 </div>
 <p><a href="https://github.com/Seles84/bc-plus">Source on GitHub</a> &middot;
 <a href="https://github.com/Seles84/bc-plus/blob/main/CHANGE-LOG.md">Changelog</a></p>
