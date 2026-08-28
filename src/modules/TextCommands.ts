@@ -50,7 +50,7 @@ export default class TextCommands extends ModuleInstance {
             description: "Show BC+ version and run mode",
             handler: () => {
                 const mode = this.Core.Mode === "tandem"
-                    ? `tandem with BCX v${window.bcx?.version ?? "?"}`
+                    ? `tandem with BCX v${EscapeHtml(window.bcx?.version ?? "?")}`
                     : "standalone (control mode)";
                 this.reply(`${BCPLUS_APP_NAME} v${BCPLUS_VERSION} - running ${mode}.`);
             },

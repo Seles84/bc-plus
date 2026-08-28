@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { computed, inject } from "vue";
+import { computed, inject, ref } from "vue";
 import { NAV_KEY } from "@/ui/nav";
-import { useBcpVersion } from "@/ui/composables";
+import { useBcpVersion, useNow } from "@/ui/composables";
 import GrantScope from "@/ui/screens/GrantScope.vue";
 import type Authority from "@/modules/Authority";
 import type Commands from "@/modules/Commands";
@@ -76,10 +76,19 @@ function openScope(permissionId: string, label: string): void {
     }
 }
 
+// Two-click armed confirm, like every other destructive button - the role
+// (name, assignments, grants) is public-synced with no undo
+const now = useNow();
+const deleteArmedUntil = ref(0);
 function deleteRole(): void {
-    roles.deleteCustomRole(props.roleId);
-    touch();
-    nav.pop();
+    if (Date.now() < deleteArmedUntil.value) {
+        deleteArmedUntil.value = 0;
+        roles.deleteCustomRole(props.roleId);
+        touch();
+        nav.pop();
+    } else {
+        deleteArmedUntil.value = Date.now() + 5_000;
+    }
 }
 </script>
 
@@ -123,10 +132,12 @@ function deleteRole(): void {
         <div v-if="canDelete" class="border-t pt-3" style="border-color: var(--bcp-border);">
             <button
                 class="rounded-lg px-4 py-2"
-                style="background: rgba(224,82,82,0.15); border: 1px solid #e05252; color: #e05252;"
+                :style="now < deleteArmedUntil
+                    ? 'background: rgba(224,82,82,0.3); border: 1px solid #e05252; color: #e05252;'
+                    : 'background: rgba(224,82,82,0.15); border: 1px solid #e05252; color: #e05252;'"
                 title="Removes the role and all its assignments"
                 @click="deleteRole()"
-            >Delete this role</button>
+            >{{ now < deleteArmedUntil ? "Confirm delete" : "Delete this role" }}</button>
         </div>
     </div>
     <p v-else class="text-fg-dim">This role no longer exists.</p>

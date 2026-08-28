@@ -94,7 +94,9 @@ export const ReadyToBeSummoned: RuleDefinition = {
             BCPNotifyPlayer(`You are summoned by #${summoner}! Moving in ${delaySeconds} seconds...`);
             ctx.triggerAttempt(summoner);
 
-            setTimeout(() => {
+            // Tracked timeout: cancelled if the rule (or the whole Rules
+            // module) is switched off before the delay runs out
+            ctx.timeout(() => {
                 void (async () => {
                     // Still in effect, and not already there?
                     if (!ctx.isEnforced() || (ServerPlayerIsInChatRoom() && ChatRoomData?.Name === roomName)) {

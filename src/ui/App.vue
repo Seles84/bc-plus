@@ -77,8 +77,11 @@ onMounted(() => {
             <component :is="current.component" v-bind="current.props" v-if="current" :key="nav.depth" />
         </main>
 
+        <!-- v-show for the minimized case: unmounting rebuilt the picker
+             from scratch on restore, discarding in-progress selections -->
         <MemberPickerModal
-            v-if="picker.state.request && !win.minimized.value"
+            v-if="picker.state.request"
+            v-show="!win.minimized.value"
             :key="picker.state.request.title + picker.state.request.multi"
             :request="picker.state.request"
             @finish="picker.finish($event)"

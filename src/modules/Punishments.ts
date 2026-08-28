@@ -3,7 +3,7 @@ import { ModuleInstance } from "@/system/module/ModuleInstance";
 import { ModuleConfig, PermissionDefinition } from "@/system/module/ModuleTypes";
 import { BCPLUS_AUTHOR, BCPLUS_VERSION } from "@/system/Constants";
 import { Role } from "@/system/Roles";
-import { captureItemSpec } from "@/system/curses/CurseTypes";
+import { captureItemSpec, stripLockState } from "@/system/curses/CurseTypes";
 import {
     ActivePunishment, PUNISHMENT_LOCKS, PunishmentDefinition, describeDuration,
 } from "@/system/punishments/PunishmentTypes";
@@ -585,7 +585,10 @@ export default class Punishments extends ModuleInstance {
             return;
         }
         if (spec.property !== undefined) {
-            item.Property = jsonClone(spec.property);
+            // Strip lock props: pre-0.8.4 definitions captured them with the
+            // item, and re-applying verbatim resurrected a phantom padlock
+            // even with the punishment's own lock set to none
+            item.Property = stripLockState(jsonClone(spec.property)) ?? {};
         }
         if (active.lock && PUNISHMENT_LOCKS.some((l) => l.asset === active.lock)) {
             try {

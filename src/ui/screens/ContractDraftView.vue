@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, inject, ref } from "vue";
 import { NAV_KEY } from "@/ui/nav";
-import { useBcpVersion } from "@/ui/composables";
+import { useBcpVersion, useNow } from "@/ui/composables";
 import ChooseRule from "@/ui/screens/ChooseRule.vue";
 import RuleConfig from "@/ui/screens/RuleConfig.vue";
 import { PICKER_KEY } from "@/ui/picker";
@@ -16,6 +16,7 @@ const props = defineProps<{ draftId: string }>();
 const nav = inject(NAV_KEY)!;
 const picker = inject(PICKER_KEY)!;
 const { version, touch, core } = useBcpVersion();
+const now = useNow();
 
 const contracts = core.ModuleManager.getModule<Contracts>("contracts")!;
 const rules = core.ModuleManager.getModule<Rules>("rules")!;
@@ -218,12 +219,12 @@ function ruleSummary(entry: (typeof included.value)[number]): string {
             <span class="flex-1"></span>
             <button
                 class="rounded-lg px-4 py-2"
-                :style="Date.now() < deleteArmedUntil
+                :style="now < deleteArmedUntil
                     ? 'background: rgba(224,82,82,0.25); border: 1px solid #e05252; color: #e05252;'
                     : 'background: rgba(224,82,82,0.15); border: 1px solid #e05252; color: #e05252;'"
                 title="Removes this draft (signed contracts are unaffected)"
                 @click="deleteDraft()"
-            >{{ Date.now() < deleteArmedUntil ? "Confirm delete" : "Delete draft" }}</button>
+            >{{ now < deleteArmedUntil ? "Confirm delete" : "Delete draft" }}</button>
         </section>
     </div>
     <p v-else class="text-fg-dim">This draft no longer exists.</p>

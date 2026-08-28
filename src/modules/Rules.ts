@@ -596,7 +596,10 @@ export default class Rules extends ModuleInstance {
             debug(`Rule installed: ${id}`);
         } catch (e) {
             warn(`Failed to install rule ${id}:`, e);
-            this.SDK.removeHooks(this.hookOwner(id));
+            // Full teardown, not just hooks: a partial load may already have
+            // registered intervals and cleanup callbacks, and since the rule
+            // never entered `installed`, Unload would not clear them either
+            this.uninstallRule(id);
         }
     }
 
@@ -627,6 +630,14 @@ export default class Rules extends ModuleInstance {
             setting: <T>(name: string): T => state().settings[name] as T,
             interval: (callback: () => void, ms: number) => {
                 const timer = setInterval(callback, ms);
+                const timers = this.ruleTimers.get(definition.id) ?? [];
+                timers.push(timer);
+                this.ruleTimers.set(definition.id, timers);
+            },
+            timeout: (callback: () => void, ms: number) => {
+                // Shares the interval registry - clearInterval cancels
+                // timeout ids too (same browser timer pool)
+                const timer = setTimeout(callback, ms) as unknown as ReturnType<typeof setInterval>;
                 const timers = this.ruleTimers.get(definition.id) ?? [];
                 timers.push(timer);
                 this.ruleTimers.set(definition.id, timers);

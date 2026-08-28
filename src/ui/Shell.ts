@@ -60,6 +60,11 @@ export class UIWindow {
     open(member?: number): void {
         if (this.host) {
             if ((member ?? null) === this.viewingMember) {
+                // "Open" must always yield a visible window - clicking the
+                // info-sheet button while minimized looked like a dead click
+                if (this.minimized.value) {
+                    this.toggleMinimize();
+                }
                 return;
             }
             // Different target: rebuild the window on the new context
