@@ -470,7 +470,7 @@ export default class Core extends ModuleInstance {
         }
     }
 
-    private async fetchLatestVersion(kind: "login" | "interval"): Promise<void> {
+    private async fetchLatestVersion(kind: "login" | "relog" | "interval"): Promise<void> {
         // Stamped even when the fetch fails - being offline must not turn the
         // pacing timer into a once-a-minute retry hammer
         this.lastUpdateCheck = Date.now();
@@ -578,6 +578,19 @@ export default class Core extends ModuleInstance {
         this.checkForUpdate();
         void this.fetchLatestVersion("login");
         this.updateCheckTimer = setInterval(() => this.maybeRecheckUpdates(), 60_000);
+
+        // BC+ boots once per page load, so "login" means a fresh session.
+        // Later successful logins in the same tab (BC's relog screen after a
+        // disconnect) report as "relog" - the usage counts can then tell
+        // fresh sessions and reconnects apart. Failed attempts carry an
+        // error string instead of a payload object and are skipped.
+        this.addHook("LoginResponse", 0, (args, next) => {
+            const result = next(args);
+            if (typeof args[0] === "object" && args[0] !== null) {
+                void this.fetchLatestVersion("relog");
+            }
+            return result;
+        });
         this.installRoomIcon();
         bindMemberCache(this.Data.knownMembers as Record<string, KnownMember>);
 
