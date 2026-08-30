@@ -107,6 +107,10 @@ copyFileSync(
     "dist/bcplusLoader.user.js",
 );
 
+// BC+ logo at a stable URL - referenced by the FUSAM manifest entry and the
+// landing page favicon
+copyFileSync("src/images/icon90.png", "dist/icon.png");
+
 // Version manifest - clients fetch this from the Pages deploy to learn the
 // latest released version (always pkg.version; displayVersion is dev-only)
 writeFileSync("dist/version.json", JSON.stringify({ version: pkg.version }) + "\n");
@@ -126,6 +130,7 @@ writeFileSync("dist/index.html", `<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="icon.png">
 <title>BC+ (Bondage Club Plus)</title>
 <style>
     body { background: #1a1520; color: #e8e2f0; font-family: system-ui, sans-serif;
@@ -147,7 +152,13 @@ writeFileSync("dist/index.html", `<!DOCTYPE html>
 fine-grained permissions, conditions and timers, one-shot commands, presets, and a behavior log.
 Runs standalone or in tandem with BCX.</p>
 <div class="card">
-    <strong>Install (recommended)</strong>
+    <strong>Install via FUSAM</strong>
+    <p>If you use <a href="https://sidiousious.gitlab.io/bc-addon-loader/">FUSAM</a> (the BC
+    Addon Manager), just enable <em>BC+ (Bondage Club Plus)</em> in its addon list &mdash;
+    no separate install needed.</p>
+</div>
+<div class="card">
+    <strong>Install with a userscript</strong>
     <ol>
         <li>Install a userscript manager such as <a href="https://www.tampermonkey.net/">Tampermonkey</a>.</li>
         <li>Open <a href="bcplusLoader.user.js">the BC+ loader</a> and confirm the installation.</li>
