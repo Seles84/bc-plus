@@ -4,6 +4,10 @@ An extension for the web game *Bondage Club*, providing additional features and 
 
 ## Installation
 
+**Via FUSAM**: if you use [FUSAM](https://sidiousious.gitlab.io/bc-addon-loader/) (the BC Addon Manager), enable *BC+ (Bondage Club Plus)* in its addon list — no separate install needed.
+
+**With a userscript**:
+
 1. Install a userscript manager such as [Tampermonkey](https://www.tampermonkey.net/).
 2. Install the BC+ loader userscript:
    - **Stable**: `https://seles84.github.io/bc-plus/bcplusLoader.user.js`

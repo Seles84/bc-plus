@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- BC+ can be installed through FUSAM (the BC Addon Manager): the install page and README describe the option, and the BC+ logo is published at a stable URL for FUSAM's addon list.
 - The install page (https://seles84.github.io/bc-plus/) offers a launch-by-bookmark option now: drag the "Launch BC+" link onto the bookmarks bar and click it in the club tab to load BC+ for that session - no browser extension needed. The userscript remains the recommended set-and-forget install.
 
 ### Changed
