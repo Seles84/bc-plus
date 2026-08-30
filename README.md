@@ -15,7 +15,7 @@ Alternatively, BC+ can be launched per-session via a bookmark (no extension need
 
 BC+ checks for new releases by fetching a small version manifest at login and periodically afterwards (interval configurable on the General page). The request carries only the BC+ version you are running and the kind of check (login, reconnect or periodic) — **no member number, no account data, nothing identifying**. The endpoint's request count is used as an anonymous "how many people use BC+" figure.
 
-To count *daily unique* users (instead of raw requests), the counting endpoint additionally records the request's country, coarse browser family (e.g. "firefox"), and a **daily-rotating anonymous hash** derived from a secret salt, the current date and the request IP. The hash cannot be reversed and changes every day, so it cannot track anyone across days — and the IP itself is never stored. No per-user information is kept.
+To count *daily and weekly unique* users (instead of raw requests), the counting endpoint additionally records the request's country, coarse browser family (e.g. "firefox"), and two **rotating anonymous hashes** derived from a secret salt, the current date (or ISO week) and the request IP. The hashes cannot be reversed and rotate with their period, so they cannot track anyone across days or weeks — and the IP itself is never stored. No per-user information is kept.
 
 You can switch this off completely with the "Check for updates online" checkbox on the BC+ General page — BC+ then makes no update requests at all (you also stop hearing about new versions).
 
