@@ -12,6 +12,7 @@ import Pet from "@/modules/Pet";
 import Punishments from "@/modules/Punishments";
 import Relationships from "@/modules/Relationships";
 import Roles from "@/modules/Roles";
+import RoomTemplates from "@/modules/RoomTemplates";
 import Rules from "@/modules/Rules";
 import Statistics from "@/modules/Statistics";
 import TextCommands from "@/modules/TextCommands";
@@ -34,6 +35,7 @@ export default class ModuleManager {
             new Contracts(parent),
             new Commands(parent),
             new Relationships(parent),
+            new RoomTemplates(parent),
             new Pet(parent),
             new Welding(parent),
             new Statistics(parent),
