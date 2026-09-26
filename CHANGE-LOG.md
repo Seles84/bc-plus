@@ -10,6 +10,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - BC+ can be installed through FUSAM (the BC Addon Manager): the install page and README describe the option, and the BC+ logo is published at a stable URL for FUSAM's addon list.
 - The install page (https://seles84.github.io/bc-plus/) offers a launch-by-bookmark option now: drag the "Launch BC+" link onto the bookmarks bar and click it in the club tab to load BC+ for that session - no browser extension needed. The userscript remains the recommended set-and-forget install.
 
+### Fixed
+- The BC+ button on the profile/information sheet no longer lands on top of other mods' buttons (Littlish Club shared the exact same spot, and a late-loading BCX could end up underneath BC+ depending on load order). The slot is now chosen when the sheet draws: the first free spot on the button row, accounting for BCX, Littlish Club and ABCL when they are loaded (#166).
+
 ### Changed
 - The anonymous usage count can now tell daily and weekly unique users apart from raw request counts: the counting endpoint derives the request's country, coarse browser family and two rotating anonymous hashes (secret salt + date or ISO week + IP; irreversible, rotate with their period, the IP itself is never stored). Reconnects after a disconnect now report as "relog" instead of not being counted at all, separating fresh sessions from reconnects. Still no member number, no account data, nothing identifying - see the README for the full disclosure.
 
