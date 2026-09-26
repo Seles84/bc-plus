@@ -14,7 +14,11 @@ export interface CurseItemSpec {
     color?: ItemColor;
     difficulty?: number;
     property?: ItemProperties;
-    craft?: CraftingItem;
+    /**
+     * R132+ captures the minimized craft data worn items carry; specs from
+     * older saves still hold a full CraftingItem. InventoryWear accepts both.
+     */
+    craft?: CraftingItem | CraftingPartialItem;
 }
 
 /**
