@@ -4,7 +4,9 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.13.0] - 2026-09-27
+
+Room templates, the FUSAM listing, BC R132 support, and the first round of community-reported fixes - welcome, everyone who found BC+ through FUSAM!
 
 ### Added
 - Room templates (new Rooms module, #168): save the full setup of a room you are in - name, description, background, access/visibility, admin and whitelist, size, language, blocked categories, customization and map - as one of up to 20 templates, then return to it with one click (or `/bcp room <name>`): BC+ joins the room when it exists and recreates it from the snapshot when it does not. A BC+ button on BC's room creation screen opens the template list and "Fill form" loads a template into the creation form for tweaking before creating. Room rules still apply: template travel respects "Restrict entering rooms", and recreating respects "Forbid creating new rooms".
