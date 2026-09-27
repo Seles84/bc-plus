@@ -42,4 +42,4 @@ The Pet module is inspired by [MPA (Maya's Petplay Additions)](https://github.co
 
 ## License
 
-MIT
+MIT — see [LICENSE](LICENSE).

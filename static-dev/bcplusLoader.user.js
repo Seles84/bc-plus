@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         BC+ - Bondage Club Plus (Dev Loader)
 // @namespace    BCPlus
-// @version      1.0.1
+// @version      1.1.0
 // @description  Development loader for the "Bondage Club Plus" (BC+) mod - loads from localhost
 // @author       Seles
 // @include      /^https:\/\/(www\.)?bondageprojects\.elementfx\.com\/R\d+\/(BondageClub|\d+)(\/((index|\d+)\.html)?)?$/
 // @include      /^https:\/\/(www\.)?bondage-europe\.com\/R\d+\/(BondageClub|\d+)(\/((index|\d+)\.html)?)?$/
+// @include      /^https:\/\/(www\.)?bondageeurope\.com\/R\d+\/(BondageClub|\d+)(\/((index|\d+)\.html)?)?$/
 // @include      /^https:\/\/(www\.)?bondage-asia\.com\/club\/R\d+(\/((index|\d+)\.html)?)?$/
 // @homepage     https://github.com/Seles84/bc-plus#readme
 // @source       https://github.com/Seles84/bc-plus

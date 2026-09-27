@@ -2,6 +2,7 @@
 import { computed, inject } from "vue";
 import { NAV_KEY } from "@/ui/nav";
 import { useBcpVersion } from "@/ui/composables";
+import CommitInput from "@/ui/components/CommitInput.vue";
 import { LocalPunishmentAccess, RemotePunishmentAccess } from "@/system/punishments/PunishmentAccess";
 import { PUNISHMENT_LOCKS, describeDuration } from "@/system/punishments/PunishmentTypes";
 import { bcpCharacter } from "@/ui/composables";
@@ -47,16 +48,16 @@ const groupLabel = computed(() =>
         ?.curseableGroups().find((g) => g.Name === definition.value?.group)?.Description
         ?? definition.value?.group ?? "?");
 
-function commitName(event: Event): void {
-    const value = (event.target as HTMLInputElement).value.trim();
-    if (value.length > 0 && value !== definition.value?.name) {
-        access.setName(props.id, value);
+function commitName(value: string): void {
+    const trimmed = value.trim();
+    if (trimmed.length > 0 && trimmed !== definition.value?.name) {
+        access.setName(props.id, trimmed);
         touch();
     }
 }
 
-function commitDuration(event: Event): void {
-    const minutes = Number.parseInt((event.target as HTMLInputElement).value, 10);
+function commitDuration(value: string): void {
+    const minutes = Number.parseInt(value, 10);
     if (Number.isInteger(minutes) && minutes >= 0 && minutes <= 4320) {
         access.setDuration(props.id, minutes);
         touch();
@@ -93,21 +94,21 @@ function remove(): void {
         <section class="flex flex-col gap-2">
             <div class="flex items-center gap-3">
                 <span class="w-56">Name:</span>
-                <input
-                    type="text" class="flex-1" maxlength="40"
+                <CommitInput
+                    class="flex-1" maxlength="40"
                     :disabled="!canEdit"
                     :value="definition.name"
-                    @change="commitName($event)"
-                >
+                    @commit="commitName($event)"
+                />
             </div>
             <div class="flex items-center gap-3">
                 <span class="w-56">Duration in minutes:</span>
-                <input
-                    type="text" inputmode="numeric" class="w-24"
+                <CommitInput
+                    inputmode="numeric" class="w-24"
                     :disabled="!canEdit"
                     :value="String(definition.durationMin)"
-                    @change="commitDuration($event)"
-                >
+                    @commit="commitDuration($event)"
+                />
                 <span class="text-sm text-fg-dim">{{ describeDuration(definition.durationMin) }} (0 = until lifted)</span>
             </div>
 
