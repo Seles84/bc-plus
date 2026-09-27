@@ -104,8 +104,8 @@ function metaLine(entry: (typeof templates.value)[number]): string {
             Templates snapshot a room's full setup. <strong>Go</strong> joins the room when it
             exists and recreates it from the snapshot when it does not - also available as
             <code>/bcp room &lt;name&gt;</code>. On BC's room creation screen, the BC+ button
-            (top left) opens this page and <strong>Fill form</strong> loads a template into
-            the form instead.
+            beside the room name opens this page and <strong>Fill form</strong> loads a
+            template into the form instead.
         </p>
 
         <div class="flex items-center gap-3 px-3">
