@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Changed
+- The slot picker for curses (and item punishments) color-codes slots like BCX: purple = already cursed, green = something is worn there, plain = empty - busy and free slots read at a glance.
+
 ### Fixed
 - The "Collar welded shut by..." line on the profile sheet no longer overlaps BC's own text for some viewers - it sits in a fixed spot below the "Allowed interactions" block now, where BC (and mods adding profile lines) cannot shift into it.
 
