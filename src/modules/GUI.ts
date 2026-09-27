@@ -24,7 +24,20 @@ import RoomsView from "@/ui/screens/RoomsView.vue";
 export class GUI extends ModuleInstance {
 
     private uiWindow: UIWindow | null = null;
-    private bcPlusButton: [number, number, number, number] = [1815, 685, 90, 90];
+    private cachedSlot: [number, number, number, number] | null = null;
+    private cachedSlotAt = 0;
+
+    /**
+     * Known information-sheet button homes of other mods (all 90x90 on the
+     * y685 row). When such a mod is loaded its rectangle counts as occupied,
+     * whether or not it draws on this particular sheet - their draw
+     * conditions vary per character, and a stable slot beats a "sometimes
+     * free" one (#166). BCX (1815, 685) is handled via bcxInstalled().
+     */
+    private static readonly FOREIGN_BUTTONS: { mod: string; rect: [number, number, number, number] }[] = [
+        { mod: "Littlish Club", rect: [1700, 685, 90, 90] },
+        { mod: "ABCL", rect: [1590, 685, 90, 90] },
+    ];
 
     protected readonly SystemConfig: ModuleConfig = {
         Name: "GUI",
@@ -157,13 +170,12 @@ export class GUI extends ModuleInstance {
     private hardcoreTimer: ReturnType<typeof setInterval> | null = null;
 
     override Load(): void {
-        if (this.bcxInstalled()) {
-            // Tandem: BCX owns its usual slot, sit directly left of it
-            this.bcPlusButton = [1700, 685, 90, 90];
-        } else {
-            // Control: take the slot BCX would occupy. Like BCX, nudge BC's
-            // next-page arrow (natively at y765, 10px into this slot) down.
-            this.bcPlusButton = [1815, 685, 90, 90];
+        if (!this.bcxInstalled()) {
+            // Control: we may take the slot BCX would occupy. Like BCX,
+            // nudge BC's next-page arrow (natively at y765, 10px into that
+            // slot) down. If BCX loads late it re-applies the same patch -
+            // a harmless duplicate warning - and the slot moves off 1815
+            // at draw time.
             this.patchFunction("InformationSheetRun", {
                 "DrawButton(1815, 765, 90, 90,": "DrawButton(1815, 800, 90, 90,",
             });
@@ -182,7 +194,7 @@ export class GUI extends ModuleInstance {
 
         this.addHook("InformationSheetClick", 10, (args, next) => {
             const character = this.getInformationSheetCharacter();
-            if (character && this.canOpenMenuFor(character) && MouseIn(...this.bcPlusButton)
+            if (character && this.canOpenMenuFor(character) && MouseIn(...this.buttonSlot())
                 && !window.bcx?.inBcxSubscreen()) {
                 debug(`Opening the BC+ window for ${character.toString()}`);
                 // Leave the sheet so the club stays visible behind the window
@@ -206,6 +218,39 @@ export class GUI extends ModuleInstance {
         super.Unload();
     }
 
+    /**
+     * The BC+ button's information-sheet slot, decided at draw time so a
+     * late-loading BCX (load order is not ours to control) or another mod's
+     * known home never ends up underneath us: first free candidate on the
+     * y685 row, scanning right to left from BCX's slot.
+     */
+    private buttonSlot(): [number, number, number, number] {
+        if (this.cachedSlot !== null && Date.now() - this.cachedSlotAt < 2000) {
+            return this.cachedSlot;
+        }
+        const occupied: [number, number, number, number][] = [];
+        if (this.bcxInstalled()) {
+            occupied.push([1815, 685, 90, 90]);
+        }
+        for (const { mod, rect } of GUI.FOREIGN_BUTTONS) {
+            if (this.SDK.modInstalled(mod)) {
+                occupied.push(rect);
+            }
+        }
+        let slot: [number, number, number, number] = [1355, 685, 90, 90];
+        for (const x of [1815, 1700, 1585, 1470, 1355]) {
+            const overlaps = occupied.some(([ox, oy, ow, oh]) =>
+                x < ox + ow && ox < x + 90 && 685 < oy + oh && oy < 685 + 90);
+            if (!overlaps) {
+                slot = [x, 685, 90, 90];
+                break;
+            }
+        }
+        this.cachedSlot = slot;
+        this.cachedSlotAt = Date.now();
+        return slot;
+    }
+
     private drawBCPlusButton(): void {
         const character = this.getInformationSheetCharacter();
         if (!character || character.BCPVersion === null) {
@@ -213,7 +258,7 @@ export class GUI extends ModuleInstance {
         }
         const canOpen = this.canOpenMenuFor(character);
         DrawButton(
-            ...this.bcPlusButton,
+            ...this.buttonSlot(),
             "",
             "White",
             appLogo,

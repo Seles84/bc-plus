@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, inject, onMounted, ref } from "vue";
 import { bcpCharacter, useBcpVersion } from "@/ui/composables";
+import CommitInput from "@/ui/components/CommitInput.vue";
 import { PICKER_KEY } from "@/ui/picker";
 import { MemberNumberToName } from "@/utils/Messaging";
 import { NICKNAME_MAX, isValidCustomName } from "@/modules/Relationships";
@@ -77,16 +78,14 @@ function storeEntry(member: number, nickname: string, enforce: boolean): void {
     touch();
 }
 
-function commitName(member: number, event: Event): void {
-    const input = event.target as HTMLInputElement;
-    const name = input.value.trim();
+function commitName(member: number, value: string): void {
+    const name = value.trim();
     const entry = entriesMap.value[String(member)];
     if (!entry || name === entry.nickname) {
         return;
     }
     if (!isValidCustomName(name)) {
         invalidName.value = member;
-        input.value = entry.nickname;
         return;
     }
     invalidName.value = null;
@@ -169,12 +168,12 @@ function browse(): void {
                 class="flex items-center gap-3 rounded-lg px-3 py-1.5 hover:bg-surface"
             >
                 <span class="min-w-0 flex-1 truncate">{{ MemberNumberToName(row.member) }} (#{{ row.member }})</span>
-                <input
-                    type="text" class="w-56" :maxlength="NICKNAME_MAX"
+                <CommitInput
+                    class="w-56" :maxlength="NICKNAME_MAX"
                     :disabled="!canEdit"
                     :value="row.entry.nickname"
-                    @change="commitName(row.member, $event)"
-                >
+                    @commit="commitName(row.member, $event)"
+                />
                 <span class="flex w-24 justify-center">
                     <input
                         type="checkbox" class="h-5 w-5" style="accent-color: var(--bcp-accent);"
