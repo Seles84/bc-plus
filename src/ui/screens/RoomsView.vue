@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, inject, ref } from "vue";
+import { WINDOW_KEY } from "@/ui/nav";
 import { useBcpVersion, useNow } from "@/ui/composables";
 import type RoomTemplates from "@/modules/RoomTemplates";
 import { MAX_TEMPLATES } from "@/modules/RoomTemplates";
 
 const { version, touch, core } = useBcpVersion();
 const now = useNow();
+const uiWindow = inject(WINDOW_KEY)!;
 
 const rooms = core.ModuleManager.getModule<RoomTemplates>("rooms")!;
 
@@ -18,6 +20,18 @@ const inRoom = computed(() => {
     version.value;
     return ServerPlayerIsInChatRoom();
 });
+
+/** BC's room create/update screen is behind the window (the now tick keeps this fresh). */
+const adminOpen = computed(() => {
+    now.value;
+    return rooms.adminScreenOpen();
+});
+
+function fillForm(index: number): void {
+    if (rooms.applyToAdminForm(index)) {
+        uiWindow.close();
+    }
+}
 
 const error = ref<string | null>(null);
 
@@ -89,7 +103,9 @@ function metaLine(entry: (typeof templates.value)[number]): string {
         <p class="px-3 text-sm text-fg-dim">
             Templates snapshot a room's full setup. <strong>Go</strong> joins the room when it
             exists and recreates it from the snapshot when it does not - also available as
-            <code>/bcp room &lt;name&gt;</code>.
+            <code>/bcp room &lt;name&gt;</code>. On BC's room creation screen, the BC+ button
+            (top left) opens this page and <strong>Fill form</strong> loads a template into
+            the form instead.
         </p>
 
         <div class="flex items-center gap-3 px-3">
@@ -139,8 +155,17 @@ function metaLine(entry: (typeof templates.value)[number]): string {
                     @click="updateFromRoom(entry.index)"
                 >{{ isArmed("update", entry.index) ? "Overwrite?" : "Update" }}</button>
                 <button
-                    class="rounded-lg px-4 py-1.5"
+                    v-if="adminOpen"
+                    class="rounded-lg px-3 py-1.5"
                     style="border: 1px solid var(--bcp-accent); color: var(--bcp-accent-fg, var(--bcp-accent));"
+                    title="Fill the room form behind this window from this template"
+                    @click="fillForm(entry.index)"
+                >Fill form</button>
+                <button
+                    class="rounded-lg px-4 py-1.5"
+                    :style="adminOpen
+                        ? 'border: 1px solid var(--bcp-border); color: var(--bcp-text);'
+                        : 'border: 1px solid var(--bcp-accent); color: var(--bcp-accent-fg, var(--bcp-accent));'"
                     title="Join this room, or recreate it if it does not exist"
                     @click="visit(entry.index)"
                 >Go</button>

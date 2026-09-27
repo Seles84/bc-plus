@@ -7,6 +7,7 @@ import { BCPNotifyPlayer } from "@/utils/Messaging";
 import { MovePlayerToRoom, jsonClone } from "@/utils/BCUtils";
 import { debug } from "@/system/Console";
 import type Rules from "@/modules/Rules";
+import type { GUI as GUIModule } from "@/modules/GUI";
 
 /** A saved room setup, applied by rejoining the room or recreating it. */
 export interface RoomTemplate {
@@ -25,6 +26,12 @@ const ROOM_FIELDS = [
     "Name", "Description", "Background", "Access", "Visibility", "Space", "Game",
     "Admin", "Whitelist", "Ban", "Limit", "Language", "BlockCategory", "Custom", "MapData",
 ] as const;
+
+/**
+ * The BC+ button on BC's room create/update screen: the free spot under
+ * BCX's second-page toggle at (124, 132).
+ */
+const ADMIN_BUTTON: [number, number, number, number] = [124, 244, 90, 90];
 
 interface PendingVisit {
     name: string;
@@ -95,6 +102,28 @@ export default class RoomTemplates extends ModuleInstance {
                 }
             }
             return result;
+        });
+
+        // Entry point on BC's room create/update screen. Priority 10 stays
+        // under BCX's second-page hook (priority 11, which returns without
+        // calling next), so this never draws over BCX's template page.
+        this.addHook("ChatAdminRun", 10, (args, next) => {
+            const result = next(args);
+            if (this.adminButtonVisible()) {
+                DrawButton(
+                    ...ADMIN_BUTTON, "", "White", menuIcon,
+                    "BC+ room templates - fill this form from a saved room",
+                );
+            }
+            return result;
+        });
+
+        this.addHook("ChatAdminClick", 10, (args, next) => {
+            if (this.adminButtonVisible() && MouseIn(...ADMIN_BUTTON)) {
+                this.ModuleManager.getModule<GUIModule>("gui")?.openRoomsScreen();
+                return;
+            }
+            return next(args);
         });
 
         this.addHook("ChatCreateResponse", 5, (args, next) => {
@@ -233,6 +262,70 @@ export default class RoomTemplates extends ModuleInstance {
         debug(`Visiting room template "${name}"`);
         const space = typeof pending.room.Space === "string" ? pending.room.Space as ServerChatRoomSpace : undefined;
         await MovePlayerToRoom(name, space);
+    }
+
+    /** Whether BC's room create/update screen is open and editable. */
+    adminScreenOpen(): boolean {
+        return CurrentScreen === "ChatAdmin" && ChatAdminData != null
+            && !ChatAdminPreviewBackgroundMode && ChatAdminCanEdit();
+    }
+
+    private adminButtonVisible(): boolean {
+        return ChatAdminData != null && !ChatAdminPreviewBackgroundMode && ChatAdminCanEdit();
+    }
+
+    /**
+     * Fills BC's room create/update form from a template - BCX's "apply
+     * template" flow. The user still reviews and presses Create/Save
+     * themselves, so no rule checks here beyond the screen's own.
+     */
+    applyToAdminForm(index: number): boolean {
+        const template = this.Templates[index];
+        if (!template || !this.adminScreenOpen()) {
+            return false;
+        }
+        const room = jsonClone(template.room) as Record<string, unknown>;
+        const data = ChatAdminData!;
+        const text = (value: unknown): string => (typeof value === "string" ? value : "");
+        const list = (value: unknown): string => (Array.isArray(value) ? value.join(",") : "");
+        ElementValue("InputName", text(room.Name));
+        ElementValue("InputDescription", text(room.Description));
+        ElementValue("InputAdminList", list(room.Admin));
+        ElementValue("InputWhitelist", list(room.Whitelist));
+        ElementValue("InputBanList", list(room.Ban));
+        ElementValue("InputSize", typeof room.Limit === "number" ? String(room.Limit) : "10");
+        if (typeof room.Background === "string") {
+            data.Background = room.Background;
+            const backgroundIndex = ChatAdminBackgroundList?.indexOf(room.Background) ?? -1;
+            if (backgroundIndex >= 0) {
+                ChatAdminBackgroundIndex = backgroundIndex;
+            }
+        }
+        // Mirror BC's own index resolution (ChatAdminLoad): mode buttons
+        // display from the index, not from the data
+        if (Array.isArray(room.Visibility)) {
+            data.Visibility = room.Visibility as ServerChatRoomRole[];
+            ChatAdminVisibilityModeIndex = Math.max(0, ChatAdminVisibilityModeValues.findIndex(
+                (roles) => [...roles].sort().join(",") === [...data.Visibility].sort().join(",")));
+        }
+        if (Array.isArray(room.Access)) {
+            data.Access = room.Access as ServerChatRoomRole[];
+            ChatAdminAccessModeIndex = Math.max(0, ChatAdminAccessModeValues.findIndex(
+                (roles) => [...roles].sort().join(",") === [...data.Access].sort().join(",")));
+        }
+        if (typeof room.Game === "string") {
+            data.Game = room.Game as ServerChatRoomGame;
+        }
+        if (typeof room.Language === "string") {
+            data.Language = room.Language as ServerChatRoomLanguage;
+        }
+        if (Array.isArray(room.BlockCategory)) {
+            data.BlockCategory = room.BlockCategory as ServerChatRoomBlockCategory[];
+        }
+        data.Custom = room.Custom as ServerChatRoomData["Custom"];
+        data.MapData = (room.MapData ?? { Type: "Never" }) as ServerChatRoomMapData;
+        debug(`Filled the room form from template "${text(room.Name)}"`);
+        return true;
     }
 
     /**
