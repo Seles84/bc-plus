@@ -6,6 +6,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- Optional floating BC+ button ("Floating BC+ button" checkbox on the General page, off by default): a small draggable button over the club that opens the BC+ window directly - no need to go through your profile. Its spot is remembered per device.
+- `/bcp menu <member number>` opens that person's BC+ menu (same permission gates as clicking their profile button); the bare `/bcp menu` still opens your own.
+
 ### Fixed
 - The "Collar welded shut by..." line on the profile sheet no longer overlaps BC's own text for some viewers - it sits in a fixed spot below the "Allowed interactions" block now, where BC (and mods adding profile lines) cannot shift into it.
 

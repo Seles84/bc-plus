@@ -197,11 +197,27 @@ export default class TextCommands extends ModuleInstance {
         },
         {
             name: "menu",
-            description: "Open the BC+ floating window",
-            handler: () => {
+            description: "Open the BC+ window - yours, or someone's (menu [member number])",
+            handler: (args) => {
                 const gui = this.ModuleManager.getModule<GUIModule>("gui");
-                if (gui?.openModalMenu() !== true) {
-                    this.reply("Could not open the BC+ window.");
+                if (!gui) {
+                    return;
+                }
+                const raw = (args[0] ?? "").trim();
+                if (raw === "") {
+                    if (!gui.openModalMenu()) {
+                        this.reply("Could not open the BC+ window.");
+                    }
+                    return;
+                }
+                const member = Number.parseInt(raw, 10);
+                if (!Number.isInteger(member) || member < 0) {
+                    this.reply("Usage: /bcp menu [member number]");
+                    return;
+                }
+                const error = gui.openRemoteMenu(member);
+                if (error !== null) {
+                    this.reply(`Cannot open the BC+ menu of #${member} - ${EscapeHtml(error)}.`);
                 }
             },
         },
