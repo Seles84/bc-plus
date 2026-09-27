@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- Typing indicator (new module, on by default): a speech bubble appears over people while they type - faded while they whisper (only the whisper target sees it), marked while they compose an emote - and your own typing broadcasts the same way. Fully compatible with BCX users: you see them typing, they see you. Plain-BC users keep seeing BC's own coarse status, and BC's indicator is hidden only where a bubble already shows, so nothing doubles up. With BCX running alongside, BCX handles all of this and the module stands down.
+
 ### Fixed
 - The "Collar welded shut by..." line on the profile sheet no longer overlaps BC's own text for some viewers - it sits in a fixed spot below the "Allowed interactions" block now, where BC (and mods adding profile lines) cannot shift into it.
 
