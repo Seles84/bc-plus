@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- New speech rule "Require detailed speech": every chat message must contain at least a configured number of words (2-20) - doll talk in reverse, for detailed roleplay. Out-of-character text and emotes are exempt; whispers optional.
+
 ### Fixed
 - The "Collar welded shut by..." line on the profile sheet no longer overlaps BC's own text for some viewers - it sits in a fixed spot below the "Allowed interactions" block now, where BC (and mods adding profile lines) cannot shift into it.
 
