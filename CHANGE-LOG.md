@@ -4,6 +4,11 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- The "Collar welded shut by..." line on the profile sheet no longer overlaps BC's own text for some viewers - it sits in a fixed spot below the "Allowed interactions" block now, where BC (and mods adding profile lines) cannot shift into it.
+
 ## [0.13.0] - 2026-09-27
 
 Room templates, the FUSAM listing, BC R132 support, and the first round of community-reported fixes - welcome, everyone who found BC+ through FUSAM!
