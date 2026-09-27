@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
+import CommitInput from "@/ui/components/CommitInput.vue";
 import { stringListValue, membersValue } from "@/system/gui/Settings";
 import type { AnySetting, StringListSetting } from "@/system/gui/Settings";
 
@@ -38,10 +39,9 @@ function removeListEntry(index: number): void {
     emit("update", entries);
 }
 
-function commitText(event: Event): void {
-    const input = event.target as HTMLInputElement;
-    if (input.value !== String(props.value ?? "")) {
-        emit("update", input.value);
+function commitText(value: string): void {
+    if (value !== String(props.value ?? "")) {
+        emit("update", value);
     }
 }
 
@@ -103,15 +103,14 @@ const memberCount = computed(() =>
         </select>
 
         <!-- Text -->
-        <input
+        <CommitInput
             v-else-if="setting.type === 'text'"
-            type="text"
             class="w-64 shrink-0"
             :maxlength="setting.maxChars ?? 256"
             :disabled="disabled"
             :value="String(value ?? '')"
-            @change="commitText($event)"
-        >
+            @commit="commitText($event)"
+        />
 
         <!-- String list -->
         <div v-else-if="setting.type === 'stringList'" class="flex max-w-md flex-wrap items-center justify-end gap-1.5">

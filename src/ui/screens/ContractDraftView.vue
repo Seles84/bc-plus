@@ -2,6 +2,7 @@
 import { computed, inject, ref } from "vue";
 import { NAV_KEY } from "@/ui/nav";
 import { useBcpVersion, useNow } from "@/ui/composables";
+import CommitInput from "@/ui/components/CommitInput.vue";
 import ChooseRule from "@/ui/screens/ChooseRule.vue";
 import RuleConfig from "@/ui/screens/RuleConfig.vue";
 import { PICKER_KEY } from "@/ui/picker";
@@ -39,17 +40,17 @@ const included = computed(() => {
         .map((id) => ({ id, definition: rules.getDefinition(id)!, spec: current.rules[id]! }));
 });
 
-function commitTitle(event: Event): void {
-    const value = (event.target as HTMLInputElement).value.trim();
-    if (draft.value && value.length > 0) {
-        draft.value.title = value;
+function commitTitle(value: string): void {
+    const trimmed = value.trim();
+    if (draft.value && trimmed.length > 0) {
+        draft.value.title = trimmed;
         touch();
     }
 }
 
-function commitTerms(event: Event): void {
+function commitTerms(value: string): void {
     if (draft.value) {
-        draft.value.terms = (event.target as HTMLTextAreaElement).value;
+        draft.value.terms = value;
         touch();
     }
 }
@@ -146,18 +147,19 @@ function ruleSummary(entry: (typeof included.value)[number]): string {
         <section class="flex flex-col gap-2">
             <div class="flex items-center gap-3">
                 <span class="w-28">Title:</span>
-                <input type="text" class="flex-1" maxlength="60" :value="draft.title" @change="commitTitle($event)">
+                <CommitInput class="flex-1" maxlength="60" :value="draft.title" @commit="commitTitle($event)" />
             </div>
             <div class="flex items-start gap-3">
                 <span class="w-28 pt-1">Terms:</span>
-                <textarea
+                <CommitInput
+                    multiline
                     class="min-h-20 flex-1 rounded-md p-2"
                     style="background: var(--bcp-bg); border: 1px solid var(--bcp-border); color: var(--bcp-text); font: inherit;"
                     maxlength="1000"
                     placeholder="Free-text terms, shown to the signer on the review screen"
                     :value="draft.terms"
-                    @change="commitTerms($event)"
-                ></textarea>
+                    @commit="commitTerms($event)"
+                />
             </div>
             <div class="flex flex-wrap items-center gap-3">
                 <span class="w-28">Duration:</span>

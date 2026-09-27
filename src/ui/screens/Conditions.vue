@@ -2,6 +2,7 @@
 import { computed, inject } from "vue";
 import { PICKER_KEY } from "@/ui/picker";
 import { useBcpVersion } from "@/ui/composables";
+import CommitInput from "@/ui/components/CommitInput.vue";
 import {
     ConditionData, describeConditions, formatDuration, formatTimeOfDay, parseMembers,
 } from "@/system/conditions/Conditions";
@@ -215,18 +216,17 @@ function removePreset(name: string): void {
             </div>
             <div class="flex items-center gap-2">
                 <span class="w-40">Room names:</span>
-                <input
-                    type="text"
+                <CommitInput
                     class="flex-1"
                     maxlength="300"
                     placeholder="Comma-separated name fragments (empty = any)"
                     :disabled="!editable"
                     :value="conditions.roomNames ?? ''"
-                    @change="update((c) => {
-                        const v = ($event.target as HTMLInputElement).value.trim();
+                    @commit="update((c) => {
+                        const v = ($event as string).trim();
                         if (v === '') { delete c.roomNames; delete c.roomNamesMode; } else { c.roomNames = v; c.roomNamesMode ??= 'in'; }
                     })"
-                >
+                />
                 <select
                     v-if="conditions.roomNames"
                     :disabled="!editable"
