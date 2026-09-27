@@ -34,6 +34,15 @@ const SUSPEND_MS = 60_000;
  */
 const BCX_YIELD_MS = 5 * 60_000;
 
+/**
+ * Body groups BC lets players customize (skin, hair, eyes, genitals...) -
+ * curseable like clothing since 0.14.0, keeping the body identical across
+ * outfits. Same gate BCX uses; non-customizable appearance groups stay out.
+ */
+export function isBodyGroup(group: AssetGroup): boolean {
+    return group.Category === "Appearance" && !group.Clothing && group.AllowCustomize;
+}
+
 export default class Curses extends ModuleInstance {
 
     private tickTimer: ReturnType<typeof setInterval> | null = null;
@@ -133,6 +142,21 @@ export default class Curses extends ModuleInstance {
         return applied;
     }
 
+    /**
+     * Whether a group may be bare. Mandatory body groups (torso, genitals...)
+     * can never be empty - "cursed empty", allowEmpty and item removal are
+     * all meaningless there and must stay off every path.
+     */
+    private groupAllowsNone(groupName: string): boolean {
+        const group = AssetGroup.find((g) => g.Name === groupName);
+        return group?.AllowNone !== false;
+    }
+
+    private isBodyGroupName(groupName: string): boolean {
+        const group = AssetGroup.find((g) => g.Name === groupName);
+        return group !== undefined && isBodyGroup(group);
+    }
+
     private sanitizeSlot(group: string, raw: unknown, validGroups: Set<string>): CurseSlotData | null {
         if (!validGroups.has(group) || typeof raw !== "object" || raw === null) {
             return null;
@@ -159,21 +183,22 @@ export default class Curses extends ModuleInstance {
         }
         const lock = typeof candidate.lock === "string"
             && CURSE_LOCKS.some((l) => l.asset !== "" && l.asset === candidate.lock)
+            && !this.isBodyGroupName(group)
             ? candidate.lock : undefined;
         return {
             group: group as AssetGroupName,
             active: candidate.active === true,
-            allowEmpty: candidate.allowEmpty === true,
+            allowEmpty: candidate.allowEmpty === true && this.groupAllowsNone(group),
             ...(lock !== undefined ? { lock } : {}),
             items,
         };
     }
 
-    /** Groups that can be cursed: items and clothing of the player's asset family. */
+    /** Groups that can be cursed: items, clothing and customizable body parts of the player's asset family. */
     curseableGroups(): AssetGroup[] {
         return AssetGroup.filter((g) =>
             g.Family === Player.AssetFamily
-            && (g.Category === "Item" || (g.Category === "Appearance" && g.Clothing)),
+            && (g.Category === "Item" || (g.Category === "Appearance" && (g.Clothing || isBodyGroup(g)))),
         );
     }
 
@@ -213,7 +238,7 @@ export default class Curses extends ModuleInstance {
 
     setAllowEmpty(group: string, value: boolean): void {
         const slot = this.Slots[group];
-        if (slot) {
+        if (slot && (!value || this.groupAllowsNone(group))) {
             slot.allowEmpty = value;
         }
     }
@@ -229,6 +254,10 @@ export default class Curses extends ModuleInstance {
     setLock(group: string, lock: string): boolean {
         const slot = this.Slots[group];
         if (!slot || !CURSE_LOCKS.some((l) => l.asset === lock)) {
+            return false;
+        }
+        // Body parts take no padlocks
+        if (lock !== "" && this.isBodyGroupName(group)) {
             return false;
         }
         if (lock === "") {
@@ -283,6 +312,11 @@ export default class Curses extends ModuleInstance {
         const slot = this.Slots[group];
         const asset = AssetGet(Player.AssetFamily, group as AssetGroupName, assetName);
         if (!slot || !asset || !asset.Wear || asset.IsLock || slot.items.length >= 12) {
+            return false;
+        }
+        // Body specs come from capture only - a loose catalog pick would
+        // accept any color (skin tone, hair color), defeating the point
+        if (this.isBodyGroupName(group)) {
             return false;
         }
         if (slot.items.some((s) => s.asset === asset.Name)) {
@@ -579,9 +613,14 @@ export default class Curses extends ModuleInstance {
         const spec = slot.items.find((s) => s.asset === worn.Asset.Name);
         if (!spec) {
             debug(`Curse violation on ${slot.group}: ${worn.Asset.Name} is not an allowed item`);
+            const canBeEmpty = this.groupAllowsNone(slot.group);
             if (slot.items.length === 0) {
-                this.restore(slot, null, "remove");
-            } else if (!slot.allowEmpty) {
+                // A mandatory body group with no allowed items has nothing
+                // enforceable - never bare a torso
+                if (canBeEmpty) {
+                    this.restore(slot, null, "remove");
+                }
+            } else if (!slot.allowEmpty || !canBeEmpty) {
                 this.restore(slot, slot.items[0]!, "swap");
             } else {
                 this.restore(slot, null, "remove");
@@ -673,6 +712,11 @@ export default class Curses extends ModuleInstance {
     }
 
     private restore(slot: CurseSlotData, spec: CurseItemSpec | null, action: "add" | "remove" | "swap" | "update"): void {
+        // Belt and braces: never strip a mandatory body group, whatever
+        // state a remote command or old save maneuvered the slot into
+        if (spec === null && !this.groupAllowsNone(slot.group)) {
+            return;
+        }
         const now = Date.now();
         const last = this.lastRestore.get(slot.group) ?? 0;
         if (now - last < RESTORE_COOLDOWN_MS) {

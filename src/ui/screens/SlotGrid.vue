@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, inject, ref } from "vue";
 import { BCPLUS_KEY } from "@/ui/nav";
+import { isBodyGroup } from "@/modules/Curses";
 import type Curses from "@/modules/Curses";
 
 const props = defineProps<{
@@ -13,11 +14,14 @@ const props = defineProps<{
 }>();
 
 const core = inject(BCPLUS_KEY)!;
-const category = ref<"Item" | "Appearance">("Item");
+const category = ref<"Item" | "Clothing" | "Body">("Item");
 
 const groups = computed(() => {
     const all = core.ModuleManager.getModule<Curses>("curses")?.curseableGroups() ?? [];
-    return all.filter((g) => g.Category === category.value);
+    return all.filter((g) =>
+        category.value === "Item" ? g.Category === "Item"
+        : category.value === "Clothing" ? g.Category === "Appearance" && g.Clothing
+        : isBodyGroup(g));
 });
 </script>
 
@@ -26,7 +30,7 @@ const groups = computed(() => {
         <p class="text-sm text-fg-dim">{{ note }}</p>
         <div class="flex gap-1.5">
             <button
-                v-for="tab in ([['Item', 'Items'], ['Appearance', 'Clothing']] as const)"
+                v-for="tab in ([['Item', 'Items'], ['Clothing', 'Clothing'], ['Body', 'Body']] as const)"
                 :key="tab[0]"
                 class="rounded-full px-4 py-1"
                 :style="category === tab[0]
