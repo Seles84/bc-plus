@@ -29,11 +29,12 @@ const ROOM_FIELDS = [
 
 /**
  * The BC+ button on BC's room create/update screen: top-right corner of the
- * room name row, sized like BC's own import/export buttons beside it. The
- * name input natively ends at x1155; ChatAdminRun is patched to shorten it
- * so this corner is clear (DOM inputs render above the canvas).
+ * background preview image (1300, 75, 600x350). That area is pure canvas -
+ * DOM inputs cover canvas buttons everywhere around the form fields, which
+ * ruled out the name row. Our click hook runs before BC's, so the click
+ * never reaches BC's preview-mode toggle on that same rectangle.
  */
-const ADMIN_BUTTON: [number, number, number, number] = [1105, 76, 48, 48];
+const ADMIN_BUTTON: [number, number, number, number] = [1846, 81, 48, 48];
 
 interface PendingVisit {
     name: string;
@@ -106,26 +107,17 @@ export default class RoomTemplates extends ModuleInstance {
             return result;
         });
 
-        // Make room for the button beside the name input. If BC changes the
-        // line, the patch no-ops with a console warning and the button
-        // merely sits under the input's last few pixels.
-        this.patchFunction("ChatAdminRun", {
-            "ElementPosition(\"InputName\", 780, 100, 750)": "ElementPosition(\"InputName\", 745, 100, 680)",
-        });
-
         // Entry point on BC's room create/update screen. Priority 10 stays
         // under BCX's second-page hook (priority 11, which returns without
         // calling next), so this never draws over BCX's template page.
+        // Drawn after next(), so it sits on top of the preview image.
         this.addHook("ChatAdminRun", 10, (args, next) => {
             const result = next(args);
             if (this.adminButtonVisible()) {
-                DrawButton(...ADMIN_BUTTON, "", "White");
-                // Icon and tooltip drawn separately for resizing / DOM overlap,
-                // exactly like BC's import/export buttons next to this one
+                DrawButton(...ADMIN_BUTTON, "", "White", null, "BC+ room templates");
+                // Icon drawn separately: DrawButton blits images at their
+                // natural size (the logo is 96px, the button 48px)
                 DrawImageResize(menuIcon, ADMIN_BUTTON[0] + 2, ADMIN_BUTTON[1] + 2, 44, 44);
-                if (!CommonIsMobile && !CommonPhotoMode && MouseIn(...ADMIN_BUTTON)) {
-                    DrawHoverElements.push(() => DrawButtonHover(ADMIN_BUTTON[0] - 69, 20, 48, 48, "BC+ room templates"));
-                }
             }
             return result;
         });
