@@ -6,6 +6,7 @@ import { STATE_LABELS, formatStatDuration } from "@/system/statistics/StatTypes"
 import { EscapeHtml, ListSyncListeners, NotifyPlayer } from "@/utils/Messaging";
 import { getAllCharactersInRoom } from "@/utils/BCPlusCharacter";
 import { parseBCPVersion } from "@/utils/Version";
+import type RoomTemplates from "@/modules/RoomTemplates";
 import type Rules from "@/modules/Rules";
 import type Curses from "@/modules/Curses";
 import type Logging from "@/modules/Logging";
@@ -201,6 +202,33 @@ export default class TextCommands extends ModuleInstance {
                 const gui = this.ModuleManager.getModule<GUIModule>("gui");
                 if (gui?.openModalMenu() !== true) {
                     this.reply("Could not open the BC+ window.");
+                }
+            },
+        },
+        {
+            name: "room",
+            description: "Go to a saved room template (room <name>; bare form lists them)",
+            handler: (args) => {
+                const rooms = this.ModuleManager.getModule<RoomTemplates>("rooms");
+                if (rooms?.Config.Active !== true) {
+                    this.reply("The Rooms module is switched off.");
+                    return;
+                }
+                const query = args.join(" ").trim();
+                if (query === "") {
+                    const names = rooms.Templates.map((t) => `- ${EscapeHtml(t.room.Name)}`);
+                    this.reply(names.length === 0
+                        ? "No room templates saved - see the Rooms page in the BC+ window."
+                        : ["Saved rooms (/bcp room <name> to go):", ...names].join("<br>"));
+                    return;
+                }
+                const { index, matches } = rooms.findTemplate(query);
+                if (index >= 0) {
+                    void rooms.visit(index);
+                } else if (matches.length === 0) {
+                    this.reply(`No room template matches "${EscapeHtml(query)}".`);
+                } else {
+                    this.reply(`Which one? ${matches.map((name) => EscapeHtml(name)).join(", ")}`);
                 }
             },
         },

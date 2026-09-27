@@ -12,6 +12,7 @@ import ExportImport from "@/ui/screens/ExportImport.vue";
 import LogView from "@/ui/screens/LogView.vue";
 import Relationships from "@/ui/screens/Relationships.vue";
 import RolesView from "@/ui/screens/RolesView.vue";
+import RoomsView from "@/ui/screens/RoomsView.vue";
 import StatsView from "@/ui/screens/StatsView.vue";
 import WeldingView from "@/ui/screens/WeldingView.vue";
 import type { Component } from "vue";
@@ -45,6 +46,7 @@ const PORTED_SCREENS: Record<string, Component> = {
     logging: LogView,
     statistics: StatsView,
     relationships: Relationships,
+    rooms: RoomsView,
     commands: CommandsView,
     contracts: ContractsHub,
     welding: WeldingView,

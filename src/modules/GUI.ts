@@ -14,6 +14,7 @@ import type Core from "@/modules/Core";
 import type Welding from "@/modules/Welding";
 import { describeWeldLine } from "@/modules/Welding";
 import appLogo from "@/images/icon90.png";
+import RoomsView from "@/ui/screens/RoomsView.vue";
 
 /**
  * Owns the in-club GUI entry points: the BC+ button and weld line on the
@@ -101,6 +102,19 @@ export class GUI extends ModuleInstance {
             return false;
         }
         this.openWindow();
+        return true;
+    }
+
+    /** Opens the own window directly on the Rooms screen (room-editor entry point). */
+    openRoomsScreen(): boolean {
+        if (this.hardcoreSelfBlocked()) {
+            return false;
+        }
+        if (!this.uiWindow) {
+            this.uiWindow = new UIWindow(this.Core);
+            this.uiWindow.closeGuard = () => this.confirmPendingRuleEdits();
+        }
+        this.uiWindow.openScreen({ component: RoomsView, title: "Rooms" });
         return true;
     }
 

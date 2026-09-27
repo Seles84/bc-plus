@@ -7,6 +7,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [Unreleased]
 
 ### Added
+- Room templates (new Rooms module, #168): save the full setup of a room you are in - name, description, background, access/visibility, admin and whitelist, size, language, blocked categories, customization and map - as one of up to 20 templates, then return to it with one click (or `/bcp room <name>`): BC+ joins the room when it exists and recreates it from the snapshot when it does not. A BC+ button on BC's room creation screen opens the template list and "Fill form" loads a template into the creation form for tweaking before creating. Room rules still apply: template travel respects "Restrict entering rooms", and recreating respects "Forbid creating new rooms".
 - BC+ can be installed through FUSAM (the BC Addon Manager): the install page and README describe the option, and the BC+ logo is published at a stable URL for FUSAM's addon list.
 - The install page (https://seles84.github.io/bc-plus/) offers a launch-by-bookmark option now: drag the "Launch BC+" link onto the bookmarks bar and click it in the club tab to load BC+ for that session - no browser extension needed. The userscript remains the recommended set-and-forget install.
 

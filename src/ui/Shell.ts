@@ -4,6 +4,7 @@ import App from "@/ui/App.vue";
 import tokensCss from "@/ui/tokens.css";
 import tailwindCss from "@/ui/generated/tailwind.css";
 import { BCPLUS_KEY, NAV_KEY, Navigator, WINDOW_KEY } from "@/ui/nav";
+import type { NavEntry } from "@/ui/nav";
 import { handleModalEscape } from "@/ui/modal-escape";
 import { modalOpen } from "@/gui/Modal";
 import { BCPLUS_STORAGE } from "@/system/Constants";
@@ -191,6 +192,16 @@ export class UIWindow {
         this.host.remove();
         this.host = null;
         debug("BC+ window closed");
+    }
+
+    /** Opens the own-view window directly on a specific screen (on top of the menu). */
+    openScreen(entry: NavEntry): void {
+        this.open();
+        // The root (menu) is seeded synchronously during open(); land on top
+        // of it so the back button leads somewhere sensible
+        if (this.nav !== null && this.nav.stack.at(-1)?.component !== entry.component) {
+            this.nav.push(entry);
+        }
     }
 
     /** Esc closes an open modal first, then goes back, then closes the window. */
