@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 - The install page (https://seles84.github.io/bc-plus/) offers a launch-by-bookmark option now: drag the "Launch BC+" link onto the bookmarks bar and click it in the club tab to load BC+ for that session - no browser extension needed. The userscript remains the recommended set-and-forget install.
 
 ### Changed
+- BC R132 compatibility: item snapshots (curses, punishments) understand the slimmed-down crafting data worn items now carry, and the loader userscript also runs on the club's new bondageeurope.com address (loader version 1.1.0 - Tampermonkey picks the update up automatically). All BC+ hooks and the information-sheet layout were verified against R132; no other changes were needed.
 - The anonymous usage count can now tell daily and weekly unique users apart from raw request counts: the counting endpoint derives the request's country, coarse browser family and two rotating anonymous hashes (secret salt + date or ISO week + IP; irreversible, rotate with their period, the IP itself is never stored). Reconnects after a disconnect now report as "relog" instead of not being counted at all, separating fresh sessions from reconnects. Still no member number, no account data, nothing identifying - see the README for the full disclosure.
 
 ## [0.12.0] - 2026-08-28
