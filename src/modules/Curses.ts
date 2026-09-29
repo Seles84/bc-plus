@@ -46,6 +46,8 @@ export default class Curses extends ModuleInstance {
     private tickRemovals: { group: string; itemName: string }[] = [];
     /** Locks snapped back shut during the current enforcement tick. */
     private tickRelocks: { group: string; itemName: string }[] = [];
+    /** Whether this tick changed the appearance - flushed as one update at tick end. */
+    private tickDirty = false;
     /** Restores since the slot last checked compliant; guards against fight loops. */
     private readonly consecutiveRestores = new Map<string, number>();
     private readonly suspendedUntil = new Map<string, number>();
@@ -488,6 +490,20 @@ export default class Curses extends ModuleInstance {
                 }
             }
         }
+        // ONE refresh and ONE server update per tick, however many slots
+        // changed. Per-slot pushes would flood the server when many curses
+        // trigger at once (stripping a fully cursed outfit) - the classic
+        // rate-limit disconnect. Batched, the worst case is one update per
+        // 1.5s regardless of slot count.
+        if (this.tickDirty) {
+            this.tickDirty = false;
+            CharacterRefresh(Player, false);
+            if (ServerPlayerIsInChatRoom()) {
+                ChatRoomCharacterUpdate(Player);
+            } else {
+                ServerPlayerAppearanceSync();
+            }
+        }
         this.announceTick();
     }
 
@@ -630,9 +646,7 @@ export default class Curses extends ModuleInstance {
         }
 
         this.applyLock(slot, worn);
-        if (ServerPlayerIsInChatRoom()) {
-            ChatRoomCharacterUpdate(Player);
-        }
+        this.tickDirty = true;
         this.tickRelocks.push({ group: slot.group, itemName: worn.Craft?.Name || worn.Asset.Description });
         debug(`Curse relocked ${slot.group} with ${slot.lock}`);
         if (now - (this.lastNotify.get(slot.group) ?? 0) >= NOTIFY_COOLDOWN_MS) {
@@ -661,7 +675,8 @@ export default class Curses extends ModuleInstance {
             ? Player
             : Character.find((c) => c.MemberNumber === holder) ?? null;
         try {
-            InventoryLock(Player, item, slot.lock as AssetLockType, holderChar, true);
+            // Update false: callers run inside the tick, which flushes once
+            InventoryLock(Player, item, slot.lock as AssetLockType, holderChar, false);
         } catch (e) {
             debug(`Curse lock ${slot.lock} on ${slot.group} failed:`, e);
             return;
@@ -699,7 +714,9 @@ export default class Curses extends ModuleInstance {
                     itemName: removed.Craft?.Name || removed.Asset.Description,
                 });
             }
-            InventoryRemove(Player, slot.group, true);
+            // Refresh false everywhere: mutations here are flushed as ONE
+            // update at the end of the tick (see check())
+            InventoryRemove(Player, slot.group, false);
         } else {
             const item = InventoryWear(
                 Player,
@@ -709,13 +726,12 @@ export default class Curses extends ModuleInstance {
                 spec.difficulty ?? null,
                 Player.MemberNumber,
                 spec.craft ?? null,
-                true,
+                false,
             );
             if (item && spec.property !== undefined) {
                 // Old saves may still carry lock props in the capture - never
                 // resurrect a stale lock, the slot's lock setting owns locks
                 item.Property = stripLockState(jsonClone(spec.property)) ?? {};
-                CharacterRefresh(Player, false);
             }
             // Adopt the as-restored state so the next tick compares equal -
             // default colors/asset properties can differ from the capture and
@@ -733,9 +749,7 @@ export default class Curses extends ModuleInstance {
                 this.tickRestores.push({ group: slot.group, itemName: spec.name });
             }
         }
-        if (ServerPlayerIsInChatRoom()) {
-            ChatRoomCharacterUpdate(Player);
-        }
+        this.tickDirty = true;
         debug(`Curse restored ${slot.group} (${action})`);
         const lastNotified = this.lastNotify.get(slot.group) ?? 0;
         if (now - lastNotified >= NOTIFY_COOLDOWN_MS) {
