@@ -16,6 +16,7 @@ import RoomTemplates from "@/modules/RoomTemplates";
 import Rules from "@/modules/Rules";
 import Statistics from "@/modules/Statistics";
 import TextCommands from "@/modules/TextCommands";
+import TypingIndicator from "@/modules/TypingIndicator";
 import Welding from "@/modules/Welding";
 import { GUI } from "@/modules/GUI";
 
@@ -36,6 +37,7 @@ export default class ModuleManager {
             new Commands(parent),
             new Relationships(parent),
             new RoomTemplates(parent),
+            new TypingIndicator(parent),
             new Pet(parent),
             new Welding(parent),
             new Statistics(parent),
