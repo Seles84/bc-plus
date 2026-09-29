@@ -298,11 +298,31 @@ export class GUI extends ModuleInstance {
         }
 
         this.addHook("InformationSheetRun", 14, (args, next) => {
-            const result = next(args);
+            // Measure where BC's left text column actually ends this frame
+            // (see drawWeldLine); cleared before our own drawing so the weld
+            // line never measures itself
+            this.measuringSheet = true;
+            this.sheetLeftMaxY = 0;
+            let result;
+            try {
+                result = next(args);
+            } finally {
+                this.measuringSheet = false;
+            }
             if (!window.bcx?.inBcxSubscreen()) {
                 this.drawBCPlusButton();
             }
             return result;
+        });
+
+        // Passive observer for the measurement above - only active during
+        // the sheet's own draw call, a no-op flag check otherwise
+        this.addHook("DrawTextFit", 0, (args, next) => {
+            if (this.measuringSheet && args[1] === 550
+                && typeof args[2] === "number" && args[2] < 790) {
+                this.sheetLeftMaxY = Math.max(this.sheetLeftMaxY, args[2]);
+            }
+            return next(args);
         });
 
         this.addHook("InformationSheetClick", 10, (args, next) => {
@@ -388,15 +408,19 @@ export class GUI extends ModuleInstance {
     }
 
     /**
-     * The optional "welded by" line on the information sheet. Drawn at a
-     * FIXED y910: BC hard-resets its cursor to 800 before the "Allowed
-     * interactions" pair (800/855, only drawn for online characters), and
-     * nothing else uses the left column below that - so this slot cannot be
-     * shifted by conditional lines above (nickname, title, ownership
-     * duration...) or by mods adding their own. A replicated line-count of
-     * the ownership block previously overlapped BC's text whenever the
-     * prediction missed by one line.
+     * The optional "welded by" line on the information sheet, drawn one line
+     * (55px) under the LAST line BC actually drew in the left text column
+     * this frame - measured via the DrawTextFit observer, never predicted.
+     * Prediction history: replicating BC's conditional line-count overlapped
+     * the ownership text whenever it missed by one line, and a fixed y910
+     * hid under the own sheet's DOM "Allowed interactions" dropdown (DOM
+     * renders above canvas). BC's block never reaches past ~770 before its
+     * hard reset to y800, so the measured slot always clears both the
+     * others-sheet text pair (800/855) and the own-sheet dropdown.
      */
+    private measuringSheet = false;
+    private sheetLeftMaxY = 0;
+
     private drawWeldLine(character: BCPlusCharacter): void {
         const data = character.isPlayer()
             ? this.ModuleManager.getModule<Welding>("welding")?.Data
@@ -405,9 +429,10 @@ export class GUI extends ModuleInstance {
         if (!line) {
             return;
         }
+        const y = this.sheetLeftMaxY >= 125 ? this.sheetLeftMaxY + 55 : 745;
         const prevAlign = MainCanvas.textAlign;
         MainCanvas.textAlign = "left";
-        DrawTextFit(line, 550, 910, 450, "Black", "Gray");
+        DrawTextFit(line, 550, y, 450, "Black", "Gray");
         MainCanvas.textAlign = prevAlign;
     }
 
