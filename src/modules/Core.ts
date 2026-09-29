@@ -144,6 +144,17 @@ export default class Core extends ModuleInstance {
                 default: false,
             },
             {
+                type: "checkbox",
+                name: "floatingButton",
+                category: "Appearance",
+                label: "Floating BC+ button",
+                hoverText: "Shows a small draggable BC+ button over the club that opens the "
+                    + "BC+ window directly - no need to go through your profile. Drag it "
+                    + "anywhere; the spot is remembered on this device.",
+                default: false,
+                onSet: () => this.ModuleManager.getModule<GUIModule>("gui")?.applyFloatingButton(),
+            },
+            {
                 type: "option",
                 name: "uiTheme",
                 category: "Appearance",

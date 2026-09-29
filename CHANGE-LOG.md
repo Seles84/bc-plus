@@ -4,10 +4,23 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.14.0] - 2026-09-29
+
+The community-requests release: everything in here was asked for by BC+ users - body curses, a BCX-compatible typing indicator, detailed-speech enforcement, quality-of-life openers, and rate-limit-proof curse enforcement.
+
+### Added
+- Body parts can now be cursed (new "Body" tab when picking a slot): skin, hair, eyes, genitals and every other customizable body group - so a captured look survives outfit changes, like BCX's body curses. Strict capture stores colors, so skin tone and hair color are enforced exactly. Mandatory body parts can never be cursed empty or stripped by enforcement, and body slots take no padlocks.
+- Typing indicator (new module, on by default): a speech bubble appears over people while they type - faded while they whisper (only the whisper target sees it), marked while they compose an emote - and your own typing broadcasts the same way. Fully compatible with BCX users: you see them typing, they see you. Plain-BC users keep seeing BC's own coarse status, and BC's indicator is hidden only where a bubble already shows, so nothing doubles up. With BCX running alongside, BCX handles all of this and the module stands down.
+- New speech rule "Require detailed speech": every chat message must contain at least a configured number of words (2-20) - doll talk in reverse, for detailed roleplay. Out-of-character text and emotes are exempt; whispers optional.
+- Optional floating BC+ button ("Floating BC+ button" checkbox on the General page, off by default): a small draggable button over the club that opens the BC+ window directly - no need to go through your profile. Its spot is remembered per device.
+- `/bcp menu <member number>` opens that person's BC+ menu (same permission gates as clicking their profile button); the bare `/bcp menu` still opens your own.
+
+### Changed
+- The slot picker for curses (and item punishments) color-codes slots like BCX: purple = already cursed, green = something is worn there, plain = empty - busy and free slots read at a glance.
 
 ### Fixed
-- The "Collar welded shut by..." line on the profile sheet no longer overlaps BC's own text for some viewers - it sits in a fixed spot below the "Allowed interactions" block now, where BC (and mods adding profile lines) cannot shift into it.
+- Mass curse and punishment triggers can no longer flood the BC server: enforcement now sends exactly one appearance update per pass (every 1.5s), no matter how many slots reasserted at once. Previously every restored slot pushed two updates on its own, so stripping a heavily cursed outfit in one go risked the rate-limit disconnect known from BCX.
+- The "Collar welded shut by..." line on the profile sheet no longer overlaps BC's own text for some viewers, vanishes, or hides behind the own sheet's "Allowed interactions" dropdown: BC+ now measures where BC's profile text actually ends each frame and draws the line one row under it - directly beneath the "Collared by" block on every screen, whatever conditional lines or mods are in play.
 
 ## [0.13.0] - 2026-09-27
 

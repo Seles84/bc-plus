@@ -105,6 +105,30 @@ export class GUI extends ModuleInstance {
         return true;
     }
 
+    /**
+     * Opens another member's BC+ menu by number (the /bcp menu <number>
+     * path) - same gates as clicking the info-sheet button. Returns an
+     * error to show, or null when the window opened.
+     */
+    openRemoteMenu(member: number): string | null {
+        const character = getChatroomCharacter(member);
+        if (!character) {
+            return "they are not in this room";
+        }
+        if (character.isPlayer()) {
+            return this.openModalMenu() ? null : "your hands are bound (hardcore mode)";
+        }
+        if (character.BCPVersion === null) {
+            return "they do not run BC+";
+        }
+        const reason = this.remoteViewBlockReason(character);
+        if (reason !== null) {
+            return reason;
+        }
+        this.openWindow(member);
+        return null;
+    }
+
     /** Opens the own window directly on the Rooms screen (room-editor entry point). */
     openRoomsScreen(): boolean {
         if (this.hardcoreSelfBlocked()) {
@@ -168,6 +192,95 @@ export class GUI extends ModuleInstance {
     }
 
     private hardcoreTimer: ReturnType<typeof setInterval> | null = null;
+    private floatButton: HTMLDivElement | null = null;
+
+    /**
+     * Creates or removes the optional floating BC+ button per the Core
+     * setting - a draggable DOM overlay that opens the window without going
+     * through the profile sheet. Position persists per member and device.
+     */
+    applyFloatingButton(): void {
+        const enabled = this.ModuleManager.getModule<Core>("core")?.getSetting<boolean>("floatingButton") === true;
+        if (!enabled) {
+            this.floatButton?.remove();
+            this.floatButton = null;
+            return;
+        }
+        if (this.floatButton) {
+            return;
+        }
+        const SIZE = 52;
+        const key = `BCP_${Player.MemberNumber}_FloatButton`;
+        const button = document.createElement("div");
+        button.id = "BCPFloatButton";
+        button.title = "BC+ (drag to move)";
+        let x = window.innerWidth - SIZE - 16;
+        let y = Math.round(window.innerHeight * 0.35);
+        try {
+            const saved = JSON.parse(localStorage.getItem(key) ?? "null") as { x?: number; y?: number } | null;
+            if (typeof saved?.x === "number" && typeof saved?.y === "number") {
+                x = saved.x;
+                y = saved.y;
+            }
+        } catch {
+            // Corrupt or blocked storage - keep the default spot
+        }
+        const clamp = (): void => {
+            x = Math.min(Math.max(0, x), window.innerWidth - SIZE);
+            y = Math.min(Math.max(0, y), window.innerHeight - SIZE);
+            button.style.left = `${x}px`;
+            button.style.top = `${y}px`;
+        };
+        Object.assign(button.style, {
+            position: "fixed",
+            width: `${SIZE}px`,
+            height: `${SIZE}px`,
+            zIndex: "9990",
+            borderRadius: "50%",
+            background: `#241c2e url(${JSON.stringify(appLogo)}) center / 78% no-repeat`,
+            border: "2px solid #8469b6",
+            boxShadow: "0 4px 14px rgba(0, 0, 0, 0.45)",
+            cursor: "pointer",
+            touchAction: "none",
+            userSelect: "none",
+        });
+        clamp();
+        let drag: { startX: number; startY: number; moved: boolean } | null = null;
+        button.addEventListener("pointerdown", (event) => {
+            drag = { startX: event.clientX - x, startY: event.clientY - y, moved: false };
+            button.setPointerCapture(event.pointerId);
+            event.preventDefault();
+        });
+        button.addEventListener("pointermove", (event) => {
+            if (!drag) {
+                return;
+            }
+            const nx = event.clientX - drag.startX;
+            const ny = event.clientY - drag.startY;
+            if (drag.moved || Math.abs(nx - x) + Math.abs(ny - y) > 5) {
+                drag.moved = true;
+                x = nx;
+                y = ny;
+                clamp();
+            }
+        });
+        button.addEventListener("pointerup", () => {
+            const wasDrag = drag?.moved === true;
+            drag = null;
+            if (wasDrag) {
+                try {
+                    localStorage.setItem(key, JSON.stringify({ x, y }));
+                } catch {
+                    // Blocked storage - the spot just won't persist
+                }
+            } else if (!this.openModalMenu()) {
+                BCPNotifyPlayer("BC+ cannot open - your hands are bound.");
+            }
+        });
+        window.addEventListener("resize", clamp);
+        document.body.appendChild(button);
+        this.floatButton = button;
+    }
 
     override Load(): void {
         if (!this.bcxInstalled()) {
@@ -185,11 +298,31 @@ export class GUI extends ModuleInstance {
         }
 
         this.addHook("InformationSheetRun", 14, (args, next) => {
-            const result = next(args);
+            // Measure where BC's left text column actually ends this frame
+            // (see drawWeldLine); cleared before our own drawing so the weld
+            // line never measures itself
+            this.measuringSheet = true;
+            this.sheetLeftMaxY = 0;
+            let result;
+            try {
+                result = next(args);
+            } finally {
+                this.measuringSheet = false;
+            }
             if (!window.bcx?.inBcxSubscreen()) {
                 this.drawBCPlusButton();
             }
             return result;
+        });
+
+        // Passive observer for the measurement above - only active during
+        // the sheet's own draw call, a no-op flag check otherwise
+        this.addHook("DrawTextFit", 0, (args, next) => {
+            if (this.measuringSheet && args[1] === 550
+                && typeof args[2] === "number" && args[2] < 790) {
+                this.sheetLeftMaxY = Math.max(this.sheetLeftMaxY, args[2]);
+            }
+            return next(args);
         });
 
         this.addHook("InformationSheetClick", 10, (args, next) => {
@@ -206,6 +339,7 @@ export class GUI extends ModuleInstance {
         });
 
         this.hardcoreTimer = setInterval(() => this.hardcoreSweep(), 2000);
+        this.applyFloatingButton();
     }
 
     override Unload(): void {
@@ -213,6 +347,8 @@ export class GUI extends ModuleInstance {
             clearInterval(this.hardcoreTimer);
             this.hardcoreTimer = null;
         }
+        this.floatButton?.remove();
+        this.floatButton = null;
         this.uiWindow?.close();
         this.uiWindow = null;
         super.Unload();
@@ -272,15 +408,19 @@ export class GUI extends ModuleInstance {
     }
 
     /**
-     * The optional "welded by" line on the information sheet. Drawn at a
-     * FIXED y910: BC hard-resets its cursor to 800 before the "Allowed
-     * interactions" pair (800/855, only drawn for online characters), and
-     * nothing else uses the left column below that - so this slot cannot be
-     * shifted by conditional lines above (nickname, title, ownership
-     * duration...) or by mods adding their own. A replicated line-count of
-     * the ownership block previously overlapped BC's text whenever the
-     * prediction missed by one line.
+     * The optional "welded by" line on the information sheet, drawn one line
+     * (55px) under the LAST line BC actually drew in the left text column
+     * this frame - measured via the DrawTextFit observer, never predicted.
+     * Prediction history: replicating BC's conditional line-count overlapped
+     * the ownership text whenever it missed by one line, and a fixed y910
+     * hid under the own sheet's DOM "Allowed interactions" dropdown (DOM
+     * renders above canvas). BC's block never reaches past ~770 before its
+     * hard reset to y800, so the measured slot always clears both the
+     * others-sheet text pair (800/855) and the own-sheet dropdown.
      */
+    private measuringSheet = false;
+    private sheetLeftMaxY = 0;
+
     private drawWeldLine(character: BCPlusCharacter): void {
         const data = character.isPlayer()
             ? this.ModuleManager.getModule<Welding>("welding")?.Data
@@ -289,9 +429,10 @@ export class GUI extends ModuleInstance {
         if (!line) {
             return;
         }
+        const y = this.sheetLeftMaxY >= 125 ? this.sheetLeftMaxY + 55 : 745;
         const prevAlign = MainCanvas.textAlign;
         MainCanvas.textAlign = "left";
-        DrawTextFit(line, 550, 910, 450, "Black", "Gray");
+        DrawTextFit(line, 550, y, 450, "Black", "Gray");
         MainCanvas.textAlign = prevAlign;
     }
 

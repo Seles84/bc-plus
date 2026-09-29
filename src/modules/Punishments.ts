@@ -48,6 +48,8 @@ interface AnnounceCollector {
 export default class Punishments extends ModuleInstance {
 
     private tickTimer: ReturnType<typeof setInterval> | null = null;
+    /** Whether enforcement changed the appearance - flushed as one update per pass. */
+    private dirty = false;
     /** Violation timestamps per rule for threshold counting (session-local). */
     private readonly violations = new Map<string, number[]>();
     private readonly lastRestore = new Map<string, number>();
@@ -391,6 +393,7 @@ export default class Punishments extends ModuleInstance {
         this.Events.emit("punishmentStarted", { punishment: id });
         if (definition.kind === "item") {
             this.enforceItem(active);
+            this.flushAppearance();
         }
 
         const durationText = definition.durationMin > 0 ? ` for ${describeDuration(definition.durationMin)}` : " until lifted";
@@ -513,6 +516,25 @@ export default class Punishments extends ModuleInstance {
                 debug(`Punishment tick failed for ${id}:`, e);
             }
         }
+        this.flushAppearance();
+    }
+
+    /**
+     * ONE refresh and ONE server update for however many punishments changed
+     * the appearance this pass - per-item pushes would flood the server when
+     * several reassert at once (the classic rate-limit disconnect).
+     */
+    private flushAppearance(): void {
+        if (!this.dirty) {
+            return;
+        }
+        this.dirty = false;
+        CharacterRefresh(Player, false);
+        if (ServerPlayerIsInChatRoom()) {
+            ChatRoomCharacterUpdate(Player);
+        } else {
+            ServerPlayerAppearanceSync();
+        }
     }
 
     /** The active item punishment that owns a slot: the most recently started one. */
@@ -570,6 +592,7 @@ export default class Punishments extends ModuleInstance {
         }
 
         const spec = active.item;
+        // Refresh false: the caller flushes one update per pass
         const item = InventoryWear(
             Player,
             spec.asset,
@@ -578,7 +601,7 @@ export default class Punishments extends ModuleInstance {
             spec.difficulty ?? null,
             Player.MemberNumber,
             spec.craft ?? null,
-            true,
+            false,
         );
         if (!item) {
             warn(`Punishment item ${spec.asset} could not be applied to ${active.group}`);
@@ -592,15 +615,12 @@ export default class Punishments extends ModuleInstance {
         }
         if (active.lock && PUNISHMENT_LOCKS.some((l) => l.asset === active.lock)) {
             try {
-                InventoryLock(Player, item, active.lock as AssetLockType, Player, true);
+                InventoryLock(Player, item, active.lock as AssetLockType, Player, false);
             } catch (e) {
                 debug(`Punishment lock ${active.lock} failed:`, e);
             }
         }
-        CharacterRefresh(Player, false);
-        if (ServerPlayerIsInChatRoom()) {
-            ChatRoomCharacterUpdate(Player);
-        }
+        this.dirty = true;
         debug(`Punishment item reasserted: ${spec.asset} on ${active.group}`);
         if (now - (this.lastNotify.get(id) ?? 0) >= NOTIFY_COOLDOWN_MS) {
             this.lastNotify.set(id, now);

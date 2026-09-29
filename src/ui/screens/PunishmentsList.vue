@@ -95,8 +95,8 @@ function newFromWorn(): void {
             slotState: (group: AssetGroup) => {
                 const worn = InventoryGet(access.subject(), group.Name);
                 return worn
-                    ? { disabled: false, hover: `Capture: ${worn.Craft?.Name || worn.Asset.Description}` }
-                    : { disabled: true, hover: "Nothing worn here" };
+                    ? { disabled: false, hover: `Capture: ${worn.Craft?.Name || worn.Asset.Description}`, tint: "worn" as const }
+                    : { disabled: true, hover: "Nothing worn here", tint: "empty" as const };
             },
             pick: (group: AssetGroupName) => {
                 access.createFromWorn(group);
