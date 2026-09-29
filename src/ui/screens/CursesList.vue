@@ -59,14 +59,18 @@ function addCurse(): void {
         props: {
             note: "Click a slot to curse it. The slot's current state is captured: the worn item "
                 + "becomes the first allowed item (in strict mode), an empty slot becomes cursed empty. "
-                + "Slots that are already cursed are grayed out.",
+                + "Purple = already cursed, green = something is worn there, plain = empty.",
             slotState: (group: AssetGroup) => {
                 const cursed = access.slot(group.Name) !== undefined;
                 if (cursed) {
-                    return { disabled: true, hover: "Already cursed" };
+                    return { disabled: true, hover: "Already cursed", tint: "cursed" as const };
                 }
                 const worn = InventoryGet(access.subject(), group.Name);
-                return { disabled: false, hover: `Currently: ${worn ? (worn.Craft?.Name || worn.Asset.Description) : "empty"}` };
+                return {
+                    disabled: false,
+                    hover: `Currently: ${worn ? (worn.Craft?.Name || worn.Asset.Description) : "empty"}`,
+                    tint: worn ? "worn" as const : "empty" as const,
+                };
             },
             pick: (group: AssetGroupName) => {
                 access.addCurse(group);
