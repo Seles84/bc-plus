@@ -9,6 +9,7 @@ import { ForbidLeaving } from "@/rules/ForbidLeaving";
 import { DollTalk } from "@/rules/DollTalk";
 import { WordReplace } from "@/rules/WordReplace";
 import { MandatoryWords } from "@/rules/MandatoryWords";
+import { MinimumWords } from "@/rules/MinimumWords";
 import { RestrainedSpeech } from "@/rules/RestrainedSpeech";
 import { FalteringSpeech } from "@/rules/FalteringSpeech";
 import { GaggedOOC } from "@/rules/GaggedOOC";
@@ -83,6 +84,7 @@ export const RULE_DEFINITIONS: readonly RuleDefinition[] = [
     GaggedOOC,
     ForbiddenWords,
     MandatoryWords,
+    MinimumWords,
     RestrainedSpeech,
     DollTalk,
     WordReplace,
