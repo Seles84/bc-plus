@@ -8,6 +8,7 @@ import { LocalCurseAccess, RemoteCurseAccess } from "@/system/curses/CurseAccess
 import { CURSE_LOCKS, lockApplicableFor } from "@/system/curses/CurseTypes";
 import { describeConditions } from "@/system/conditions/Conditions";
 import { bcpCharacter } from "@/ui/composables";
+import { isBodyGroup } from "@/modules/Curses";
 import type Authority from "@/modules/Authority";
 import type Curses from "@/modules/Curses";
 
@@ -38,6 +39,14 @@ const canEdit = computed(() => {
 
 const groupLabel = computed(() =>
     curses.curseableGroups().find((g) => g.Name === props.group)?.Description ?? props.group);
+
+const groupDef = computed(() => AssetGroup.find((g) => g.Name === props.group));
+/** Body slots: no padlocks, no catalog picks, and mandatory ones can never be empty. */
+const isBody = computed(() => {
+    const def = groupDef.value;
+    return def !== undefined && isBodyGroup(def);
+});
+const mayBeEmpty = computed(() => groupDef.value?.AllowNone !== false);
 
 /** Owner/Lover locks only offer when applicable - a stored one stays clearable. */
 const lockOptions = computed(() => {
@@ -103,7 +112,7 @@ function removeCurse(): void {
                 >
                 <span>Curse is active</span>
             </label>
-            <label class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 hover:bg-surface" :class="{ 'opacity-50': !canEdit }">
+            <label v-if="mayBeEmpty" class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 hover:bg-surface" :class="{ 'opacity-50': !canEdit }">
                 <input
                     type="checkbox" class="h-5 w-5" style="accent-color: var(--bcp-accent);"
                     :checked="slot.allowEmpty" :disabled="!canEdit"
@@ -111,7 +120,7 @@ function removeCurse(): void {
                 >
                 <span>Slot may also be empty</span>
             </label>
-            <div class="flex items-center gap-3 rounded-lg px-3 py-2">
+            <div v-if="!isBody" class="flex items-center gap-3 rounded-lg px-3 py-2">
                 <span>Lock:</span>
                 <select
                     :disabled="!canEdit"
@@ -138,7 +147,9 @@ function removeCurse(): void {
 
         <section class="flex flex-col gap-1">
             <h3 class="px-3 font-semibold text-accent">Allowed items (each with its own rules)</h3>
-            <p v-if="slot.items.length === 0" class="px-3 text-fg-dim">None - the slot is cursed empty.</p>
+            <p v-if="slot.items.length === 0" class="px-3 text-fg-dim">
+                {{ mayBeEmpty ? "None - the slot is cursed empty." : "None - nothing is enforced until an item is allowed (this body part cannot be bare)." }}
+            </p>
             <div
                 v-for="(spec, index) in slot.items"
                 :key="`${spec.asset}-${index}`"
@@ -170,6 +181,7 @@ function removeCurse(): void {
                 @click="set(() => access.addCurrentItem(props.group))"
             >Allow currently worn item</button>
             <button
+                v-if="!isBody"
                 class="rounded-lg bg-surface px-4 py-2 hover:bg-surface-hover"
                 style="border: 1px solid var(--bcp-border);"
                 title="Browse every item for this slot - nothing has to be worn"
