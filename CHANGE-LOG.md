@@ -6,6 +6,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+- Body parts can now be cursed (new "Body" tab when picking a slot): skin, hair, eyes, genitals and every other customizable body group - so a captured look survives outfit changes, like BCX's body curses. Strict capture stores colors, so skin tone and hair color are enforced exactly. Mandatory body parts can never be cursed empty or stripped by enforcement, and body slots take no padlocks.
+
 ### Fixed
 - Mass curse and punishment triggers can no longer flood the BC server: enforcement now sends exactly one appearance update per pass (every 1.5s), no matter how many slots reasserted at once. Previously every restored slot pushed two updates on its own, so stripping a heavily cursed outfit in one go risked the rate-limit disconnect known from BCX.
 - The "Collar welded shut by..." line on the profile sheet no longer overlaps BC's own text for some viewers - it sits in a fixed spot below the "Allowed interactions" block now, where BC (and mods adding profile lines) cannot shift into it.
