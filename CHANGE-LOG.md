@@ -4,7 +4,9 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.14.0] - 2026-09-29
+
+The community-requests release: everything in here was asked for by BC+ users - body curses, a BCX-compatible typing indicator, detailed-speech enforcement, quality-of-life openers, and rate-limit-proof curse enforcement.
 
 ### Added
 - Body parts can now be cursed (new "Body" tab when picking a slot): skin, hair, eyes, genitals and every other customizable body group - so a captured look survives outfit changes, like BCX's body curses. Strict capture stores colors, so skin tone and hair color are enforced exactly. Mandatory body parts can never be cursed empty or stripped by enforcement, and body slots take no padlocks.
