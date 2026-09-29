@@ -8,6 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 - Body parts can now be cursed (new "Body" tab when picking a slot): skin, hair, eyes, genitals and every other customizable body group - so a captured look survives outfit changes, like BCX's body curses. Strict capture stores colors, so skin tone and hair color are enforced exactly. Mandatory body parts can never be cursed empty or stripped by enforcement, and body slots take no padlocks.
+- New speech rule "Require detailed speech": every chat message must contain at least a configured number of words (2-20) - doll talk in reverse, for detailed roleplay. Out-of-character text and emotes are exempt; whispers optional.
 
 ### Fixed
 - Mass curse and punishment triggers can no longer flood the BC server: enforcement now sends exactly one appearance update per pass (every 1.5s), no matter how many slots reasserted at once. Previously every restored slot pushed two updates on its own, so stripping a heavily cursed outfit in one go risked the rate-limit disconnect known from BCX.
