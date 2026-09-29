@@ -7,11 +7,23 @@ import type Curses from "@/modules/Curses";
 const props = defineProps<{
     /** Explains what clicking a slot does in this context. */
     note: string;
-    /** Disabled state + hover for one slot; null enables with the default hover. */
-    slotState: (group: AssetGroup) => { disabled: boolean; hover: string };
+    /** Disabled state + hover for one slot, plus an optional color-coding tint. */
+    slotState: (group: AssetGroup) => { disabled: boolean; hover: string; tint?: "cursed" | "worn" | "empty" };
     /** Called with the chosen group name. */
     pick: (group: AssetGroupName) => void;
 }>();
+
+/** Color-coding so busy and empty slots read at a glance (no tint = plain). */
+function slotStyle(tint: "cursed" | "worn" | "empty" | undefined): string {
+    switch (tint) {
+        case "cursed":
+            return "border: 1px solid var(--bcp-accent); background: color-mix(in srgb, var(--bcp-accent) 14%, var(--bcp-surface));";
+        case "worn":
+            return "border: 1px solid #58a360; background: color-mix(in srgb, #58a360 12%, var(--bcp-surface));";
+        default:
+            return "border: 1px solid var(--bcp-border);";
+    }
+}
 
 const core = inject(BCPLUS_KEY)!;
 const category = ref<"Item" | "Clothing" | "Body">("Item");
@@ -44,7 +56,7 @@ const groups = computed(() => {
                 v-for="group in groups"
                 :key="group.Name"
                 class="rounded-lg bg-surface px-3 py-2 text-left hover:bg-surface-hover disabled:opacity-50"
-                style="border: 1px solid var(--bcp-border);"
+                :style="slotStyle(slotState(group).tint)"
                 :disabled="slotState(group).disabled"
                 :title="slotState(group).hover"
                 @click="pick(group.Name)"
