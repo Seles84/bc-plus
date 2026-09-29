@@ -105,6 +105,30 @@ export class GUI extends ModuleInstance {
         return true;
     }
 
+    /**
+     * Opens another member's BC+ menu by number (the /bcp menu <number>
+     * path) - same gates as clicking the info-sheet button. Returns an
+     * error to show, or null when the window opened.
+     */
+    openRemoteMenu(member: number): string | null {
+        const character = getChatroomCharacter(member);
+        if (!character) {
+            return "they are not in this room";
+        }
+        if (character.isPlayer()) {
+            return this.openModalMenu() ? null : "your hands are bound (hardcore mode)";
+        }
+        if (character.BCPVersion === null) {
+            return "they do not run BC+";
+        }
+        const reason = this.remoteViewBlockReason(character);
+        if (reason !== null) {
+            return reason;
+        }
+        this.openWindow(member);
+        return null;
+    }
+
     /** Opens the own window directly on the Rooms screen (room-editor entry point). */
     openRoomsScreen(): boolean {
         if (this.hardcoreSelfBlocked()) {
@@ -168,6 +192,95 @@ export class GUI extends ModuleInstance {
     }
 
     private hardcoreTimer: ReturnType<typeof setInterval> | null = null;
+    private floatButton: HTMLDivElement | null = null;
+
+    /**
+     * Creates or removes the optional floating BC+ button per the Core
+     * setting - a draggable DOM overlay that opens the window without going
+     * through the profile sheet. Position persists per member and device.
+     */
+    applyFloatingButton(): void {
+        const enabled = this.ModuleManager.getModule<Core>("core")?.getSetting<boolean>("floatingButton") === true;
+        if (!enabled) {
+            this.floatButton?.remove();
+            this.floatButton = null;
+            return;
+        }
+        if (this.floatButton) {
+            return;
+        }
+        const SIZE = 52;
+        const key = `BCP_${Player.MemberNumber}_FloatButton`;
+        const button = document.createElement("div");
+        button.id = "BCPFloatButton";
+        button.title = "BC+ (drag to move)";
+        let x = window.innerWidth - SIZE - 16;
+        let y = Math.round(window.innerHeight * 0.35);
+        try {
+            const saved = JSON.parse(localStorage.getItem(key) ?? "null") as { x?: number; y?: number } | null;
+            if (typeof saved?.x === "number" && typeof saved?.y === "number") {
+                x = saved.x;
+                y = saved.y;
+            }
+        } catch {
+            // Corrupt or blocked storage - keep the default spot
+        }
+        const clamp = (): void => {
+            x = Math.min(Math.max(0, x), window.innerWidth - SIZE);
+            y = Math.min(Math.max(0, y), window.innerHeight - SIZE);
+            button.style.left = `${x}px`;
+            button.style.top = `${y}px`;
+        };
+        Object.assign(button.style, {
+            position: "fixed",
+            width: `${SIZE}px`,
+            height: `${SIZE}px`,
+            zIndex: "9990",
+            borderRadius: "50%",
+            background: `#241c2e url(${JSON.stringify(appLogo)}) center / 78% no-repeat`,
+            border: "2px solid #8469b6",
+            boxShadow: "0 4px 14px rgba(0, 0, 0, 0.45)",
+            cursor: "pointer",
+            touchAction: "none",
+            userSelect: "none",
+        });
+        clamp();
+        let drag: { startX: number; startY: number; moved: boolean } | null = null;
+        button.addEventListener("pointerdown", (event) => {
+            drag = { startX: event.clientX - x, startY: event.clientY - y, moved: false };
+            button.setPointerCapture(event.pointerId);
+            event.preventDefault();
+        });
+        button.addEventListener("pointermove", (event) => {
+            if (!drag) {
+                return;
+            }
+            const nx = event.clientX - drag.startX;
+            const ny = event.clientY - drag.startY;
+            if (drag.moved || Math.abs(nx - x) + Math.abs(ny - y) > 5) {
+                drag.moved = true;
+                x = nx;
+                y = ny;
+                clamp();
+            }
+        });
+        button.addEventListener("pointerup", () => {
+            const wasDrag = drag?.moved === true;
+            drag = null;
+            if (wasDrag) {
+                try {
+                    localStorage.setItem(key, JSON.stringify({ x, y }));
+                } catch {
+                    // Blocked storage - the spot just won't persist
+                }
+            } else if (!this.openModalMenu()) {
+                BCPNotifyPlayer("BC+ cannot open - your hands are bound.");
+            }
+        });
+        window.addEventListener("resize", clamp);
+        document.body.appendChild(button);
+        this.floatButton = button;
+    }
 
     override Load(): void {
         if (!this.bcxInstalled()) {
@@ -206,6 +319,7 @@ export class GUI extends ModuleInstance {
         });
 
         this.hardcoreTimer = setInterval(() => this.hardcoreSweep(), 2000);
+        this.applyFloatingButton();
     }
 
     override Unload(): void {
@@ -213,6 +327,8 @@ export class GUI extends ModuleInstance {
             clearInterval(this.hardcoreTimer);
             this.hardcoreTimer = null;
         }
+        this.floatButton?.remove();
+        this.floatButton = null;
         this.uiWindow?.close();
         this.uiWindow = null;
         super.Unload();

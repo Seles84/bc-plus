@@ -9,6 +9,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ### Added
 - Body parts can now be cursed (new "Body" tab when picking a slot): skin, hair, eyes, genitals and every other customizable body group - so a captured look survives outfit changes, like BCX's body curses. Strict capture stores colors, so skin tone and hair color are enforced exactly. Mandatory body parts can never be cursed empty or stripped by enforcement, and body slots take no padlocks.
 - New speech rule "Require detailed speech": every chat message must contain at least a configured number of words (2-20) - doll talk in reverse, for detailed roleplay. Out-of-character text and emotes are exempt; whispers optional.
+- Optional floating BC+ button ("Floating BC+ button" checkbox on the General page, off by default): a small draggable button over the club that opens the BC+ window directly - no need to go through your profile. Its spot is remembered per device.
+- `/bcp menu <member number>` opens that person's BC+ menu (same permission gates as clicking their profile button); the bare `/bcp menu` still opens your own.
 
 ### Changed
 - The slot picker for curses (and item punishments) color-codes slots like BCX: purple = already cursed, green = something is worn there, plain = empty - busy and free slots read at a glance.
