@@ -4,6 +4,11 @@ All notable changes to BC+ are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- New rule "Forbid chat commands": the configured slash commands (wardrobe, friendlist, beep...) are disabled for the player - for setups that want a bit more realism. The safeword and `/bcp` can never be blocked; entries for them are ignored by design.
+
 ## [0.14.0] - 2026-09-29
 
 The community-requests release: everything in here was asked for by BC+ users - body curses, a BCX-compatible typing indicator, detailed-speech enforcement, quality-of-life openers, and rate-limit-proof curse enforcement.

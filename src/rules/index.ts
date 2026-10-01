@@ -67,6 +67,7 @@ import {
 import {
     ControlNickname,
     ForbidActivities,
+    ForbidCommands,
     ForbidDifficultyChange,
     ForbidEmoticonChange,
     LockProfileDescription,
@@ -139,6 +140,7 @@ export const RULE_DEFINITIONS: readonly RuleDefinition[] = [
     SecretOrgasms,
     ForbidDifficultyChange,
     ForbidActivities,
+    ForbidCommands,
     ForbidEmoticonChange,
     RestrictLeashing,
     ControlNickname,
