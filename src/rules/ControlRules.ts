@@ -1,6 +1,20 @@
 import { RuleDefinition } from "@/system/rules/RuleTypes";
 import { Role, roleFromName } from "@/system/Roles";
 import { SendAction } from "@/utils/Messaging";
+import { stringListValue } from "@/system/gui/Settings";
+
+/**
+ * Commands no rule may ever block, whatever the configuration says: the
+ * safeword is the consent escape hatch, and /bcp is how the wearer sees and
+ * (where permitted) manages their own rules. Checked at enforcement, so no
+ * stored list, import code or remote edit can make these entries effective.
+ */
+const NEVER_BLOCKED_COMMANDS = new Set(["safeword", "bcp", "help"]);
+
+/** First command token of a parsed chat command, without the leading key. */
+function chatCommandName(msg: string): string {
+    return msg.slice(1).split(/\s/, 1)[0]?.toLowerCase() ?? "";
+}
 
 /** The player cannot change their multiplayer difficulty. */
 export const ForbidDifficultyChange: RuleDefinition = {
@@ -20,6 +34,47 @@ export const ForbidDifficultyChange: RuleDefinition = {
                     return;
                 }
                 ctx.trigger();
+            }
+            return next(args);
+        });
+    },
+};
+
+/** Configured slash commands are disabled for the player. */
+export const ForbidCommands: RuleDefinition = {
+    id: "control.commands",
+    name: "Forbid chat commands",
+    description: "The configured slash commands are disabled for the player (for example "
+        + "wardrobe, friendlist, beep - without the slash). The safeword and /bcp can never "
+        + "be blocked: entries for them are ignored.",
+    category: "Other",
+    announceAttempt: "{Name} tried to use a command a rule forbids.",
+    settings: [{
+        type: "stringList",
+        name: "commands",
+        label: "Blocked commands:",
+        default: [],
+        entryLabel: "command",
+        maxChars: 30,
+    }],
+    load(ctx) {
+        // CommandExecute only ever sees real slash commands (CommandParse
+        // routes plain chat and escaped input past it), and returning true
+        // swallows the command exactly like a handled one
+        ctx.hook("CommandExecute", 5, (args, next) => {
+            const msg = args[0];
+            if (typeof msg === "string" && ctx.inEffect()) {
+                const name = chatCommandName(msg);
+                const blocked = stringListValue(ctx.setting<unknown>("commands"))
+                    .map((entry) => entry.replace(/^\//, "").trim().toLowerCase());
+                if (name.length > 0 && !NEVER_BLOCKED_COMMANDS.has(name) && blocked.includes(name)) {
+                    if (ctx.isEnforced()) {
+                        ctx.triggerAttempt();
+                        ctx.notify(`A rule forbids you from using /${name}.`);
+                        return true;
+                    }
+                    ctx.trigger();
+                }
             }
             return next(args);
         });
